@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# This file is part of selfrando.
+# Copyright (c) 2015-2016 Tommaso Frassetto, TU Darmstadt.
+# For license information, see the LICENSE file
+# included with selfrando.
+#
+
+set -ue
+
+exec 2> >(tee -a /tmp/tc.log >&2)
+
+SR_PATH='/home/ubuntu/install/self-rando'
+GOLD="$(which $(gcc -print-prog-name=ld.gold))"
+
+declare -i prev_o=0
+declare out
+
+for arg in "$@"; do
+	if [ $prev_o = 1 ]; then
+		out="$arg"
+		break
+	else
+		if [ "$arg" = '-o' ]; then
+			prev_o=1
+		fi
+	fi
+done
+
+if [[ ${out=a.out} == *.so ]]; then
+	startcmd="--section-start .dynsym=0x800"
+else
+	startcmd="--section-start .interp=0x400800"
+fi
+
+"$GOLD" "$@"
+sym_number=$(readelf -s "$out" | sed -n '/.symtab/,${/FUNC/{/UND/!p}}' | wc -l)
+pad_file=$(mktemp -t 'padding.XXXXXXXXXXXXXXX' --tmpdir=.)
+((sym_number++))
+echo '.text' >> $pad_file
+echo '.globl _TRaP_Linux_PaddingBytes_text' >> $pad_file
+echo '.type _TRaP_Linux_PaddingBytes_text,@function' >> $pad_file
+echo '_TRaP_Linux_PaddingBytes_text:' >> $pad_file
+echo "    .fill $sym_number, 1, 0x90" >> $pad_file
+mv $pad_file $pad_file.s
+gcc -c $pad_file.s -o $pad_file.o
+set -x
+"$GOLD" \
+	$startcmd \
+	-dn \
+	"$SR_PATH/randoentry.o" \
+	"$SR_PATH/sr_begin.o" \
+	"$SR_PATH/libselfrando.a" \
+	"$SR_PATH/sr_end.o" \
+	-dy "$@" \
+	--build-id=none -Map "$out".map $pad_file.o
+"$SR_PATH/SymProc" "$out" "$out".map -ffunction-sections
+"$SR_PATH/PatchEntry" "$out".rand.out
+mv "$out".rand.out "$out"
+set +x
+rm $pad_file.s $pad_file.o

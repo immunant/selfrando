@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+# This file is part of selfrando.
+# Copyright (c) 2015-2016 Tommaso Frassetto, TU Darmstadt.
+# For license information, see the LICENSE file
+# included with selfrando.
+#
+
+set -ue
+
+exec 2> >(tee -a /tmp/tc.log >&2)
+
+TC_PATH="$(dirname "$0")"
+CMD="$(basename "$0")"
+export PATH="$(echo $PATH | sed -E 's/^[^:]+://')"
+
+set -x
+exec "$CMD" "$@" -B "$TC_PATH"

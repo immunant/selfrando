@@ -1,0 +1,96 @@
+Import('env')
+
+SOURCES = ['util/hash_32a.c', 'RandoLib.cpp', 'util/qsort.c']
+SOURCES.append('%s/OSImpl.cpp' % env['PLATFORM'])
+
+lib_env = env.Clone()
+lib_env.Append(CPPPATH = '#/RandoLib')
+
+files = None
+
+if env['PLATFORM'] == 'win32':
+    SOURCES.extend(['win32/EntryPoint.asm', 'win32/TrapHeader.asm',
+                    'win32/Relocation.cpp'])
+
+    #FIXME: is this only needed for EntryPoint.asm???
+    lib_env.Append(ASFLAGS = '/safeseh')
+
+    # Special compiler flags for RandoLib
+    lib_env.Append(CCFLAGS = '/Gd')   # Use cdecl calling convention
+    lib_env.Append(CCFLAGS = '/sdl-') # Disable security checks
+    lib_env.Append(CCFLAGS = '/GS-')  # Disable buffer overflow checks
+    lib_env.Append(CCFLAGS = '/GR-')  # No RTTI
+    lib_env.Append(CCFLAGS = '/Zl')   # Remove default library name
+
+    # Librarian flags
+    lib_env.Append(ARFLAGS = '/NODEFAULTLIB') # Don't include default libs
+
+    lib_env.Library('RandoLib', SOURCES)
+    files = Glob('RandoLib.lib')
+
+elif env['PLATFORM'] == 'posix':
+    SOURCES.extend(['posix/%s/Relocation.cpp' % env['TARGET_ARCH']])
+    lib_env.Append(CCFLAGS = '-fvisibility=hidden')
+
+    entry_files = ['posix/%s/EntryPoint.S' % env['TARGET_ARCH']]
+    if 'RANDOLIB_IS_ANDROID' in env['CPPDEFINES']:
+        entry_files.append('posix/%s/AndroidInit.c' % env['TARGET_ARCH'])
+
+    lib_env.Append(CPPFLAGS='-fPIC')
+    lib_env.StaticObject('randoentry', entry_files)
+    lib_env.StaticObject('trapheader', ['posix/TrapHeader.S'])
+    lib_env.StaticObject('sr_begin', 'posix/%s/sr_begin.S' % env['TARGET_ARCH'])
+    lib_env.StaticObject('sr_end', 'posix/%s/sr_end.S' % env['TARGET_ARCH'])
+
+    if env['TARGET_ARCH'] == 'x86':
+        # TODO: it would be nice to have a "is 32 bit" variable
+        # and check that instead
+        lib_env.Append(ASFLAGS = '-m32')
+        lib_env.Append(CCFLAGS = '-m32')
+        lib_env.Append(LINKFLAGS = '-m32')
+
+    lib_env.Append(CPPDEFINES = {'SR_FUNCTION_PRESERVE_ALIGN': env['FUNCTION_PRESERVE_ALIGN']})
+    lib_env.Append(SHLINKFLAGS = '-Wl,-soname=libselfrando.so')
+    lib_env.StaticLibrary('selfrando-text', SOURCES)
+
+    def rename_sections(env, target, source):
+        import subprocess
+
+        sections = []
+        sub = subprocess.Popen(['readelf', '-SW', source[0].path], stdout=subprocess.PIPE)
+        sections_text, _ = sub.communicate()
+        for l in sections_text.splitlines():
+            if l.startswith('  ['):
+                sec = l[6:].split()[0]
+                if sec.startswith('.text'):
+                    sections.append(sec)
+        sections = set(sections)
+        renames = []
+        for s in sections:
+            renames.extend(['--rename-section', s + '=.sr' + s])
+
+        subprocess.check_call(['objcopy'] + renames + [source[0].path, target[0].path])
+
+    lib_env.Command('libselfrando.a', '../RandoLib/libselfrando-text.a', rename_sections)
+
+    files  = Glob('libselfrando.a')
+    files += Glob('randoentry.o')
+    files += Glob('trapheader.o')
+    files += Glob('sr_*.o')
+
+    if 'ANDROID_NDK' in env and env['TARGET_ARCH'] == 'arm':
+        lib_env['CC'] = env['ANDROID_NDK'] + '/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-gcc'
+        lib_env.Append(CCFLAGS = '--sysroot=' + env['ANDROID_NDK'] + '/platforms/android-21/arch-arm/')
+        lib_env.Append(CCFLAGS = '-march=armv7-a') # not sure if this is needed
+        lib_env.Append(LINKFLAGS = '--sysroot=' + env['ANDROID_NDK'] + '/platforms/android-21/arch-arm/')
+        lib_env.Append(LINKFLAGS = '-Wl,--fix-cortex-a8') # no idea what this does...
+        lib_env.Append(LIBS = ['gcc', 'log', 'gnustl_shared', 'c', 'm', 'supc++'])
+
+        lib_env['CXX'] = env['ANDROID_NDK'] + '/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-g++'
+        lib_env.Append(CPPPATH = [env['ANDROID_NDK'] + '/sources/cxx-stl/gnu-libstdc++/4.9/include',
+                                  env['ANDROID_NDK'] + '/sources/cxx-stl/gnu-libstdc++/4.9/libs/armeabi-v7a/include'])
+        lib_env.Append(LIBPATH = [env['ANDROID_NDK'] + '/platforms/android-21/arch-arm/usr/lib',
+                                  env['ANDROID_NDK'] + '/sources/cxx-stl/gnu-libstdc++/4.9/libs/armeabi-v7a'])
+
+Return('files')
+
