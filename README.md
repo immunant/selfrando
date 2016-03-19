@@ -17,6 +17,6 @@ Software written in C and C++ is exposed to exploitation of memory corruption. C
 See `linux-build-instructions.md` in the `Docs` directory.
 
 ## License
-The Linux-compatible version of `selfrando` is offered under the Affero General Public License version 1. Please visit [this](http://immunant.com/page/contributehttp://immunant.com/page/contribute) page if you are interested in contributing.
+The Linux-compatible version of `selfrando` is offered under the Affero General Public License version 1. Please visit [this](http://immunant.com/page/contribute) page if you are interested in contributing.
 
 Visit http://immunant.com if you are interested in a commercial license for `selfrando` for Windows, Android, and Linux.
