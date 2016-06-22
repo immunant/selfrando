@@ -20,3 +20,10 @@ See `linux-build-instructions.md` in the `Docs` directory.
 The Linux-compatible version of `selfrando` is offered under the Affero General Public License version 1. Please visit [this](http://immunant.com/page/contribute) page if you are interested in contributing.
 
 Visit http://immunant.com if you are interested in a commercial license for `selfrando` for Windows, Android, and Linux.
+
+## Acknowledgements
+Researchers from University of California, Irvine, Technische Universität Darmstadt (Germany), and the Tor Project contributed to the development of selfrando. 
+
+This work is based upon work partially supported by the Defense Advanced Research Projects Agency (DARPA) under contracts FA8750-15-C-0124,  FA8750-15-C-0085, and FA8750-10-C-0237 and by the National Science Foundation under award number IIP-1520552.
+
+This work was supported in part by the German Science Foundation (project S2,  CRC 1119 CROSSING), the European Union's Seventh Framework Programme (609611, PRACTICE), and the German Federal Ministry of Education and Research within CRISP.
