@@ -224,10 +224,15 @@ void ExecSectionProcessor::BuildFunctions() {
     RANDO_ASSERT(func_idx == m_num_funcs);
 }
 
+template<typename T>
+static inline RANDO_SECTION int CompareIntegers(T a, T b) {
+  return (a < b) ? -1 : ((a == b) ? 0 : 1);
+}
+
 static RANDO_SECTION int CompareFunctions(const void *a, const void *b) {
     auto fa = reinterpret_cast<const Function*>(a);
     auto fb = reinterpret_cast<const Function*>(b);
-    return fa->undiv_start - fb->undiv_start;
+    return CompareIntegers(fa->undiv_start, fb->undiv_start);
 }
 
 void ExecSectionProcessor::SortFunctions() {
