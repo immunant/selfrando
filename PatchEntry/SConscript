@@ -7,8 +7,10 @@ if env['PLATFORM'] == 'win32':
     SOURCES.append('win32/stdafx.cpp')
 
 elif env['PLATFORM'] == 'posix':
-    env.Append(LIBS = 'elf')
+    # env.Append(LIBS = ['elf', 'z'])
+    env.ParseConfig('pkg-config --cflags --libs --static libelf')
     env.Append(LINKFLAGS = '-static')
+
 
 # FIXME: for weird reasons, bash&UAC don't like programs named "Patch"
 files = env.Program('PatchEntry', SOURCES)
