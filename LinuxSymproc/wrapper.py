@@ -64,7 +64,7 @@ if run_symproc:
     subprocess.call([SYMPROC, output_file, map_file])
 
 if run_patchentry:
-    subprocess.call([PATCHENTRY, output_file] + '.rand.out')
+    subprocess.call([PATCHENTRY, output_file + '.rand.out'])
 
 if exit_status == 0 and run_symproc:
     shutil.move(output_file, output_file + '.orig')
