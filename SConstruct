@@ -22,10 +22,10 @@ env = Environment(variables=vars,
                   ENV = {'PATH': os.environ['PATH']})
 print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
-if 'CXX' in env:
+if os.getenv("CXX"):
     env["CXX"] = os.getenv("CXX")
     env["CC"] = env["CXX"]
-if 'CC' in env:
+if os.getenv("CC"):
     env["CC"] = os.getenv("CC")
 if  'ADDN_CCFLAGS'  in env and env[ 'ADDN_CCFLAGS' ]:
     env.Append( CCFLAGS =  env[ 'ADDN_CCFLAGS' ])
