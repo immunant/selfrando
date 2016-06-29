@@ -3,5 +3,6 @@ script: scons
 compiler: gcc
 sudo: required
 before_install:
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
   - sudo apt-get -qq update
   - sudo apt-get install -y libelf-dev zlib1g-dev pkg-config gcc-4.9 g++-4.9
