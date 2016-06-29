@@ -7,4 +7,4 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libelf-dev zlib1g-dev pkg-config gcc-4.9 g++-4.9
 install:
-  export CXX="g++-4.9"; export CC="gcc-4.9";   
+  - export CXX="g++-4.9"; export CC="gcc-4.9";   

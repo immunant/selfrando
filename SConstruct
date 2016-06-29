@@ -22,6 +22,11 @@ env = Environment(variables=vars,
                   ENV = {'PATH': os.environ['PATH']})
 print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
+if 'CXX' in env:
+    env["CXX"] = os.getenv("CXX")
+    env["CC"] = env["CXX"]
+if 'CC' in env:
+    env["CC"] = os.getenv("CC")
 if  'ADDN_CCFLAGS'  in env and env[ 'ADDN_CCFLAGS' ]:
     env.Append( CCFLAGS =  env[ 'ADDN_CCFLAGS' ])
 if 'ADDN_LINKFLAGS' in env and env['ADDN_LINKFLAGS']:
@@ -112,4 +117,3 @@ Export('env')
 for subdir in SUBDIRS:
     files = SConscript('%s/SConscript' % subdir, variant_dir='%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], subdir), duplicate=0)
     Install('%s/%s/bin' % (OUTDIR, env['TARGET_ARCH']), files)
- 
