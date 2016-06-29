@@ -1,0 +1,7 @@
+language: c
+script: scons
+compiler: gcc
+sudo: required
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libelf-dev zlib1g-dev pkg-config g++
