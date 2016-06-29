@@ -7,8 +7,8 @@ if env['PLATFORM'] == 'win32':
     SOURCES.append('win32/stdafx.cpp')
 
 elif env['PLATFORM'] == 'posix':
-    # env.Append(LIBS = ['elf', 'z'])
-    env.ParseConfig('pkg-config --cflags --libs --static libelf')
+    env.Append(LIBS = ['elf', 'z'])
+    #env.ParseConfig('pkg-config --cflags --libs --static libelf')
     env.Append(LINKFLAGS = '-static')
 
 
