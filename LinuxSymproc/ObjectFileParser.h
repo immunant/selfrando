@@ -18,6 +18,14 @@
 #include <elfio/elf_types.hpp>
 #include "MapFileParser.h"
 
+#ifndef R_X86_64_GOTPCRELX
+#define R_X86_64_GOTPCRELX 41
+#endif
+
+#ifndef R_X86_64_REX_GOTPCRELX
+#define R_X86_64_REX_GOTPCRELX 42
+#endif
+
 using namespace ELFIO;
 using std::cout; using std::cerr; using std::dec; using std::hex; using std::endl;
 using std::string; using std::vector; using std::map; using std::sort;

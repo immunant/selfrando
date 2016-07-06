@@ -31,6 +31,8 @@ static Elf_Word RelocWhitelist[] = {
     R_X86_64_PC32,
     R_X86_64_PLT32,
     R_X86_64_GOTPCREL,
+    R_X86_64_GOTPCRELX,
+    R_X86_64_REX_GOTPCRELX,
     R_X86_64_GOTPC32,
     R_X86_64_32S,
     R_X86_64_32,
@@ -447,7 +449,6 @@ void DotOFileParser::load_relocations() {
                     Elf_Sxword calcValue;
 
                     relocations.get_entry(i, offset, symbolValue, symbolName, type, addend, calcValue);
-//                    assert (offset != 0x75); cout << 4893 << symbolName << endl;
                     if (strncmp(symbolName.c_str(), "_TRaP_Linux", sizeof("_TRaP_Linux")-1) == 0) continue;
 
                     bool elf32 = reader->get_class() == ELFCLASS32;

@@ -12,6 +12,15 @@
 #include <elf.h>
 #define R_X86_64_ADDN_EH_FRAME_HDR 0xffff0001
 
+#ifndef R_X86_64_GOTPCRELX
+#define R_X86_64_GOTPCRELX 41
+#endif
+
+#ifndef R_X86_64_REX_GOTPCRELX
+#define R_X86_64_REX_GOTPCRELX 42
+#endif
+
+
 os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc, bool is_exec)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
@@ -33,6 +42,8 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     case R_X86_64_PC32:
     case R_X86_64_PLT32:
     case R_X86_64_GOTPCREL:
+    case R_X86_64_GOTPCRELX:
+    case R_X86_64_REX_GOTPCRELX:
         if (m_has_symbol_addr)
             return m_symbol_addr.to_ptr();
     case R_X86_64_GOTPC32:
@@ -68,6 +79,8 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     case R_X86_64_PC32:
     case R_X86_64_PLT32:
     case R_X86_64_GOTPCREL:
+    case R_X86_64_GOTPCRELX:
+    case R_X86_64_REX_GOTPCRELX:
         if (m_has_symbol_addr) {
             *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target + m_addend - at_ptr);
             break;
@@ -117,6 +130,8 @@ uint32_t os::Module::Relocation::get_extra_info(os::Module::Relocation::Type typ
     case R_X86_64_PC32:
     case R_X86_64_PLT32:
     case R_X86_64_GOTPCREL:
+    case R_X86_64_GOTPCRELX:
+    case R_X86_64_REX_GOTPCRELX:
         return EXTRA_ADDEND;
     default:
         return 0;

@@ -1,18 +1,16 @@
 # Building the Randomizer and Running it on Linux
 To build a load-time self-randomizing program, take the following steps:
 
-- Install the following packages: `scons`, `pkg-config`, `libelf-dev`, and `zlib1g-dev` (or equivalent packages on other distributions)
-- Run `scons arch=$ARCH` in the `$SELFRANDO` directory (the top directory of this repository), where `$ARCH` is one of `x86` or `x86_64`
-- Compile the target program with the options `-ffunction-sections` and
-  optionally `-m32` (to compile in 32-bit mode)
-- Link the program with the options `-ffunction-sections -lrandoentry -lselfrando
-  -L$SELFRANDO/sconsRelease/$ARCH/bin -Wl,-u,_TRaP_ProgramInfoTable`, or
-   alternatively by adding `-wrapper $SELFRANDO/LinuxSymproc/wrapper.py`
-- Add TRaP information to binary if not already added, e.g., using the
-  `SymProc` binary (`wrapper.py` performs this
-step automatically)
-- Run `PatchEntry` on the binary to fix up the entry points into the program
-  (`wrapper.py` also performs this step)
-- Set the `LD_LIBRARY_PATH` environment variable to
-  `$SELFRANDO/sconsRelease/$ARCH/bin` so the program can access `libselfrando.so`
-- Run the target program (should work at this point)
+- Install the following packages: `scons`, `pkg-config`, `libelf-dev`, and `zlib1g-dev` (or equivalent packages on other distributions). Alternatively, you can use a Vagrant virtual machine (see `Tools/Vagrant`).
+- Run `scons` in the top directory of this repository. If you are on 32-bit `x86`, use `scons arch=x86`.
+- Write `/path/to/Tools/Wrappers/GCC/srenv` before your build commands. E.g.:
+```bash
+/path/to/Tools/Wrappers/GCC/srenv gcc source.c -o program
+/path/to/Tools/Wrappers/GCC/srenv make
+```
+- Run the program.
+
+### Using Clang
+If you prefer Clang you can use it as well. Simply build selfrando using `scons ALT_CC=clang ALT_CXX=clang++`, then write `/path/to/Tools/Wrappers/Clang/srenv` before your build commands. The GCC build and the Clang build are located in different directories and do not conflict with each other.
+
+These instructions were tested on Ubuntu 14.04 and 16.04.

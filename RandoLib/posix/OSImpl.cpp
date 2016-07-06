@@ -26,6 +26,14 @@ extern "C" {
 #include "util/fnv.h"
 }
 
+#ifndef R_X86_64_GOTPCRELX
+#define R_X86_64_GOTPCRELX 41
+#endif
+
+#ifndef R_X86_64_REX_GOTPCRELX
+#define R_X86_64_REX_GOTPCRELX 42
+#endif
+
 namespace os {
 
 unsigned int APIImpl::rand_seed = 0;
