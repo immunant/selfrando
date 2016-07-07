@@ -1,6 +1,7 @@
 #! /bin/bash
 
-WRAPPER_DIR=$PWD/../Tools/Wrappers/GCC
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WRAPPER_DIR=$SCRIPT_DIR/../Tools/Wrappers/GCC
 WORK_DIR=`mktemp -d` && cd $WORK_DIR
 
 # deletes the temp directory
@@ -21,5 +22,5 @@ cd thttpd-2.27
 ./configure --quiet --host="i686-pc-linux-gnu"
 $WRAPPER_DIR/srenv make CCOPT="--no-warn" --quiet
 start-stop-daemon --start --name thttpd --quiet --exec $PWD/thttpd -- -p 8080 -l /dev/null
-ab -d -q -n 5000 http://localhost:8080/
+ab -d -q -n 10000 -c 10 http://localhost:8080/
 start-stop-daemon --stop --name thttpd
