@@ -247,6 +247,7 @@ static void WriteExportSymbols(int fd, const ElfSectionInfo &xptramp_info,
                                DynamicSymbolMap &dyn_sym_map) {
     if (xptramp_vec.empty())
         return;
+    ssize_t bytes_written;
     char jump_opcode = 0xE9;
     // For each trampoline, find the symbol
     for (auto &xptramp : xptramp_vec) {
@@ -255,8 +256,8 @@ static void WriteExportSymbols(int fd, const ElfSectionInfo &xptramp_info,
         auto &xptramp_target = std::get<2>(xptramp);
         uint32_t jump_delta = xptramp_target - (xptramp_addr + 5);
         lseek(fd, xptramp_ofs, SEEK_SET);
-        write(fd, &jump_opcode, sizeof(jump_opcode));
-        write(fd, &jump_delta, sizeof(jump_delta));
+        bytes_written = write(fd, &jump_opcode, sizeof(jump_opcode));
+        bytes_written = write(fd, &jump_delta, sizeof(jump_delta));
 
         // Update the symbol
         auto syms_range = dyn_sym_map.equal_range(xptramp_target);
@@ -275,11 +276,12 @@ static void WriteExportSymbols(int fd, const ElfSectionInfo &xptramp_info,
         auto &sym_ofs = dyn_sym.second.first;
         auto &sym = dyn_sym.second.second;
         lseek(fd, sym_ofs, SEEK_SET);
-        write(fd, &sym, sizeof(sym));
+        bytes_written = write(fd, &sym, sizeof(sym));
     }
 }
 
 int main(int argc, const char *argv[]) {
+    ssize_t bytes_written; // only used to silence compiler warnings 
     if (argc < 2)
         errx(EX_USAGE, "Usage: PatchEntry <binary>");
 
@@ -320,13 +322,17 @@ int main(int argc, const char *argv[]) {
                    std::get<2>(pit_info);                   // Offset relative to Elf_Data
 #if 1
     if (dt_init)
-        printf("Old ELF entry:%p DT_INIT:%p@%x PIT:%p@%x\n",
-               elf_hdr.e_entry, dt_init->dyn_section.d_un.d_ptr, dt_init_ofs,
-               pit_sym.st_value, pit_ofs);
+        printf("Old ELF entry:%p DT_INIT:%p@%x PIT:%p@%lx\n",
+               (void*) elf_hdr.e_entry,
+               (void*) dt_init->dyn_section.d_un.d_ptr,
+               dt_init_ofs,
+               (void*) pit_sym.st_value,
+               pit_ofs);
     else
-        printf("Old ELF entry:%p DT_INIT:NULL PIT:%p@%x\n",
-               elf_hdr.e_entry, dt_init_ofs,
-               pit_sym.st_value, pit_ofs);
+        printf("Old ELF entry:%p DT_INIT:NULL PIT:%p@%lx\n",
+               (void*) elf_hdr.e_entry,
+               (void*) pit_sym.st_value,
+               pit_ofs);
 #endif
 
     // Replace the ProgramInfoTable values
@@ -394,14 +400,13 @@ int main(int argc, const char *argv[]) {
     if (dt_init) {
         printf("writing new DT_INIT: 0x%lu\n", new_dt_init);
         lseek(fd, dt_init_ofs, SEEK_SET);
-        write(fd, &new_dt_init, sizeof(new_dt_init));
+        bytes_written = write(fd, &new_dt_init, sizeof(new_dt_init));
     }
     // 2) The ProgramInfoTable
     lseek(fd, pit_ofs, SEEK_SET);
-    write(fd, &pit, sizeof(pit));
+    bytes_written = write(fd, &pit, sizeof(pit));
     // 3) Exported symbols
     WriteExportSymbols(fd, xptramp_info, xptramp_vec, xptramp_shndx, dyn_sym_map);
     close(fd);
     return 0;
 }
-

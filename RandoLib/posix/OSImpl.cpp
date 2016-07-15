@@ -40,12 +40,13 @@ unsigned int APIImpl::rand_seed = 0;
 
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
     char tmp[256];
+    ssize_t bytes_written;
     va_list args;
     va_start(args, fmt);
     vsnprintf(tmp, 255, fmt, args);
     va_end(args);
     // FIXME: find better printing output
-    write(2, tmp, strlen(tmp));
+    bytes_written = write(2, tmp, strlen(tmp));
 }
 
 RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
@@ -53,12 +54,13 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
 }
 
 RANDO_SECTION void API::Init() {
+    ssize_t bytes_read;
     char* sseed = getenv("SELFRANDO_random_seed");
     if (sseed) {
         rand_seed = (unsigned) atol(sseed);
     } else {
         FILE* devrandom = fopen("/dev/urandom", "r");
-        fread(&rand_seed, sizeof(rand_seed), 1, devrandom);
+        bytes_read = fread(&rand_seed, sizeof(rand_seed), 1, devrandom);
         rand_seed ^= (unsigned) time(NULL);
         fclose(devrandom);
     }
