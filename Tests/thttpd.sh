@@ -23,6 +23,6 @@ cd thttpd-2.27
 
 $WRAPPER_DIR/srenv make CCOPT="--no-warn" --quiet ||  { echo >&2 "make failed."; exit 1; }
 
-nstart-stop-daemon --start --name thttpd --quiet --exec $PWD/thttpd -- -p 8080 -l /dev/null
+start-stop-daemon --start --name thttpd --quiet --exec $PWD/thttpd -- -p 8080 -l /dev/null
 ab -d -q -n 10000 -c 10 http://localhost:8080/
 start-stop-daemon --stop --name thttpd
