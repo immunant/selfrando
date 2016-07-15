@@ -2,7 +2,7 @@ import sys
 import os
 
 vars = Variables(None, ARGUMENTS)
-vars.Add(EnumVariable(('TARGET_ARCH', 'arch'), 'Target architecture', 'x86',
+vars.Add(EnumVariable(('TARGET_ARCH', 'arch'), 'Target architecture', 'x86_64',
                       allowed_values=('x86', 'x86_64', 'arm', 'arm64')))
 # TODO: make it a PathVariable???
 vars.Add('ANDROID_NDK', 'Android NDK directory (build libs for Android)', None)
@@ -22,6 +22,11 @@ env = Environment(variables=vars,
                   ENV = {'PATH': os.environ['PATH']})
 print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
+if os.getenv("CXX"):
+    env["CXX"] = os.getenv("CXX")
+    env["CC"] = env["CXX"]
+if os.getenv("CC"):
+    env["CC"] = os.getenv("CC")
 if  'ADDN_CCFLAGS'  in env and env[ 'ADDN_CCFLAGS' ]:
     env.Append( CCFLAGS =  env[ 'ADDN_CCFLAGS' ])
 if 'ADDN_LINKFLAGS' in env and env['ADDN_LINKFLAGS']:
@@ -109,7 +114,7 @@ elif env['PLATFORM'] == 'posix':
     # print vars
 
 Export('env')
+compdir = env['CC'].split()[-1].split('/')[-1].split('\\')[-1]
 for subdir in SUBDIRS:
-    files = SConscript('%s/SConscript' % subdir, variant_dir='%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], subdir), duplicate=0)
-    Install('%s/%s/bin' % (OUTDIR, env['TARGET_ARCH']), files)
- 
+    files = SConscript('%s/SConscript' % subdir, variant_dir='%s/%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], compdir, subdir), duplicate=0)
+    Install('%s/%s/%s/bin' % (OUTDIR, env['TARGET_ARCH'], compdir), files)

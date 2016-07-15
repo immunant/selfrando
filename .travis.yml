@@ -1,0 +1,13 @@
+language: cpp
+compiler: gcc
+sudo: required
+dist: trusty
+before_install:
+  # - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libelf-dev zlib1g-dev pkg-config apache2-utils # gcc-4.9 g++-4.9
+install:
+  # - export CXX="g++-4.9"; export CC="gcc-4.9";
+script:
+  - scons arch=x86_64
+  - cd Tests && ./thttpd.sh

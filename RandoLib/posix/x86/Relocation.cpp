@@ -11,6 +11,15 @@
 
 #include <elf.h>
 
+#ifndef R_X86_64_GOTPCRELX
+#define R_X86_64_GOTPCRELX 41
+#endif
+
+#ifndef R_X86_64_REX_GOTPCRELX
+#define R_X86_64_REX_GOTPCRELX 42
+#endif
+
+
 os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),

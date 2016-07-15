@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/immunant/selfrando.svg?branch=fix_papercuts)](https://travis-ci.org/immunant/selfrando)
+
 # Immunant `selfrando`
 
 Software written in C and C++ is exposed to exploitation of memory corruption. Compilers and operating systems include various exploit mitigation mechanisms that prevent certain offensive techniques. Unfortunately, standard mitigations lag behind the offensive techniques used in exploits against browsers, servers, and other frequently targeted software and do not stop a well-resourced adversary.

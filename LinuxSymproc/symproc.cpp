@@ -36,6 +36,8 @@ void update_rel_target(ObjectFileParser::Relocation &rel) {
         case R_X86_64_PC32:
         case R_X86_64_PLT32:
         case R_X86_64_GOTPCREL:
+        case R_X86_64_GOTPCRELX:
+        case R_X86_64_REX_GOTPCRELX:
             rel.set_write_addend();
             return;
         default:
