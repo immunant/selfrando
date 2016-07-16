@@ -12,3 +12,5 @@ script:
   - scons arch=x86_64
   - Tests/thttpd.sh
   - Tests/lua.sh
+after_success:
+  - bash <(curl -s https://codecov.io/bash)  
