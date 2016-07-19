@@ -13,6 +13,7 @@
 #include <cstring>
 #include <algorithm>
 #include <map>
+#include <vector>
 #include <unordered_map>
 #include <tuple>
 #include <type_traits>
