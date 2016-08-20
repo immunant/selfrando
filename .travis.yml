@@ -10,4 +10,7 @@ install:
   # - export CXX="g++-4.9"; export CC="gcc-4.9";
 script:
   - scons arch=x86_64
-  - cd Tests && ./thttpd.sh
+  - Tests/thttpd.sh
+  - Tests/lua.sh
+after_success:
+  - bash <(curl -s https://codecov.io/bash)  
