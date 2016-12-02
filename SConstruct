@@ -20,7 +20,7 @@ OUTDIR = 'sconsRelease' # TODO: make this into an option
 
 env = Environment(variables=vars,
                   ENV = {'PATH': os.environ['PATH']})
-print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
+print "Building selfrando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
 if os.getenv("CXX"):
     env["CXX"] = os.getenv("CXX")
