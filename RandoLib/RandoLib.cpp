@@ -84,7 +84,7 @@ public:
                                 m_exec_section.start().to_ptr(), m_exec_section.size());
         skip_shuffle = getenv("SELFRANDO_skip_shuffle") != nullptr;
         if (skip_shuffle) {
-            os::API::DebugPrintf<1>("Self-Rando: warning: applying identity transformation. No real protection!\n");
+            os::API::DebugPrintf<1>("Selfrando: warning: applying identity transformation. No real protection!\n");
         }
     }
 
