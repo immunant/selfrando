@@ -10,7 +10,7 @@ set -ue
 
 exec 2> >(tee -a /tmp/tc.log >&2)
 
-SR_PATH='/home/debian/install/self-rando'
+SR_PATH='/home/debian/install/selfrando'
 GOLD="$(which $(gcc -print-prog-name=ld.gold))"
 
 declare -i prev_o=0
