@@ -22,9 +22,14 @@
 #include <type_traits>
 #include <sys/stat.h>
 
+#ifdef __linux__
+#include <util/rand_linux.c>
+#else
 extern "C" {
 #include "util/fnv.h"
 }
+#include <util/rand_r.c>
+#endif
 
 #ifndef R_X86_64_GOTPCRELX
 #define R_X86_64_GOTPCRELX 41
@@ -53,7 +58,18 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     // TODO: implement
 }
 
+RANDO_SECTION long APIImpl::GetRandom(long max) {
+  // Uncomment this for deterministic shuffling:
+  // return 65537 % max;
+#ifdef __linux__
+  return rand_linux(max);
+#else
+  return bsd_rand_r(&rand_seed) % max; // FIXME: better RNG
+#endif
+}
+
 RANDO_SECTION void API::Init() {
+#ifndef __linux__
     ssize_t bytes_read;
     char* sseed = getenv("SELFRANDO_random_seed");
     if (sseed) {
@@ -66,10 +82,18 @@ RANDO_SECTION void API::Init() {
     }
     // TODO: use fnv hash to mix up the seed
     DebugPrintf<1>("Rand seed:%u\n", rand_seed);
+#endif
 }
 
 RANDO_SECTION void API::Finish() {
         APIImpl::rand_seed = 0;
+#ifdef __linux__
+    if (urandom_fd >= 0) {
+      if (close(urandom_fd) < 0) {
+        abort();
+      }
+    }
+#endif
 }
 
 
