@@ -90,6 +90,9 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         }
     case R_X86_64_GOTPC32:
     case R_X86_64_TLSGD:
+    case R_X86_64_TLSLD:
+    case R_X86_64_GOTTPOFF:
+    case R_X86_64_GOTPC32_TLSDESC:
         // FIXME: check for overflow here???
         *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + m_is_exec * sizeof(int32_t)));
         break;
