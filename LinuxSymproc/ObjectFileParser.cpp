@@ -43,6 +43,9 @@ static Elf_Word RelocWhitelist[] = {
     R_X86_64_GOTPC64,
     R_X86_64_GOTOFF64,
     R_X86_64_TLSGD,
+    R_X86_64_TLSLD,
+    R_X86_64_GOTTPOFF,
+    R_X86_64_GOTPC32_TLSDESC,
 #else
 #error Unknown CPU architecture
 #endif

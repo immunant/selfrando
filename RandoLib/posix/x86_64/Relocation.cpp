@@ -48,6 +48,9 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
             return m_symbol_addr.to_ptr();
     case R_X86_64_GOTPC32:
     case R_X86_64_TLSGD:
+    case R_X86_64_TLSLD:
+    case R_X86_64_GOTTPOFF:
+    case R_X86_64_GOTPC32_TLSDESC:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
         return m_orig_src_addr.to_ptr() + m_is_exec * sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
