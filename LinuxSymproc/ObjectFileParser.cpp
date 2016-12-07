@@ -51,6 +51,21 @@ static Elf_Word RelocWhitelist[] = {
 #endif
 };
 
+// List of relocations that are safe to ignore
+static Elf_Word RelocIgnoreList[] = {
+#if __i386__
+#elif __amd64__
+    R_X86_64_TPOFF32,
+    R_X86_64_TPOFF64,
+    R_X86_64_DTPOFF32,
+    R_X86_64_DTPOFF64,
+#else
+#error Unknown CPU architecture
+#endif
+};
+
+
+
 ObjectFileParser::~ObjectFileParser() {
     elfio_delete();
 
@@ -463,7 +478,8 @@ void DotOFileParser::load_relocations() {
 #if OFPreadprint >= 2
                         printf("%4d: 0x%08llx 0x%08x %+lld %i\n", i, offset, symbol, addend, type);
 #endif
-                    } else {
+                    } else if (std::find(std::begin(RelocIgnoreList), std::end(RelocIgnoreList), type) ==
+                               std::end(RelocIgnoreList)) {
                         cerr << "Unknown type " << type << " (file '" << filename << "', "
                         << "section: " << psec->get_name() << ", "
                         << "offset: " << hex << offset << dec << ", "
