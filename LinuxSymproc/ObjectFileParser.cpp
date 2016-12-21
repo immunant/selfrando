@@ -54,6 +54,8 @@ static Elf_Word RelocWhitelist[] = {
 // List of relocations that are safe to ignore
 static Elf_Word RelocIgnoreList[] = {
 #if __i386__
+    R_386_TLS_TPOFF32,
+    R_386_TLS_DTPOFF32,
 #elif __amd64__
     R_X86_64_TPOFF32,
     R_X86_64_TPOFF64,
