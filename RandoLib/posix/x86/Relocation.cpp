@@ -20,10 +20,10 @@
 #endif
 
 
-os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
+os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc, bool is_exec)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
-      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
+      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend), m_is_exec(is_exec) {
     m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
