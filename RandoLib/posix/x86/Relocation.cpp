@@ -43,7 +43,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     case R_386_GOTPC:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
-        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
+        return m_orig_src_addr.to_ptr() + m_is_exec * sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
     default:
         return nullptr;
     }
@@ -66,7 +66,7 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     case R_386_PLT32:
     case R_386_GOTPC:
         // FIXME: check for overflow here???
-        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t)));
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + m_is_exec * sizeof(int32_t)));
         break;
     default:
         RANDO_ASSERT(false);
