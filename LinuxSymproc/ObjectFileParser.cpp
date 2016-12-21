@@ -398,7 +398,7 @@ void ExecFileParser::add_txtrp_section(const vector<Section>& sections, const No
 
     append_export_trampolines();
 
-    unsigned long p = 0;
+    Elf64_Addr p = 0;
     for (auto& segm : reader->segments) {
         p = std::max(p, segm->get_virtual_address() + segm->get_memory_size());
     }
