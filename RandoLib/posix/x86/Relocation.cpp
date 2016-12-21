@@ -11,14 +11,7 @@
 
 #include <elf.h>
 
-#ifndef R_X86_64_GOTPCRELX
-#define R_X86_64_GOTPCRELX 41
-#endif
-
-#ifndef R_X86_64_REX_GOTPCRELX
-#define R_X86_64_REX_GOTPCRELX 42
-#endif
-
+#define R_386_ADDN_EH_FRAME_HDR 0xffff0001
 
 os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc, bool is_exec)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
@@ -44,6 +37,8 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
         return m_orig_src_addr.to_ptr() + m_is_exec * sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
+    case R_386_ADDN_EH_FRAME_HDR:
+        return m_module.m_eh_frame_hdr + *reinterpret_cast<int32_t*>(at_ptr);
     default:
         return nullptr;
     }
@@ -68,6 +63,9 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         // FIXME: check for overflow here???
         *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + m_is_exec * sizeof(int32_t)));
         break;
+    case R_386_ADDN_EH_FRAME_HDR:
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - m_module.m_eh_frame_hdr);
+        break;
     default:
         RANDO_ASSERT(false);
         break;
@@ -76,6 +74,10 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
 
 os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
     return R_386_32;
+}
+
+os::Module::Relocation::Type os::Module::Relocation::get_eh_frame_reloc_type() {
+    return R_386_ADDN_EH_FRAME_HDR;
 }
 
 void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
