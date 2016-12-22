@@ -13,6 +13,10 @@
 
 #define R_386_ADDN_EH_FRAME_HDR 0xffff0001
 
+#ifndef R_386_GOT32X
+#define R_386_GOT32X            43
+#endif
+
 os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc, bool is_exec)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
