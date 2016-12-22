@@ -23,6 +23,7 @@ static Elf_Word RelocWhitelist[] = {
     R_386_GOTPC,
     R_386_32,
     R_386_GOT32,
+    R_386_GOT32X,
     R_386_TLS_LDO_32,
     R_386_TLS_LDM,
     R_386_TLS_GD, // TODO check if TLS are needed

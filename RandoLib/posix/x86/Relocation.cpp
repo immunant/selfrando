@@ -25,6 +25,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     switch(m_type) {
     case R_386_32:
     case R_386_GOT32:
+    case R_386_GOT32X:
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
@@ -49,6 +50,7 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     switch(m_type) {
     case R_386_32:
     case R_386_GOT32:
+    case R_386_GOT32X:
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
