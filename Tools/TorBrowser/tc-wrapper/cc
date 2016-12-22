@@ -15,4 +15,4 @@ CMD="$(basename "$0")"
 export PATH="$(echo $PATH | sed -E 's/^[^:]+://')"
 
 set -x
-exec "$CMD" "$@" -B "$TC_PATH"
+exec "$CMD" "$@" -B"$TC_PATH"
