@@ -15,6 +15,10 @@
 #include "ObjectFileParser.h"
 #include "elfio/elfio.hpp"
 
+#ifndef R_386_GOT32X
+#define R_386_GOT32X            43
+#endif
+
 // not sure if we actually need to whitelist, but I'm going to keep this here for now
 static Elf_Word RelocWhitelist[] = {
 #if __i386__
