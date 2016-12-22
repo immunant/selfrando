@@ -18,7 +18,6 @@
 #include <link.h>
 #include <utility>
 #include <stdio.h>
-#include <util/rand_r.c>
 
 class TrapInfo;
 class TrapReloc;
@@ -341,11 +340,7 @@ public:
         return memcmp(a, b, size);
     }
 
-    static inline long GetRandom(long max) {
-        // Uncomment this for deterministic shuffling:
-        // return 65537 % max;
-        return bsd_rand_r(&rand_seed) % max; // FIXME: better RNG
-    }
+    static long GetRandom(long max);
 
     static inline Time GetTime() {
         return time(nullptr); // FIXME: we need something more precise
