@@ -33,8 +33,6 @@ elif env['PLATFORM'] == 'posix':
     lib_env.Append(CCFLAGS = '-fvisibility=hidden')
 
     entry_files = ['posix/%s/EntryPoint.S' % env['TARGET_ARCH']]
-    if 'RANDOLIB_IS_ANDROID' in env['CPPDEFINES']:
-        entry_files.append('posix/%s/AndroidInit.c' % env['TARGET_ARCH'])
 
     lib_env.Append(CPPFLAGS='-fPIC')
     lib_env.StaticObject('randoentry', entry_files)
@@ -77,20 +75,6 @@ elif env['PLATFORM'] == 'posix':
     files += Glob('randoentry.o')
     files += Glob('trapheader.o')
     files += Glob('sr_*.o')
-
-    if 'ANDROID_NDK' in env and env['TARGET_ARCH'] == 'arm':
-        lib_env['CC'] = env['ANDROID_NDK'] + '/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-gcc'
-        lib_env.Append(CCFLAGS = '--sysroot=' + env['ANDROID_NDK'] + '/platforms/android-21/arch-arm/')
-        lib_env.Append(CCFLAGS = '-march=armv7-a') # not sure if this is needed
-        lib_env.Append(LINKFLAGS = '--sysroot=' + env['ANDROID_NDK'] + '/platforms/android-21/arch-arm/')
-        lib_env.Append(LINKFLAGS = '-Wl,--fix-cortex-a8') # no idea what this does...
-        lib_env.Append(LIBS = ['gcc', 'log', 'gnustl_shared', 'c', 'm', 'supc++'])
-
-        lib_env['CXX'] = env['ANDROID_NDK'] + '/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-g++'
-        lib_env.Append(CPPPATH = [env['ANDROID_NDK'] + '/sources/cxx-stl/gnu-libstdc++/4.9/include',
-                                  env['ANDROID_NDK'] + '/sources/cxx-stl/gnu-libstdc++/4.9/libs/armeabi-v7a/include'])
-        lib_env.Append(LIBPATH = [env['ANDROID_NDK'] + '/platforms/android-21/arch-arm/usr/lib',
-                                  env['ANDROID_NDK'] + '/sources/cxx-stl/gnu-libstdc++/4.9/libs/armeabi-v7a'])
 
 Return('files')
 
