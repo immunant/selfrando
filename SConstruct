@@ -116,5 +116,5 @@ elif env['PLATFORM'] == 'posix':
 Export('env')
 compdir = env['CC'].split()[-1].split('/')[-1].split('\\')[-1]
 for subdir in SUBDIRS:
-    files = SConscript('%s/SConscript' % subdir, variant_dir='%s/%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], compdir, subdir), duplicate=0)
+    files = SConscript('src/%s/SConscript' % subdir, variant_dir='%s/%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], compdir, subdir), duplicate=0)
     Install('%s/%s/%s/bin' % (OUTDIR, env['TARGET_ARCH'], compdir), files)

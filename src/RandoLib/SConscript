@@ -4,7 +4,7 @@ SOURCES = ['util/hash_32a.c', 'RandoLib.cpp', 'util/qsort.c']
 SOURCES.append('%s/OSImpl.cpp' % env['PLATFORM'])
 
 lib_env = env.Clone()
-lib_env.Append(CPPPATH = '#/RandoLib')
+lib_env.Append(CPPPATH = '#/src/RandoLib')
 
 files = None
 
