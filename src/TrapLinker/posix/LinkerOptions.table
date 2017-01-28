@@ -1,0 +1,103 @@
+-o              handle_output
+--output        handle_output
+
+-e              handle_entry
+-entry          handle_entry
+
+-init           handle_init
+
+-l              handle_library
+-library        handle_library
+
+-L              handle_library_path
+-library-path   handle_library_path
+
+-shared         handle_shared
+-Bshareable     handle_shared
+
+-static         handle_static
+-Bstatic        handle_static
+-dn             handle_static
+-non_shared     handle_static
+-n              handle_static
+--omagic        handle_static
+-N              handle_static
+-nmagic         handle_static
+
+-call_shared    handle_dynamic
+-Bdynamic       handle_dynamic
+-dy             handle_dynamic
+
+-r              handle_relocatable
+--relocatable   handle_relocatable
+
+-z              handle_z_keyword
+
+--whole-archive     handle_whole_archive
+--no-whole-archive  handle_whole_archive
+
+// HP-UX compatibility not sure I care
+// -a handle_a
+-a              ignore_short_arg_with_value
+
+// Need to handle these to push/pop -static state
+-push-state     handle_push_state
+-pop-state      handle_pop_state
+
+// these probably need to be handled
+-exclude-libs   ignore_long_arg_with_value
+-exclude-symbols ignore_long_arg_with_value
+-T              ignore_short_arg_with_value
+-script         ignore_long_arg_with_value
+-dT             ignore_long_arg_with_value
+-default-script ignore_long_arg_with_value
+
+
+
+// Gold specific options
+-debug          ignore_long_arg_with_value
+-export-dynamic-symbol ignore_long_arg_with_value
+-hash-bucket-empty-fraction ignore_long_arg_with_value
+-incremental-base ignore_long_arg_with_value
+-incremental-patch ignore_long_arg_with_value
+-rosegment-gap  ignore_long_arg_with_value
+-plt-align      ignore_arg_with_optional_value
+-plugin         ignore_long_arg_with_value
+-plugin-opt     ignore_long_arg_with_value
+-print-symbol-counts ignore_long_arg_with_value
+-section-ordering-file ignore_long_arg_with_value
+-spare-dynamic-tags ignore_long_arg_with_value
+-stub-group-size ignore_long_arg_with_value
+-split-stack-adjust-size ignore_long_arg_with_value
+-icf ignore_arg_with_optional_value
+-icf-iterations ignore_long_arg_with_value
+-keep-unique    ignore_long_arg_with_value
+-thread-count   ignore_long_arg_with_value
+-thread-count-initial ignore_long_arg_with_value
+-thread-count-middle ignore_long_arg_with_value
+-thread-count-final ignore_long_arg_with_value
+
+// Some ignored LD options. See IgnoredOptions.table for many more
+-audit          ignore_long_arg_with_value
+-Bgroup         ignore_arg
+-disable-new-dtags ignore_arg
+-enable-new-dtags ignore_arg
+-eh-frame-hdr   ignore_arg
+-hash-style     ignore_long_arg_with_value
+-P              ignore_short_arg_with_value
+-depaudit       ignore_long_arg_with_value
+-build-id       ignore_arg
+-compress-debug-sections ignore_long_arg_with_value
+-ld-generated-unwind-info ignore_arg
+-no-ld-generated-unwind-info ignore_arg
+
+// Options used in Android build
+--sysroot       ignore_long_arg_with_value
+--fix-cortex-a53-843419 ignore_arg
+
+// Our own options
+--traplinker-original-linker    handle_original_linker
+--traplinker-disable            handle_traplinker_disable
+--traplinker-enable             handle_traplinker_enable
+--traplinker-static-selfrando   handle_static_selfrando
+--traplinker-selfrando-txtrp-pages    handle_selfrando_txtrp_pages

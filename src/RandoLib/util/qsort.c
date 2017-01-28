@@ -86,6 +86,27 @@ med3(char *a, char *b, char *c, cmp_t *cmp)
               :(CMP(b, c) > 0 ? b : (CMP(a, c) < 0 ? a : c ));
 }
 
+static inline size_t
+num_elements(size_t span, size_t es) {
+#if RANDOLIB_IS_ARM
+    // We don't always have hardware division on ARM
+    // so we need to compute (span / es) manually
+    size_t lshift = (sizeof(es) == sizeof(long long)) ? __builtin_clzll(es) : __builtin_clz(es);
+    size_t bit = 1LL << lshift;
+    es <<= lshift;
+
+    size_t res = 0;
+    for (; bit != 0 && span != 0; es >>= 1, bit >>= 1)
+        if (span >= es) {
+            span -= es;
+            res += bit;
+        }
+    return res;
+#else
+    return span / es;
+#endif
+}
+
 void
 _TRaP_qsort(void *a, size_t n, size_t es, cmp_t *cmp)
 {
@@ -156,14 +177,14 @@ loop:	SWAPINIT(a, es);
 	pn = (char *)a + n * es;
 	r = min(pa - (char *)a, pb - pa);
 	vecswap(a, pb - r, r);
-	r = min(pd - pc, pn - pd - es);
+	r = min(pd - pc, pn - (pd + es));
 	vecswap(pb, pn - r, r);
 	if ((r = pb - pa) > es)
-		_TRaP_qsort(a, r / es, es, cmp);
+		_TRaP_qsort(a, num_elements(r, es), es, cmp);
 	if ((r = pd - pc) > es) {
 		/* Iterate rather than recurse to save stack space */
 		a = pn - r;
-		n = r / es;
+		n = num_elements(r, es);
 		goto loop;
 	}
 /*		_TRaP_qsort(pn - r, r / es, es, cmp);*/

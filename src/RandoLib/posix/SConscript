@@ -1,0 +1,140 @@
+Import('env', 'SOURCES')
+
+target = env['TARGET_ARCH']
+
+SOURCES.append('OSImpl.cpp')
+SOURCES.append('%s/Relocation.cpp' % target)
+SOURCES.append('%s/Cache.cpp' % target)
+
+# Add the bionic files
+SOURCES.extend([Glob('bionic/stubs/*.c'),
+                Glob('bionic/libc/*.c'),
+                Glob('bionic/libc/*.cpp'),
+                Glob('bionic/upstream-*bsd/*.c'),
+                Glob('bionic/arch-%s/*.S' % target),
+                Glob('bionic/arch-%s/*.c' % target),
+                Glob('bionic/arch-%s/*.cpp' % target)])
+
+lib_env = env.Clone()
+lib_env.Append(CPPPATH = ['#/src/RandoLib',
+                          '#/src/RandoLib/posix/%s' % target,
+                          '#/src/RandoLib/posix/bionic',
+                          '#/src/RandoLib/posix/bionic/arch-%s' % target])
+
+entry_files = ['%s/EntryPointWrapper.S' % target,
+               '%s/Textramp.S' % target,
+               'EntryPoint.c']
+exec_entry_files = ['EntryPointExec.c']
+so_entry_files = ['EntryPointSO.c']
+if env['CPPDEFINES']['RANDOLIB_IS_ANDROID']:
+    entry_files.append('%s/AndroidInit.c' % target)
+if target == 'arm':
+    entry_files.append('arm/LinkerStubs.S')
+lib_env.Library('randoentry_exec', entry_files + exec_entry_files)
+lib_env.Library('randoentry_so', entry_files + so_entry_files)
+lib_env.Object('trapheader', ['TrapHeader.S'], CPPDEFINES = {'TXTRP_ALIGNMENT': 1})
+lib_env.Object('trapheader_page', ['TrapHeader.S'], CPPDEFINES = {'TXTRP_ALIGNMENT': 4096})
+lib_env.Object('trapfooter', ['TrapFooter.S'])
+lib_env.Object('trapfooter_page', ['TrapFooterPage.S'])
+
+
+# Build flags start here
+lib_env.Append(CCFLAGS = '-fPIC')
+
+# Don't export anything from the library
+lib_env.Append(CCFLAGS = ['-fvisibility=hidden',
+                          '-fvisibility-inlines-hidden'])
+
+if target == 'x86':
+    # TODO: it would be nice to have a "is 32 bit" variable
+    # and check that instead
+    lib_env.Append(ASFLAGS = '-m32')
+    lib_env.Append(CCFLAGS = '-m32')
+    lib_env.Append(LINKFLAGS = '-m32')
+elif target == 'arm':
+    # ARM-specific stubs
+    SOURCES.append('arm/UnwindStubs.c')
+    # FIXME: we need this for Android/armel systems, but not for armhf
+    # so we should make it into a scons option
+    lib_env.Append(CCFLAGS   = ['-msoft-float', '-mthumb-interwork',
+                                '-march=armv7-a', '-mfloat-abi=softfp'])
+    lib_env.Append(LINKFLAGS = ['-msoft-float', '-mthumb-interwork',
+                                '-march=armv7-a', '-mfloat-abi=softfp'])
+    lib_env.Append(LINKFLAGS = ['-Wl,--hash-style=sysv'])
+    lib_env.Append(CPPFLAGS = ['-fno-stack-protector'])
+
+if 'ANDROID_NDK' in env:
+    CC_PATH_PREFIX = { 'arm':    'arm-linux-androideabi',
+                       'arm64':  'aarch64-linux-android',
+                       'x86':    'x86',
+                       'x86_64': 'x86_64'  }
+    CC_PREFIX =      { 'arm':    'arm-linux-androideabi-',
+                       'arm64':  'aarch64-linux-android-',
+                       'x86':    'i686-linux-android-',
+                       'x86_64': 'x86_64-linux-android-'  }
+    CXX_LIB_PATH =   { 'arm':    'armeabi-v7a',
+                       'arm64':  'arm64-v8a',
+                       'x86':    'x86',
+                       'x86_64': 'x86_64' }
+
+    ndk_path = env['ANDROID_NDK']
+    cc_path = '%s/toolchains/%s-4.9/prebuilt/linux-x86_64/bin' % (ndk_path, CC_PATH_PREFIX[target])
+    lib_env['CC'] = '%s/%sgcc' % (cc_path, CC_PREFIX[target])
+    lib_env['CXX'] = '%s/%sg++' % (cc_path, CC_PREFIX[target])
+
+    sysroot_path = '%s/platforms/android-21/arch-%s' % (ndk_path, target)
+    sysroot_arg = '--sysroot=%s' % sysroot_path
+    lib_env.Append(CCFLAGS = sysroot_arg)
+    lib_env.Append(LINKFLAGS = sysroot_arg)
+    #lib_env.Append(LIBS = ['gcc', 'log', 'gnustl_shared', 'c', 'm', 'supc++'])
+
+    lib_env.Append(CPPPATH = ['%s/sources/cxx-stl/gnu-libstdc++/4.9/include' % ndk_path,
+                              '%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/include' % (ndk_path, CXX_LIB_PATH[target])])
+    lib_env.Append(LIBPATH = ['%s/usr/lib' % sysroot_path,
+                              '%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s' % (ndk_path, CXX_LIB_PATH[target])])
+
+    if target == 'arm':
+        lib_env.Append(CCFLAGS = '-march=armv7-a')
+        lib_env.Append(LINKFLAGS = '-Wl,--fix-cortex-a8')
+    elif target == 'arm64':
+        lib_env.Append(LINKFLAGS = '-Wl,-maarch64linux')
+        lib_env.Append(LINKFLAGS = '-Wl,--hash-style=gnu')
+        lib_env.Append(LINKFLAGS = '-Wl,--fix-cortex-a53-843419')
+
+lib_env.StaticLibrary('selfrando_noprefix', SOURCES)
+# In the output static library, we want all sections to be
+# prefixed by '.selfrando`, except for '.eh_frame'
+lib_env.Command('libselfrando.a', 'libselfrando_noprefix.a',
+                'objcopy --prefix-alloc-sections=.selfrando $SOURCE $TARGET && '
+                'objcopy --rename-section .selfrando.eh_frame=.eh_frame $TARGET')
+
+LDEMUL = { 'x86':     'elf_i386',
+           'x86_64':  'elf_x86_64',
+           'arm':     'armelf',         # FIXME: correct???
+           'aarch64': 'aarch64linux' }  # FIXME: correct???
+
+lib_env.Command('selfrando_txtrp.o', ['libselfrando_noprefix.a'],
+                'ld -r -m $LDEMUL -o $TARGET -T$SCRIPT --whole-archive $SOURCES',
+                SCRIPT=Glob('selfrando_txtrp.ld'),
+                LDEMUL=LDEMUL[target])
+
+sharedlib_env = lib_env.Clone()
+sharedlib_env.Append(CPPDEFINES = {'RANDOLIB_IS_SHARED': 1})
+sharedlib_env.Append(LINKFLAGS = '-static-libstdc++')
+sharedlib_env.Append(LINKFLAGS = '-nostdlib')
+sharedlib_env.Append(LINKFLAGS = '-Wl,-soname=libselfrando.so')
+sharedlib_env.Append(LIBS = ['dl']) # required for the bionic loader to resolve dl_iterate_phdr
+sharedlib_env.SharedLibrary('selfrando', SOURCES)
+
+files  = Glob('libselfrando.so')
+files += Glob('libselfrando.a')
+files += Glob('librandoentry_exec.a')
+files += Glob('librandoentry_so.a')
+files += Glob('trapheader.o')
+files += Glob('trapheader_page.o')
+files += Glob('trapfooter.o')
+files += Glob('trapfooter_page.o')
+files += Glob('selfrando_txtrp.o')
+
+Return('files')
+

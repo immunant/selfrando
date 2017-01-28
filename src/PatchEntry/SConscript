@@ -1,17 +1,12 @@
+from os import path
 Import('env')
 
-SOURCES = ['%s/PatchEntry.cpp' % env['PLATFORM']]
-
 env = env.Clone()
+files = None
 if env['PLATFORM'] == 'win32':
-    SOURCES.append('win32/stdafx.cpp')
-
-elif env['PLATFORM'] == 'posix':
-    env.Append(LIBS = ['elf', 'z'])
-    #env.ParseConfig('pkg-config --cflags --libs --static libelf')
-    env.Append(LINKFLAGS = '-static')
-
+    SOURCES = ['win32/PatchEntry.cpp',
+               'win32/stdafx.cpp']
+    files = env.Program('PatchEntry', SOURCES)
 
 # FIXME: for weird reasons, bash&UAC don't like programs named "Patch"
-files = env.Program('PatchEntry', SOURCES)
 Return('files')

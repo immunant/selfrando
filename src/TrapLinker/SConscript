@@ -1,0 +1,4 @@
+Import('env')
+
+files = SConscript(dirs=[env['PLATFORM']], exports=['env'], duplicate=0)
+Return('files')

@@ -1,0 +1,63 @@
+from os import path
+
+def generate_options(target, source, env):
+    if len(target) != 1:
+        return 1;
+
+    out_file = open(str(target[0]), 'w')
+    out_file.write('std::map<std::string, int (ArgParser::*)(int, const std::string&)> ArgParser::m_arg_table = {\n')
+    for s in source:
+        source_file = open(str(s), 'r')
+        for line in source_file:
+            words = line.split('//')[0].split()
+            if len(words) == 2:
+                out_file.write('{{"{}", &ArgParser::{}}},\n'.format(words[0], words[1]))
+            elif len(words) == 0:
+                pass
+            else:
+                print "Error: cannot parse " + line
+                return 1
+    out_file.write('};\n')
+
+    return 0
+
+GenerateOptions = Builder(action = generate_options,
+                          suffix = '.inc',
+                          src_suffix = '.table')
+
+
+Import('env')
+
+SOURCES = (['ELF.cpp', 'TrapLinker.cpp'])
+SOURCES.append('arch/%s/ELF.cpp' % env['TARGET_ARCH'])
+
+
+options_env = Environment(BUILDERS = {'GenerateOptions': GenerateOptions})
+options_env.GenerateOptions('LinkerOptions', ['LinkerOptions', 'IgnoredOptions'])
+
+traplinker_env = env.Clone()
+traplinker_env.Append(CPPPATH = ['../', './'])
+traplinker_env.Append(LIBS = ['elf', 'randolib_support'])
+traplinker_env.Append(LIBPATH = ['../../Support'])
+
+traplinker_env.Append(LINKFLAGS = ['-static'])
+
+if 'LIBELF_PATH' in traplinker_env:
+    libelf_inc_path = path.join(traplinker_env['LIBELF_PATH'], "include")
+    libelf_lib_path = path.join(traplinker_env['LIBELF_PATH'], "lib")
+    traplinker_env.Append(CPPPATH = [libelf_inc_path])
+    traplinker_env.Append(LIBPATH = [libelf_lib_path])
+
+
+
+traplinker_env.Program('traplinker', SOURCES)
+
+traplinker_env.Command('ld', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
+traplinker_env.Command('ld.bfd', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
+traplinker_env.Command('ld.gold', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
+
+files = [Glob('traplinker'), Glob('ld'), Glob('ld.bfd'), Glob('ld.gold'),
+         Glob('linker_script.ld'), Glob('linker_id.sh'),
+         Glob('linker_script_got_only.ld'), Glob('linker_script_got_plt.ld')]
+
+Return('files')

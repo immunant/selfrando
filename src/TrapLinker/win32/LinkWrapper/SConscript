@@ -1,0 +1,7 @@
+Import('env')
+
+files = env.Program('link', ['LinkWrapper.cpp', 'stdafx.cpp'],
+                    LIBS=['WrapperCommon', 'TrapCommon'], 
+                    LIBPATH=['../WrapperCommon',
+                             '../TrapCommon'])
+Return('files')

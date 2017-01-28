@@ -1,0 +1,7 @@
+Import('env')
+
+# FIXME: LIBPATH shouldn't be hardcoded like this
+files = env.Program('lib', ['LibWrapper.cpp', 'stdafx.cpp'],
+                    LIBS=['WrapperCommon'],
+                    LIBPATH=['../WrapperCommon']) 
+Return('files')

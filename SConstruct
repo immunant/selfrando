@@ -2,55 +2,63 @@ import sys
 import os
 
 vars = Variables(None, ARGUMENTS)
-vars.Add(EnumVariable(('TARGET_ARCH', 'arch'), 'Target architecture', 'x86_64',
+vars.Add(EnumVariable(('TARGET_ARCH', 'arch'), 'Target architecture', 'x86',
                       allowed_values=('x86', 'x86_64', 'arm', 'arm64')))
+vars.Add(EnumVariable('LOG', 'Logging to perform', 'default',
+                      allowed_values=('default', 'none', 'console', 'file', 'system')))
+vars.Add('LOG_FILENAME', 'Log file to output to', '/tmp/selfrando.log')
+vars.Add(BoolVariable('LOG_APPEND', 'Append to log instead of replacing it', 0))
+vars.Add('DEBUG_LEVEL', 'Debugging level (0-10); set to "env" to control via environment variable', 0)
 # TODO: make it a PathVariable???
 vars.Add('ANDROID_NDK', 'Android NDK directory (build libs for Android)', None)
-vars.Add(BoolVariable('IS_GITIAN', 'Add additional headers for a build in Gitian', False))
-vars.Add( 'ADDN_CCFLAGS',   'Additional CCFLAGS',  None)
-vars.Add('ADDN_LINKFLAGS', 'Additional LINKFLAGS', None)
-vars.Add('ALT_CC', 'Alternate C compiler', None)
-vars.Add('ALT_CXX', 'Alternate C++ compiler', None)
-vars.Add('FUNCTION_PRESERVE_ALIGN',
-    'Preserve alignment up to x bits', 2)
+vars.Add('LIBELF_PATH', 'Path to directory containing libelf.so (if not using system libelf)', None)
+vars.Add(BoolVariable('OPTIMIZED', 'Enable optimized build of traplinker.', 1))
+vars.Add('DEBUG_SEED', 'Fixed seed to use for debugging', False) # We need to use False as the default since None means "no default"
+vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertion) if in-place randomization would fail', 0))
+vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files to /tmp/',
+                      'no', allowed_values=('no', 'env', 'always')))
+
+def decode_debug_level(var):
+    if var == 'env':
+        return 0
+    try:
+        return int(var)
+    except ValueError:
+        print "DEBUG_LEVEL value must be a number!"
+        raise
 
 # Top build file for scons
-SUBDIRS = ['PatchEntry', 'RandoLib']
-OUTDIR = 'sconsRelease' # TODO: make this into an option
-
 env = Environment(variables=vars,
                   ENV = {'PATH': os.environ['PATH']})
-print "Building selfrando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
+                  #CXX = 'clang++')
+print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
-if os.getenv("CXX"):
-    env["CXX"] = os.getenv("CXX")
-    env["CC"] = env["CXX"]
-if os.getenv("CC"):
-    env["CC"] = os.getenv("CC")
-if  'ADDN_CCFLAGS'  in env and env[ 'ADDN_CCFLAGS' ]:
-    env.Append( CCFLAGS =  env[ 'ADDN_CCFLAGS' ])
-if 'ADDN_LINKFLAGS' in env and env['ADDN_LINKFLAGS']:
-    env.Append(LINKFLAGS = env['ADDN_LINKFLAGS'])
-if 'ALT_CC'  in env and env['ALT_CC']:
-    env.Replace(CC  = env['ALT_CC'])
-if 'ALT_CXX' in env and env['ALT_CXX']:
-    env.Replace(CXX = env['ALT_CXX'])
-
-
-defines = {
-    'RANDOLIB_ARCH': '${TARGET_ARCH}',
-}
+SUBDIRS = ['Support', 'PatchEntry', 'RandoLib', 'TrapLinker']
+OUTDIR = 'out' # TODO: make this into an option
+INSTALL_PATH = '%s/%s/bin' % (OUTDIR, env['TARGET_ARCH'])
 
 arch_32bit = env['TARGET_ARCH'] in ['x86', 'arm']
+defines = {
+    'RANDOLIB_ARCH': '${TARGET_ARCH}',
+    'RANDOLIB_ARCH_SIZE': 32 if arch_32bit else 64,
+    'RANDOLIB_IS_ANDROID': 1 if ('ANDROID_NDK' in env and env['ANDROID_NDK']) else 0,
+    'RANDOLIB_LOG_FILENAME': '"${LOG_FILENAME}"',
+    'RANDOLIB_LOG_APPEND': 1 if env['LOG_APPEND'] else 0,
+    'RANDOLIB_INSTALL_PATH': '"{}"'.format(INSTALL_PATH),
+    'RANDOLIB_DEBUG_LEVEL': decode_debug_level(env['DEBUG_LEVEL']),
+    'RANDOLIB_DEBUG_LEVEL_IS_ENV': 1 if env['DEBUG_LEVEL'] == 'env' else 0,
+    'RANDOLIB_FORCE_INPLACE': 1 if env['FORCE_INPLACE'] else 0,
+    'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']]
+}
 defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1
-defines['RANDOLIB_ARCH_SIZE'] = 32 if arch_32bit else 64
-
-if 'ANDROID_NDK' in env and env['ANDROID_NDK']:
-    defines['RANDOLIB_IS_ANDROID'] = True
+defines['RANDOLIB_LOG_TO_%s' % env['LOG'].upper()] = 1
+if env['DEBUG_SEED'] is not False:
+    defines['RANDOLIB_DEBUG_SEED'] = env['DEBUG_SEED']
 
 env.Append(CPPDEFINES = defines)
+
 if env['PLATFORM'] == 'win32':
-    SUBDIRS.extend(['LibWrapper', 'LinkWrapper', 'TrapCommon', 'TrapLib', 'TrapObj', 'WrapperCommon'])
+    SUBDIRS.extend(['LibWrapper', 'LinkWrapper', 'TrapLib', 'TrapObj', 'WrapperCommon'])
 
     env.Append(CCFLAGS = '/EHsc') # C++ exception handling support
     env.Append(CCFLAGS = '/W3')   # Show lots of warnings
@@ -98,23 +106,26 @@ if env['PLATFORM'] == 'win32':
     #env.Append(ARFLAGS   = '/LTCG') # Link-time code gen
 
 elif env['PLATFORM'] == 'posix':
-    SUBDIRS.append('LinuxSymproc')
-
-    env.Append(CCFLAGS = '-O2')
+    if env['OPTIMIZED']:
+        env.Append(CCFLAGS = '-O2')
     env.Append(CCFLAGS = '-fno-omit-frame-pointer')
     env.Append(CCFLAGS = '-g') # Enable debugging
+    env.Append(CCFLAGS = '-Wall')
+    env.Append(CCFLAGS = '-Wextra')
+    env.Append(CCFLAGS = '-Wno-unused-parameter')
+    env.Append(CCFLAGS = '-Wpointer-arith')
 
     # C++-specific flags
     env.Append(CXXFLAGS = '-std=c++11')
 
     # disable execstack
     env.Append(ASFLAGS = '-Wa,--noexecstack')
-    env.Append(CCFLAGS = '-Wl,-z,noexecstack')
+    env.Append(LINKFLAGS = '-Wl,-z,noexecstack')
 
     # print vars
 
 Export('env')
-compdir = env['CC'].split()[-1].split('/')[-1].split('\\')[-1]
 for subdir in SUBDIRS:
-    files = SConscript('src/%s/SConscript' % subdir, variant_dir='%s/%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], compdir, subdir), duplicate=0)
-    Install('%s/%s/%s/bin' % (OUTDIR, env['TARGET_ARCH'], compdir), files)
+    files = SConscript('src/%s/SConscript' % subdir, variant_dir='%s/%s/%s' % (OUTDIR, env['TARGET_ARCH'], subdir), duplicate=0)
+    Install(INSTALL_PATH, files)
+ 

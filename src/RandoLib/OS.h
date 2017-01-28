@@ -1,6 +1,6 @@
 /*
  * This file is part of selfrando.
- * Copyright (c) 2015-2016 Immunant Inc.
+ * Copyright (c) 2015-2017 Immunant Inc.
  * For license information, see the LICENSE file
  * included with selfrando.
  *
@@ -16,7 +16,8 @@
 
 namespace os {
 
-static const size_t kPageSize = 4096;
+static const size_t kPageShift = 12;
+static const size_t kPageSize = (1 << kPageShift);
 
 enum class PagePermissions : uint8_t {
     NONE = 0,
@@ -64,8 +65,25 @@ public:
     using APIImpl::MemCmp;
     using APIImpl::GetRandom;
     using APIImpl::GetTime;
+    using APIImpl::GetEnv;
     using APIImpl::TimeDeltaMicroSec;
     using APIImpl::DebugPrintf;
+
+    // Architecture-specific functions/constants
+    using APIImpl::InsertNOPs;
+
+    // Align function addresses to multiples of this values
+    using APIImpl::kFunctionAlignment;
+
+    // Preserve function alignment offsets past randomization
+    // If this is true and a function at address A before randomization
+    // such that A % kFunctionAlignment == O (offset), then the
+    // randomization library will also place it at some address A'
+    // such that A' % kFunctionAlignment == O. To put it another way:
+    // A === A' (mod kFunctionAlignment)
+    // If this is false, the address of each function will always be a multiple
+    // of kFunctionAlignment after randomization
+    using APIImpl::kPreserveFunctionOffset;
 
     static void *MemAlloc(size_t, bool zeroed = false);
     static void MemFree(void*);

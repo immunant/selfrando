@@ -1,16 +1,17 @@
 /*
  * This file is part of selfrando.
- * Copyright (c) 2015-2016 Immunant Inc.
+ * Copyright (c) 2015-2017 Immunant Inc.
  * For license information, see the LICENSE file
  * included with selfrando.
  *
  */
 
-.section .txtrp, "a", @progbits
+.section .txtrp, "a", %progbits
 
-.globl _TRaP_Info_txtrp
-.type _TRaP_Info_txtrp, @object
-_TRaP_Info_txtrp:
+.globl _TRaP_trap_begin
+.hidden _TRaP_trap_begin
+.type _TRaP_trap_begin, %object
+.align TXTRP_ALIGNMENT
+_TRaP_trap_begin:
 .byte 0x01 // Version
-.byte 0x11, 0x00, 0x00 // Flags
-
+.byte 0xD1, 0x01, 0x00 // Flags

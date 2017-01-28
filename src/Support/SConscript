@@ -1,0 +1,3 @@
+Import('env')
+
+env.Library('randolib_support', ['Debug.cpp', 'Filesystem.cpp', 'Misc.cpp'])

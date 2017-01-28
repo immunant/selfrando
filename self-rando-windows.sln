@@ -1,0 +1,87 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinkWrapper", "LinkWrapper\LinkWrapper.vcxproj", "{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8D036347-9D38-4DAB-8F2E-E16D23D674D3} = {8D036347-9D38-4DAB-8F2E-E16D23D674D3}
+		{5D7361A0-179C-47CB-9614-B1F73DAFFAF2} = {5D7361A0-179C-47CB-9614-B1F73DAFFAF2}
+		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE} = {7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandoLib", "RandoLib\RandoLib.vcxproj", "{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapObj", "TrapObj\TrapObj.vcxproj", "{8D036347-9D38-4DAB-8F2E-E16D23D674D3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatchEntry", "PatchEntry\PatchEntry.vcxproj", "{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibWrapper", "LibWrapper\LibWrapper.vcxproj", "{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommon", "WrapperCommon\WrapperCommon.vcxproj", "{4647B789-1A03-4FA7-8F72-B2A894537EF9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapCommon", "TrapCommon\TrapCommon.vcxproj", "{87E459D4-62F5-4A2A-A175-B29E529F91C6}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapLib", "TrapLib\TrapLib.vcxproj", "{747C9A54-A139-466F-BBB2-1E42EF3CF01C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C55508A3-37D1-4B6C-8CE9-F2A3B76E791A}"
+	ProjectSection(SolutionItems) = preProject
+		Scripts\ida_textrap.py = Scripts\ida_textrap.py
+		Scripts\parse_textrap.py = Scripts\parse_textrap.py
+		SConstruct = SConstruct
+		Docs\textrap.txt = Docs\textrap.txt
+		Scripts\trap-msvc-libs.py = Scripts\trap-msvc-libs.py
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommonTests", "WrapperCommonTests\WrapperCommonTests.vcxproj", "{6F59C47A-4096-44C9-9909-C6316E69911A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4647B789-1A03-4FA7-8F72-B2A894537EF9} = {4647B789-1A03-4FA7-8F72-B2A894537EF9}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}.Debug|Win32.Build.0 = Debug|Win32
+		{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}.Release|Win32.ActiveCfg = Release|Win32
+		{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}.Release|Win32.Build.0 = Release|Win32
+		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}.Debug|Win32.Build.0 = Debug|Win32
+		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}.Release|Win32.ActiveCfg = Release|Win32
+		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}.Release|Win32.Build.0 = Release|Win32
+		{8D036347-9D38-4DAB-8F2E-E16D23D674D3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8D036347-9D38-4DAB-8F2E-E16D23D674D3}.Debug|Win32.Build.0 = Debug|Win32
+		{8D036347-9D38-4DAB-8F2E-E16D23D674D3}.Release|Win32.ActiveCfg = Release|Win32
+		{8D036347-9D38-4DAB-8F2E-E16D23D674D3}.Release|Win32.Build.0 = Release|Win32
+		{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}.Debug|Win32.Build.0 = Debug|Win32
+		{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}.Release|Win32.ActiveCfg = Release|Win32
+		{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}.Release|Win32.Build.0 = Release|Win32
+		{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}.Debug|Win32.Build.0 = Debug|Win32
+		{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}.Release|Win32.ActiveCfg = Release|Win32
+		{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}.Release|Win32.Build.0 = Release|Win32
+		{4647B789-1A03-4FA7-8F72-B2A894537EF9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4647B789-1A03-4FA7-8F72-B2A894537EF9}.Debug|Win32.Build.0 = Debug|Win32
+		{4647B789-1A03-4FA7-8F72-B2A894537EF9}.Release|Win32.ActiveCfg = Release|Win32
+		{4647B789-1A03-4FA7-8F72-B2A894537EF9}.Release|Win32.Build.0 = Release|Win32
+		{87E459D4-62F5-4A2A-A175-B29E529F91C6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{87E459D4-62F5-4A2A-A175-B29E529F91C6}.Debug|Win32.Build.0 = Debug|Win32
+		{87E459D4-62F5-4A2A-A175-B29E529F91C6}.Release|Win32.ActiveCfg = Release|Win32
+		{87E459D4-62F5-4A2A-A175-B29E529F91C6}.Release|Win32.Build.0 = Release|Win32
+		{747C9A54-A139-466F-BBB2-1E42EF3CF01C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{747C9A54-A139-466F-BBB2-1E42EF3CF01C}.Debug|Win32.Build.0 = Debug|Win32
+		{747C9A54-A139-466F-BBB2-1E42EF3CF01C}.Release|Win32.ActiveCfg = Release|Win32
+		{747C9A54-A139-466F-BBB2-1E42EF3CF01C}.Release|Win32.Build.0 = Release|Win32
+		{6F59C47A-4096-44C9-9909-C6316E69911A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6F59C47A-4096-44C9-9909-C6316E69911A}.Debug|Win32.Build.0 = Debug|Win32
+		{6F59C47A-4096-44C9-9909-C6316E69911A}.Release|Win32.ActiveCfg = Release|Win32
+		{6F59C47A-4096-44C9-9909-C6316E69911A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

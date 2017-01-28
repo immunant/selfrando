@@ -1,0 +1,7 @@
+Import('env')
+
+# FIXME: LIBPATH shouldn't be hardcoded like this
+files = env.Program('TrapObj', ['TrapObj.cpp', 'stdafx.cpp'],
+                    LIBS=['TrapCommon'],
+                    LIBPATH=['../TrapCommon'])
+Return('files')

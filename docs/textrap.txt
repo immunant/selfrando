@@ -1,0 +1,179 @@
+After running TrapObj or TrapLib on a file, it will contain a new .txtrp section.
+This document describes the on-disk format of this section.
+The section contains a Trap header, followed by one or more consecutive Trap records (the section should end after the last record, so the number of records is the size of the section divided by the size of a record).
+All values are little-endian, unless otherwise specified.
+
+	Trap header
+	-----------
+The header contains the following information:
+
+struct TrapHeader { // WARNING!!! This is not actual C code
+  uint8_t Version;		// Trap information version, currently ==1
+  uint24_t Flags;		// 3-byte little-endian flags field describing the information contained in the Trap information
+
+  // List of relocation addresses (absolute, PC-relative, and other kinds)
+  // that point to code, but are outside any executable section.
+  // Only present if flag bit 0x20 is set.
+  OPTIONAL TrapRelocVector NonExecRelocs;
+};
+
+Currently supported flags are:
+0x000001: Starting points of functions are marked (used in the original randomization, function reordering)
+0x000002: Records are pre-sorted
+0x000004: Symbols also have size information
+0x000008: Records also contain information on data references (which symbols have their address taken)
+0x000010: Records contain relocations
+0x000020: Trap information contains vector of relocations outside executable sections
+0x000040: Records contain padding
+0x000080: All addresses (FirstSymAddr&others) are PC-relative (pointer-sized signed
+          offsets from the memory location where they're stored)
+0x000100: Symbols also have alignment information (power-of-2 values)
+
+Some binaries may contain code references or relocations outside executable
+sections, e.g., function pointers inside .rodata or .data, such as C++
+vtables.
+When this happens and the compiler/linker does not provide relocations for
+those references, we enable flag 0x20.
+If this flag is enabled, the header contains a vector containing the addresses
+of all such relocations in the binary, in sorted order of memory address
+(starting from 0x0).
+
+	Trap records
+	------------
+Each record contains information about one executable section from the object file or library, describing its exported symbols and relocations.
+Alternatively, there can be one record per function, or a single record for the entire program.
+In this document, "symbol" refers to any memory object that is used in randomization, e.g., functions, basic blocks or more.
+For example, in the context of function reordering "symbol" means "function".
+
+struct TrapRecord { // WARNING!!! This is not actual C code
+	// The memory address of the first symbol in this record
+	// On Windows, this is a RVA (address relative to image base, with a DIR32NB relocation entry associated)
+	void *FirstSymAddr;
+
+	// Information about the first symbol in this record.
+	// (in most cases, its offset will be 0, since most executable sections start with a function)
+	TrapSymbol FirstSymbol;
+
+	// A list of all other program symbols described by this record
+	TrapSymbolVector Symbols;
+
+	// A list of all relocations inside this section that need to be patched after randomization.
+	// This field is only present if bit 0x10 inside the header is set.
+	OPTIONAL TrapRelocVector Relocs;
+
+	// A list of all program locations whose addresses are taken as data addresses, e.g., memory operands inside instructions.
+	// This field is only present if bit 0x8 inside the header is set.
+	OPTIONAL TrapVector DataRefs;
+
+        // If padding is specificied in trap info (bit 0x40), this is the
+        // starting offset (relative to the start of the record) and size of the padding.
+        OPTIONAL ULEB128 PaddingOffset;
+        OPTIONAL ULEB128 PaddingSize;
+};
+
+The TrapSymbolVector data structure encodes a list of symbols inside the
+current record.
+It is represented as a contiguous list of TrapSymbol elements,
+ended by a TrapSymbol element full of zeroes.
+The contents of each element are:
+
+struct TrapSymbol {
+        // Offset of this symbol from the previous one.
+        ULEB128 SymbolOffset;
+
+        // Size of this symbol.
+        // This field is only present if bit 0x4 inside the header is set.
+        OPTIONAL ULEB128 SymbolSize;
+
+        // Alignment of this symbol, represented as the base-2 logarithm.
+        // This field is only present if bit 0x100 inside the header is set.
+        OPTIONAL ULEB128 SymbolAlignmentLog2;
+};
+
+The TrapVector data structure encodes a list of strictly increasing offsets from the start of the current executable section.
+Each offset is stored as a ULEB128 encoding of its distance from the previous offset.
+The vector is terminated with a single 0-byte (since the offsets are distinct, no 0-distance is ever encoded).
+For example, the decimal offsets [5, 12, 17, 33] are encoded (in hexadecimal) as the stream "05 07 05 10 00".
+
+Example
+-------
+If the object file contains an executable section starting at address 0x12345678, with symbols starting at 0x12345678 and 0x1234567E and relocations at 0x1234567A and 0x12345681, the symbols will be at offsets [0, 6] and the relocations at [2, 9] with types [0, 1] respectively, so the complete .txtrp contents will be:
+78 56 34 12 - FirstSymAddr
+00          - FirstSymOffset
+06 00       - Symbols
+02 00 07 01 00    - Relocations
+or "78 56 34 12 00 06 00 02 00 07 01 00".
+
+    Trap Relocation Vectors
+    -----------------------
+Relocations are encoded using the TrapRelocVector structure, which is a vector
+similar to TrapSymbolVector. TrapRelocVector also encodes a list of
+ULEB128-encoded pairs of values, where the first value represents the address
+of a relocation (delta-encoded from the previous one), and the second
+component of the pair encodes the relocation type (which is architecture- and
+OS-specific, we currently use the type encodings for PE/ELF files).
+Additionally, some relocation pairs may be followed by extra information,
+e.g., PC-relative relocations can encode the symbol (S) or addend (A) values
+after the pair of ULEBs.
+The vector ends in a pair of zeroes.
+
+VTable Marking Extension
+------------------------
+
+This need to be integrated into the main docs when self-rando supports it.
+
+Version = 2
+
+New flags:
+0x000016: VTables are marked
+0x000032: Virtual calls are marked
+
+--------------------------------------------------------------------------------
+If VTables are marked, the record will contain a VTableVector that consists of VTABLE_ENTRY entries:
+
+typedef struct _VTABLE_ENTRY
+{
+	PVOID		VTableLocation;
+	ULEB128		NumberOfEntries;
+} VTABLE_ENTRY;
+
+Members:
+
+VTableLocation
+	A pointer to a VTable. There's a reloc attached to every VTableLocation so that at run-time, it will point to the actual in-memory vtable
+	
+NumberOfEntries
+	Number of functions in the vtable
+	
+Remarks:
+
+VTABLE_ENTRY structures are variable sized. The VTableVector will not align VTable Entries. The vector therefore has to be parsed sequentially.
+The Vector is terminated with a VTABLE_ENTRY that has its VTableLocation set to NULL. This last VTABLE_ENTRY has no NumberOfEntries field.
+
+--------------------------------------------------------------------------------
+If Virtual calls are marked, the record will then contain a FirstVCallSym field and a VCallVector that consists of VCALL_ENTRY entries:
+
+PVOID FirstVCallSym;
+
+typedef struct _VCALL_ENTRY
+{
+	ULEB128 OffsetFromFirstVCallSym;
+	PVOID	ClassTypeString;
+} VCALL_ENTRY;
+
+Members:
+
+FirstVCallSym
+	A pointer to the first VCall instruction within the .text section that this textrap section is associated with. There's a reloc attached to this field so that at run-time, it will point to the actual in-memory location of said instruction
+	
+OffsetFromFirstVCallSym
+	The location of a VCall instruction within the .text section that this textrap section is associated with. This location is encoded as a ULEB128 offset relative to the FirstVCallSym location
+	
+ClassTypeString
+	The location of the class name string for the vtable that is associated with this VCall instruction. There's a reloc attached to this field so that at run-time, it will point to the in-memory string, which is in the string table
+	
+Remarks:
+
+VCALL_ENTRY structures are variable sized. The VCallVector will not align VCall Entries. The vector has to be parsed sequentially. 
+The Vector is terminated with a VCALL_ENTRY that has its OffsetFromFirstVCallSym set to 0 and its ClassTypeString to NULL.
+--------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /*
  * This file is part of selfrando.
- * Copyright (c) 2015-2016 Immunant Inc.
+ * Copyright (c) 2015-2017 Immunant Inc.
  * For license information, see the LICENSE file
  * included with selfrando.
  *
@@ -17,67 +17,46 @@
 
 #include <link.h>
 #include <utility>
-#include <stdio.h>
-#include <util/rand_r.c>
 
 class TrapInfo;
 class TrapReloc;
+
+struct FunctionList;
+struct Function;
 
 // Found in posix/qsort.c
 extern "C" {
 void _TRaP_qsort(void *, size_t, size_t,
                  int (*)(const void *, const void *));
+int _TRaP_libc_rand_r(unsigned int*);
+time_t _TRaP_libc_time(time_t*);
+extern void *_TRaP_libc_memcpy(void *__restrict, const void *__restrict, size_t);
+extern int _TRaP_libc_memcmp(const void*, const void*, size_t);
+extern char *_TRaP_libc_getenv(const char*);
+extern long _TRaP_libc_strtol(const char*, char **, int);
 }
 
 namespace os {
+
+extern "C" {
+#include "ModuleInfo.h"
+}
 
 // FIXME: gcc doesn't support assigning an entire class to a section
 // so we'll either have to solve this using linker scripts
 // or include RandoLib as an external shared library
 #define RANDO_SECTION
 
+#if RANDOLIB_IS_SHARED
+#define RANDO_PUBLIC  __attribute__((visibility("default")))
+#else
+#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
+#endif
+
 typedef time_t Time;
-typedef uint8_t *BytePointer;
-
-// FIXME: move this to a header shared with PatchEntry
-enum {
-    TRAP_SECTION_TEXT = 0,
-    TRAP_SECTION_PLT,
-    // Total number of sections
-    TRAP_NUM_SECTIONS
-};
-
-struct TrapSectionInfoTable {
-    uintptr_t start, trap;
-    size_t size, trap_size;
-};
-
-// ELF-specific information that PatchEntry fills in
-struct TrapProgramInfoTable {
-    uintptr_t orig_dt_init;
-    uintptr_t orig_entry;
-
-    // Location of export trampoline table
-    uintptr_t xptramp_start;
-    size_t xptramp_size;
-
-    // Location of .text section
-    // FIXME: for now, assume that there is only a fixed
-    // number of sections and they contain all the code
-    // Custom linker scripts may break this
-    // We still put in a num_sections field, for future use
-    // Also, we use num_sections to mark whether
-    // we've added the sections to the table or not
-    size_t num_sections;
-    TrapSectionInfoTable sections[TRAP_NUM_SECTIONS];
-};
 
 class Module {
 public:
-    struct ModuleInfo {
-        BytePointer dynamic;
-        TrapProgramInfoTable *program_info_table;
-    };
     typedef ModuleInfo *Handle;
     typedef struct dl_phdr_info *PHdrInfoPointer;
 
@@ -98,12 +77,19 @@ public:
 
         template<typename T = BytePointer>
         inline RANDO_SECTION T to_ptr() const {
+		//assert((sizeof(uintptr_t)==1));
             switch (m_space) {
             case AddressSpace::MEMORY:
                 return reinterpret_cast<T>(m_address);
             case AddressSpace::TRAP:
+#if !RANDOLIB_IS_ARM64
+                return reinterpret_cast<T>(m_address + m_module.get_got_ptr());
+#else
+                return reinterpret_cast<T>(m_address);
+#endif
             case AddressSpace::RVA:
-                return reinterpret_cast<T>(m_address + reinterpret_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));
+                //return reinterpret_cast<T>(m_address + reinterpret_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));
+                return reinterpret_cast<T>(m_address + static_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));
             default:
                 return 0;
             }
@@ -135,20 +121,19 @@ public:
         typedef size_t Type;
         typedef void(*Callback)(Relocation&, void*);
 
-        enum ExtraInfo : uint32_t {
-            EXTRA_NONE = 0,
-            EXTRA_SYMBOL = 0x1,
-            EXTRA_ADDEND = 0x2,
-        };
-
         Relocation() = delete;
 
-        Relocation(const Module &mod, const Address &addr, Type type, bool is_exec = true)
+        Relocation(const Module &mod, const Address &addr, Type type)
             : m_module(mod), m_orig_src_addr(addr),
               m_src_addr(addr), m_type(type),
-              m_has_symbol_addr(false), m_symbol_addr(mod), m_addend(0), m_is_exec(is_exec) { }
+              m_has_symbol_addr(false), m_symbol_addr(mod), m_addend(0) { }
 
-        Relocation(const os::Module&, const TrapReloc&, bool is_exec = true);
+        Relocation(const Module &mod, const Address &addr, Type type, ptrdiff_t addend)
+            : m_module(mod), m_orig_src_addr(addr),
+              m_src_addr(addr), m_type(type),
+              m_has_symbol_addr(false), m_symbol_addr(mod), m_addend(addend) { }
+
+        Relocation(const os::Module&, const TrapReloc&);
 
         Type get_type() const {
             return m_type;
@@ -174,13 +159,11 @@ public:
         void set_target_ptr(BytePointer);
 
         static Type get_pointer_reloc_type();
-        static Type get_eh_frame_reloc_type();
 
         static void fixup_export_trampoline(BytePointer*, const Module&, Callback, void*);
+        static void fixup_entry_point(const Module&, uintptr_t, uintptr_t);
 
-        static uint32_t get_extra_info(Type type);
-
-        ptrdiff_t inline get_addend() const {
+        inline ptrdiff_t get_addend() const {
             return m_addend;
         }
 
@@ -189,7 +172,6 @@ public:
         const Address m_orig_src_addr;
         Address m_src_addr;
         Type m_type;
-        bool m_is_exec;
 
         bool m_has_symbol_addr;
         const Address m_symbol_addr;
@@ -218,8 +200,8 @@ public:
 
         Section(const Module &mod, uintptr_t rva = 0, size_t size = 0)
             : m_module(mod),
-              m_start(mod, rva, AddressSpace::RVA),
-              m_end(mod, rva + size, AddressSpace::RVA),
+              m_start(mod, rva, AddressSpace::MEMORY),
+              m_end(mod, rva + size, AddressSpace::MEMORY),
               m_size(size) {}
 
         template<typename T>
@@ -250,6 +232,9 @@ public:
 
         RANDO_SECTION PagePermissions MemProtect(PagePermissions perms) const;
 
+        // This flushes the icache/dcache for this section.
+        RANDO_SECTION void flush_icache();
+
     private:
         const Module &m_module;
         Address m_start, m_end;
@@ -263,14 +248,14 @@ public:
     typedef void(*ModuleCallback)(Module&, void*);
     static RANDO_SECTION void ForAllModules(ModuleCallback, void*);
 
-    RANDO_SECTION void ForAllRelocations(Module::Relocation::Callback callback,
-                                         void *callback_arg) const;
-    RANDO_SECTION void ForAllRelocations(const std::pair<os::BytePointer, os::BytePointer> GOT,
+    RANDO_SECTION void ForAllRelocations(FunctionList *functions,
                                          Module::Relocation::Callback callback,
                                          void *callback_arg) const;
 
-    RANDO_SECTION void Fixup_eh_frame_hdr(Module::Relocation::Callback callback,
-                                          void *callback_arg) const;
+    RANDO_SECTION void preprocess_linker_stubs();
+    RANDO_SECTION void relocate_linker_stubs(FunctionList *functions,
+                                             Module::Relocation::Callback callback,
+                                             void *callback_arg) const;
 
     inline RANDO_SECTION Section export_section() const {
         return Section(*this, m_module_info->program_info_table->xptramp_start,
@@ -280,6 +265,11 @@ public:
     inline RANDO_SECTION BytePointer get_got_ptr() const {
         return m_got;
     }
+
+#if RANDOLIB_WRITE_LAYOUTS
+    void write_layout_file(FunctionList *functions,
+                           size_t *shuffled_order) const;
+#endif
 
 private:
     ModuleInfo *m_module_info;
@@ -304,17 +294,21 @@ private:
 
     RANDO_SECTION void MarkRandomized(RandoState);
 
-    FILE*m_layout_file = NULL;
-    void LFInit(unsigned int seed, BytePointer file_base, void *mem_base, size_t length, const char *name);
-public:
-    void LFWriteRandomizationRecord(void* undiv_start, void* div_start, uint32_t length) const;
-    void LFEnd() const;
+    size_t m_linker_stubs;
 };
 
 class APIImpl {
 public:
     // Debugging functions and settings
-    static const int kDebugLevel = 2;
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    static int debug_level;
+#else
+#ifdef RANDOLIB_DEBUG_LEVEL
+    static const int debug_level = RANDOLIB_DEBUG_LEVEL;
+#else
+    static const int debug_level = 0;
+#endif
+#endif
     static const bool kEnableAsserts = true;
 
     static void DebugPrintfImpl(const char *fmt, ...);
@@ -323,7 +317,7 @@ public:
     template<int level, typename... Args>
     static inline void DebugPrintf(Args... args) {
         // FIXME: this should use std::forward, but can we pull in <utility>???
-        if (level <= kDebugLevel)
+        if (level <= debug_level)
             DebugPrintfImpl(args...);
     }
 
@@ -334,37 +328,69 @@ public:
     }
 
     static inline void MemCpy(void *dst, const void *src, size_t size) {
-        memcpy(dst, src, size);
+        _TRaP_libc_memcpy(dst, src, size);
     }
 
     static inline int MemCmp(const void *a, const void *b, size_t size) {
-        return memcmp(a, b, size);
+        return _TRaP_libc_memcmp(a, b, size);
     }
 
-    static inline long GetRandom(long max) {
-        // Uncomment this for deterministic shuffling:
-        // return 65537 % max;
-        return bsd_rand_r(&rand_seed) % max; // FIXME: better RNG
+    static inline size_t GetRandom(size_t max) {
+#if RANDOLIB_IS_ARM
+        // On some architectures, we want to avoid the division below
+        // because it's implemented in libgcc.so
+        auto clz = (sizeof(max) == sizeof(long long)) ? __builtin_clzll(max) : __builtin_clz(max);
+        auto mask = static_cast<size_t>(-1LL) >> clz;
+        for (;;) {
+            // Clip rand to next power of 2 after "max"
+            // This ensures that we always have
+            // P(rand < max) > 0.5
+            auto rand = static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed)) & mask;
+            if (rand < max)
+                return rand;
+        }
+#else
+        return static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed)) % max; // FIXME: better RNG
+#endif
     }
 
     static inline Time GetTime() {
-        return time(nullptr); // FIXME: we need something more precise
+        return _TRaP_libc_time(nullptr); // FIXME: we need something more precise
     }
 
     static inline unsigned long long TimeDeltaMicroSec(const Time &from, const Time &to) {
         return to - from; // FIXME
     }
 
+    static char *GetEnv(const char *var) {
+        return _TRaP_libc_getenv(var);
+    }
+
+    // TODO: make this into a compile-time value,
+    // or maybe a run-time one, and also a TRaP
+    // info setting
+    static const int kFunctionAlignment = 4;
+    static const int kPageAlignment = 4096;
+    static const bool kPreserveFunctionOffset = true;
+
+    static void InsertNOPs(BytePointer, size_t);
+
 protected:
     static unsigned int rand_seed;
 
-public:
-    static unsigned inline int getRand_seed() { return rand_seed; }
+#if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
+    static int log_fd;
+#endif
 };
 
 
 // TODO
-#define RANDO_ASSERT(cond) assert(cond)
+//#define RANDO_ASSERT(cond) assert(cond)
+
+#define RANDO_ASSERT_STR(x)        #x
+#define RANDO_ASSERT_STRM(x)       RANDO_ASSERT_STR(x)
+#define RANDO_ASSERT(cond)  ((cond) ? (void)0 \
+                                    : (os::API::DebugPrintf<0>(__FILE__ ":" RANDO_ASSERT_STRM(__LINE__) " assertion failed: " #cond ), __builtin_trap()))
 
 }
 

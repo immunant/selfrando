@@ -1,6 +1,6 @@
 /*
  * This file is part of selfrando.
- * Copyright (c) 2015-2016 Immunant Inc.
+ * Copyright (c) 2015-2017 Immunant Inc.
  * For license information, see the LICENSE file
  * included with selfrando.
  *
@@ -11,25 +11,21 @@
 
 #include <elf.h>
 
-#define R_386_ADDN_EH_FRAME_HDR 0xffff0001
-
-#ifndef R_386_GOT32X
-#define R_386_GOT32X            43
-#endif
-
-os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc, bool is_exec)
+os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
-      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend), m_is_exec(is_exec) {
+      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
     m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
+    // IMPORTANT: Keep RandoLib/TrapInfoCommonh.h in sync whenever a new
+    // relocation requires a symbol and/or addend.
+
     auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case R_386_32:
     case R_386_GOT32:
-    case R_386_GOT32X:
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
@@ -41,9 +37,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     case R_386_GOTPC:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
-        return m_orig_src_addr.to_ptr() + m_is_exec * sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
-    case R_386_ADDN_EH_FRAME_HDR:
-        return m_module.m_eh_frame_hdr + *reinterpret_cast<int32_t*>(at_ptr);
+        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
     default:
         return nullptr;
     }
@@ -54,7 +48,6 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     switch(m_type) {
     case R_386_32:
     case R_386_GOT32:
-    case R_386_GOT32X:
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
@@ -67,10 +60,7 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     case R_386_PLT32:
     case R_386_GOTPC:
         // FIXME: check for overflow here???
-        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + m_is_exec * sizeof(int32_t)));
-        break;
-    case R_386_ADDN_EH_FRAME_HDR:
-        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - m_module.m_eh_frame_hdr);
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t)));
         break;
     default:
         RANDO_ASSERT(false);
@@ -82,22 +72,41 @@ os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
     return R_386_32;
 }
 
-os::Module::Relocation::Type os::Module::Relocation::get_eh_frame_reloc_type() {
-    return R_386_ADDN_EH_FRAME_HDR;
-}
-
 void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                      const Module &module,
                                                      os::Module::Relocation::Callback callback,
                                                      void *callback_arg) {
-    RANDO_ASSERT(**export_ptr == 0xE9);
+    if (**export_ptr == 0xEB) {
+        // We hit the placeholder in Textramp.S, skip over it
+        *export_ptr += 2;
+        return;
+    }
+    // Allow the first byte of the export trampoline to be 0xCC, which
+    // is the opcode for the breakpoint instruction that gdb uses (INT 3)
+    RANDO_ASSERT(**export_ptr == 0xE9 || **export_ptr == 0xCC);
+    RANDO_ASSERT((reinterpret_cast<uintptr_t>(*export_ptr) & 1) == 0);
     os::Module::Relocation reloc(module,
                                  module.address_from_ptr(*export_ptr + 1),
                                  R_386_PC32);
     (*callback)(reloc, callback_arg);
-    *export_ptr += 5;
+    *export_ptr += 6;
 }
 
-uint32_t os::Module::Relocation::get_extra_info(os::Module::Relocation::Type type) {
-    return 0;
+void os::Module::Relocation::fixup_entry_point(const Module &module,
+                                               uintptr_t entry_point,
+                                               uintptr_t target) {
+    RANDO_ASSERT(*reinterpret_cast<uint8_t*>(entry_point) == 0xE9);
+    os::Module::Relocation reloc(module,
+                                 module.address_from_ptr(entry_point + 1),
+                                 R_386_PC32, -4);
+    reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
+}
+
+void os::Module::preprocess_linker_stubs() {
+    m_linker_stubs = 0;
+}
+
+void os::Module::relocate_linker_stubs(FunctionList *functions,
+                                       os::Module::Relocation::Callback callback,
+                                       void *callback_arg) const {
 }

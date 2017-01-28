@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2015, The Regents of the University of California
- * Copyright (c) 2015-2016 Immunant Inc.
+ * Copyright (c) 2015-2017 Immunant Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,47 +30,31 @@
  */
 
 #include "OS.h"
+#include "RandoLib.h"
 #include "TrapInfo.h"
 
 #include <stdint.h>
 #include <stdarg.h>
 #include <utility>
 
-#ifndef SR_FUNCTION_PRESERVE_ALIGN
-#define SR_FUNCTION_PRESERVE_ALIGN 2
-#endif
-
-#pragma pack(1) // TODO: MSVC-only; use gcc equivalent on Linux
-struct RANDO_SECTION Function {
-    os::BytePointer undiv_start, div_start;
-    size_t size, shuffle_index;
-    bool skip_copy;
-
-    ptrdiff_t div_delta() const {
-        return div_start - undiv_start;
+// Binary search function that finds function containing given address
+// TODO: move this to a separate .cpp file???
+Function *FunctionList::FindFunction(os::BytePointer addr) {
+    // return null if no function contains addr
+    if (addr < functions[0].undiv_start ||
+        addr >= functions[num_funcs-1].undiv_end())
+        return nullptr;
+    size_t lo = 0, hi = num_funcs - 1;
+    while (lo < hi) {
+        auto mid = lo + ((hi - lo) >> 1);
+        if (addr >= functions[mid + 1].undiv_start) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
     }
-
-    os::BytePointer inline undiv_end() const {
-        return undiv_start + size;
-    }
-
-    os::BytePointer inline div_end() const {
-        return div_start + size;
-    }
-
-    bool undiv_contains(os::BytePointer addr) const {
-        return addr >= undiv_start && addr < undiv_end();
-    }
-
-    bool div_contains(os::BytePointer addr) const {
-        return addr >= div_start && addr < div_end();
-    }
-
-    os::BytePointer post_div_address(os::BytePointer addr, bool allow_overflow = false) const {
-        RANDO_ASSERT(allow_overflow || undiv_contains(addr));
-        return (addr + div_delta());
-    }
-};
+    return &functions[lo];
+}
 
 class RANDO_SECTION ExecSectionProcessor {
 public:
@@ -79,64 +63,82 @@ public:
                          TrapInfo &trap_info,
                          bool in_place)
                          : m_module(mod), m_exec_section(exec_section),
-                           m_trap_info(trap_info), m_in_place(in_place) {
+                           m_trap_info(trap_info), m_in_place(in_place),
+                           m_exec_copy(nullptr), m_exec_code_size(0),
+                           m_shuffled_order(nullptr) {
         os::API::DebugPrintf<1>("Found exec section @%p[%u]\n",
                                 m_exec_section.start().to_ptr(), m_exec_section.size());
-        skip_shuffle = getenv("SELFRANDO_skip_shuffle") != nullptr;
-        if (skip_shuffle) {
-            os::API::DebugPrintf<1>("Selfrando: warning: applying identity transformation. No real protection!\n");
-        }
     }
 
     void Run() {
+        for (auto trap_entry : m_trap_info)
+            trap_entry.dump();
+
         // FIXME: in non-profiling runs, GetTime shouldn't cost any CPU cycles
-        auto t1 = os::API::GetTime();
+        os::Time t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+#define TAKE_TIME(var)  ((var) = os::API::GetTime())
+        TAKE_TIME(t1);
         CountFunctions();
-        auto t2 = os::API::GetTime();
+        TAKE_TIME(t2);
         BuildFunctions();
         // Optimization: if only one function, skip shuffling
-        if (m_num_funcs > 1) {
-            auto t3 = os::API::GetTime();
+        if (m_functions.num_funcs > 1) {
+            TAKE_TIME(t3);
             SortFunctions();
-            auto t4 = os::API::GetTime();
+            // TODO: add GetTime()
+            RemoveEmptyFunctions();
+            TAKE_TIME(t4);
             ShuffleFunctions();
-            auto t5 = os::API::GetTime();
+            TAKE_TIME(t5);
+            LayoutCode();
+            TAKE_TIME(t6);
             ShuffleCode();
+        } else {
+            TAKE_TIME(t3);
+            TAKE_TIME(t4);
+            TAKE_TIME(t5);
+            TAKE_TIME(t6);
         }
-        auto t6 = os::API::GetTime();
+        TAKE_TIME(t7);
         FixupRelocations();
-        auto t7 = os::API::GetTime();
+        TAKE_TIME(t8);
         ProcessTrapRelocations();
-        auto t8 = os::API::GetTime();
+        TAKE_TIME(t9);
         FixupExports();
-        auto t9 = os::API::GetTime();
-#if 0 // FIXME
-#define PRINT_TIME(func, from, to)  DebugPrintf<1>("Module@%p time " #func ":%lldus\n", m_module, os::API::TimeDeltaMicroSec((from), (to)))
+        TAKE_TIME(t10);
+//#define PRINT_TIME(func, from, to)  DebugPrintf<1>("Module@%p time " #func ":%lldus\n", m_module, os::API::TimeDeltaMicroSec((from), (to)))
+#define PRINT_TIME(func, from, to)  ((void*) os::API::TimeDeltaMicroSec((from), (to)))
         PRINT_TIME(CountFunctions,   t1, t2);
         PRINT_TIME(BuildFunctions,   t2, t3);
         PRINT_TIME(SortFunctions,    t3, t4);
         PRINT_TIME(ShuffleFunctions, t4, t5);
-        PRINT_TIME(ShuffleCode,      t5, t6);
-        PRINT_TIME(FixupRelocations, t6, t7);
-        PRINT_TIME(ProcessTrapRelocations, t7, t8);
-        PRINT_TIME(FixupExports,     t8, t9);
-        PRINT_TIME(Total,            t1, t9);
+        PRINT_TIME(LayoutCode,       t5, t6);
+        PRINT_TIME(ShuffleCode,      t6, t7);
+        PRINT_TIME(FixupRelocations, t7, t8);
+        PRINT_TIME(ProcessTrapRelocations, t8, t9);
+        PRINT_TIME(FixupExports,     t9, t10);
+        PRINT_TIME(Total,            t1, t10);
 #undef PRINT_TIME
+#undef TAKE_TIME
+
+#if RANDOLIB_WRITE_LAYOUTS
+        m_module.write_layout_file(&m_functions, m_shuffled_order);
 #endif
 
         // Cleanup
         // TODO: this should be in a separate function
-        if (m_in_place) {
-            // We're doing in-place randomization, so release the copy
-            os::API::MemUnmap(m_exec_copy, m_exec_section.size(), true);
-        } else {
-            // Not in-place, so we need to keep the copy, so map it as executable
-            os::API::MemProtect(m_exec_copy, m_exec_section.size(), os::PagePermissions::RX);
-            os::API::DebugPrintf<1>("Divcode@%p\n", m_exec_copy);
+        if (m_exec_copy != nullptr) {
+            if (m_in_place) {
+                // We're doing in-place randomization, so release the copy
+                os::API::MemUnmap(m_exec_copy, m_exec_code_size, true);
+            } else {
+                // Not in-place, so we need to keep the copy, so map it as executable
+                os::API::MemProtect(m_exec_copy, m_exec_code_size, os::PagePermissions::RX);
+            }
         }
-        os::API::MemFree(m_functions);
-        os::API::MemFree(m_shuffled_order);
-        m_module.LFEnd();
+        if (m_shuffled_order != nullptr)
+            os::API::MemFree(m_shuffled_order);
+        m_functions.free();
     }
 
 private:
@@ -146,20 +148,18 @@ private:
     bool m_in_place;
 
     os::BytePointer m_exec_copy;
+    size_t m_exec_code_size;
 
-    size_t m_num_funcs;
     bool m_func_at_start;
-    Function *m_functions;
+    FunctionList m_functions;
     size_t *m_shuffled_order;
-
-    bool skip_shuffle;
-
-    Function *FindFunction(os::BytePointer);
 
     void CountFunctions();
     void BuildFunctions();
     void SortFunctions();
+    void RemoveEmptyFunctions();
     void ShuffleFunctions();
+    void LayoutCode();
     void ShuffleCode();
     void FixupRelocations();
     void ProcessTrapRelocations();
@@ -175,7 +175,7 @@ private:
 };
 
 void ExecSectionProcessor::CountFunctions() {
-    m_num_funcs = 0;
+    m_functions.num_funcs = 0;
     m_func_at_start = false;
     for (auto trap_entry : m_trap_info) {
         auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
@@ -183,45 +183,81 @@ void ExecSectionProcessor::CountFunctions() {
             for (auto sym : trap_entry.symbols()) {
                 if (m_module.address_from_trap(sym.address) == m_exec_section.start())
                     m_func_at_start = true;
-                m_num_funcs++;
+                m_functions.num_funcs++;
+            }
+
+            // If we have padding, we will be creating a pseudo-function to
+            // cover it
+            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
+                m_functions.num_funcs += 2;
             }
         }
     }
     // If no TRaP function starts at the beginning of the section, we add our own pseudo-function
     // spanning from the beginning of the section to the first proper TRaP function
     if (needs_start_function())
-        m_num_funcs++;
-    os::API::DebugPrintf<1>("Trap functions: %d\n", m_num_funcs);
+        m_functions.num_funcs++;
+    os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_funcs);
 }
 
 void ExecSectionProcessor::BuildFunctions() {
-    m_functions = reinterpret_cast<Function*>(os::API::MemAlloc(m_num_funcs * sizeof(Function), true));
-    auto func_idx = 0;
+    m_functions.allocate();
+    size_t func_idx = 0;
     for (auto trap_entry : m_trap_info) {
         auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
         if (m_exec_section.contains_addr(entry_addr)) {
             for (auto sym : trap_entry.symbols()) {
                 auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
-                if (m_trap_info.addn_info().should_be_ignored((void*) sym.address)) {
-                    os::API::DebugPrintf<3>("Ignoring padding function at %p\n", start_addr);
-                    m_functions[func_idx].skip_copy = true;
-                } else {
-                    m_functions[func_idx].skip_copy = false;
+#if RANDOLIB_IS_ARM
+                if ((uint32_t)start_addr & 1 == 1) {
+                    // This is a thumb function that actually starts one byte earlier
+                    start_addr--;
                 }
+#endif
+
                 m_functions[func_idx].undiv_start = start_addr;
-                if (m_trap_info.header()->symbol_sizes()) {
+                m_functions[func_idx].skip_copy = false;
+                m_functions[func_idx].from_trap = true;
+                if (m_trap_info.header()->has_symbol_p2align()) {
+                    m_functions[func_idx].undiv_alignment = sym.alignment;
+                } else {
+                    m_functions[func_idx].undiv_alignment = os::API::kFunctionAlignment;
+                }
+                if (m_trap_info.header()->has_symbol_size()) {
                     RANDO_ASSERT(sym.size > 0);
                     m_functions[func_idx].size = sym.size;
                 }
                 func_idx++;
             }
+            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
+                // Add the padding as skip_copy
+                m_functions[func_idx].skip_copy = true;
+                m_functions[func_idx].from_trap = false;
+                m_functions[func_idx].undiv_start =
+                    m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
+                m_functions[func_idx].undiv_alignment = 1;
+                func_idx++;
+
+                // Add what comes after the padding (if anything is left)
+                m_functions[func_idx].skip_copy = false;
+                m_functions[func_idx].from_trap = false;
+                m_functions[func_idx].undiv_start =
+                    m_module.address_from_trap(trap_entry.padding_address()).to_ptr() +
+                    trap_entry.padding_size();
+                m_functions[func_idx].undiv_alignment = 1;
+                func_idx++;
+            }
         }
     }
     if (needs_start_function()) {
-        RANDO_ASSERT(!m_trap_info.header()->symbol_sizes());
-        m_functions[func_idx++].undiv_start = m_exec_section.start().to_ptr();
+        RANDO_ASSERT(!m_trap_info.header()->has_symbol_size());
+        m_functions[func_idx].undiv_start = m_exec_section.start().to_ptr();
+        m_functions[func_idx].skip_copy = false;
+        m_functions[func_idx].from_trap = true; // FIXME: false instead???
+        m_functions[func_idx].undiv_alignment = os::API::kPageAlignment;
+        func_idx++;
     }
-    RANDO_ASSERT(func_idx == m_num_funcs);
+    RANDO_ASSERT(func_idx == m_functions.num_funcs);
 }
 
 template<typename T>
@@ -232,6 +268,10 @@ static inline RANDO_SECTION int CompareIntegers(T a, T b) {
 static RANDO_SECTION int CompareFunctions(const void *a, const void *b) {
     auto fa = reinterpret_cast<const Function*>(a);
     auto fb = reinterpret_cast<const Function*>(b);
+    // Special case: put skip_copy before non-skip_copy,
+    // so we can correctly compute the sizes
+    if (fa->undiv_start == fb->undiv_start)
+        return CompareIntegers(fa->sort_rank(), fb->sort_rank());
     return CompareIntegers(fa->undiv_start, fb->undiv_start);
 }
 
@@ -239,34 +279,50 @@ void ExecSectionProcessor::SortFunctions() {
     // Sort by undiversified addresses
     // FIXME: use our own qsort function, or force use of NTDLL!qsort
     if (m_trap_info.header()->needs_sort())
-        os::API::QuickSort(m_functions, m_num_funcs, sizeof(Function), CompareFunctions);
-    if (!m_trap_info.header()->symbol_sizes()) {
+        os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
+    if (!m_trap_info.header()->has_symbol_size()) {
         auto exec_end = m_exec_section.end().to_ptr();
-        for (size_t i = 0; i < m_num_funcs; i++) {
-            auto next_start = (i == (m_num_funcs - 1)) ? exec_end : m_functions[i + 1].undiv_start;
+        for (size_t i = 0; i < m_functions.num_funcs; i++) {
+            auto next_start = (i == (m_functions.num_funcs - 1)) ? exec_end : m_functions[i + 1].undiv_start;
             m_functions[i].size = next_start - m_functions[i].undiv_start;
         }
     }
 }
 
+void ExecSectionProcessor::RemoveEmptyFunctions() {
+    size_t cnt = 0;
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        if (m_functions[i].size == 0)
+            continue;
+        if (cnt < i)
+            m_functions[cnt] = m_functions[i];
+        cnt++;
+    }
+    m_functions.num_funcs = cnt;
+}
+
 void ExecSectionProcessor::ShuffleFunctions() {
+    bool skip_shuffle = os::API::GetEnv("SELFRANDO_skip_shuffle") != nullptr;
+    // FIXME: it would be nice to only disable shuffling
+    // when the variable is set to "1" or "true"
+    if (skip_shuffle) {
+        os::API::DebugPrintf<1>("Selfrando: warning: applying identity transformation. No real protection!\n");
+    }
+
     // Shuffle the order of the functions, using a Fisher-Yates shuffle
-    m_shuffled_order = reinterpret_cast<size_t*>(os::API::MemAlloc(m_num_funcs * sizeof(size_t)));
-    for (size_t i = 0; i < m_num_funcs; i++)
+    m_shuffled_order = reinterpret_cast<size_t*>(os::API::MemAlloc(m_functions.num_funcs * sizeof(size_t)));
+    for (size_t i = 0; i < m_functions.num_funcs; i++)
         m_shuffled_order[i] = i;
-    for (size_t i = 0; i < m_num_funcs - 1; i++) {
+    for (size_t i = 0; i < m_functions.num_funcs - 1; i++) {
         // Pick shuffled_order[i] at random from the remaining elements
-        auto j = os::API::GetRandom(m_num_funcs - i);
-        if (skip_shuffle) j = 0;
+        auto j = skip_shuffle ? 0 : os::API::GetRandom(m_functions.num_funcs - i);
         if (j == 0) {
-            m_functions[m_shuffled_order[i]].shuffle_index = i;
             continue;
         }
         // Swap [i] with [i + j]
         auto t = m_shuffled_order[i + j];
         m_shuffled_order[i + j] = m_shuffled_order[i];
         m_shuffled_order[i] = t; // Past this point, t stays in shuffled_order[i]
-        m_functions[t].shuffle_index = i;
     }
 }
 
@@ -280,42 +336,103 @@ static inline RANDO_SECTION void PatchInTrampoline(os::BytePointer at, os::ByteP
     *call_delta_ptr = static_cast<int32_t>(to - (at + 4));
 }
 
+void ExecSectionProcessor::LayoutCode() {
+    auto orig_code = m_exec_section.start().to_ptr();
+    auto curr_addr = orig_code;
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        auto si = m_shuffled_order[i];
+        auto &func = m_functions[si];
+        if (func.skip_copy) continue;
+
+        // Align functions to either a multiple of kFunctionAlignment
+        // or the same modulo as the undiversified code
+        // (depending on kPreserveFunctionOffset)
+        // TODO: handle 5-NOP padding between consecutive functions
+        RANDO_ASSERT(func.undiv_alignment > 0);
+        auto  old_ofs = (func.undiv_start - orig_code) & (func.undiv_alignment - 1);
+        auto curr_ofs = (curr_addr - orig_code) & (func.undiv_alignment - 1);
+        auto want_ofs = os::API::kPreserveFunctionOffset ? old_ofs : 0;
+        if (curr_ofs != want_ofs) {
+            func.alignment_padding = (func.undiv_alignment + want_ofs - curr_ofs) & (func.undiv_alignment - 1);
+            curr_addr += func.alignment_padding;
+        } else {
+            func.alignment_padding = 0;
+        }
+        // TODO: also add in Windows-specific hot-patch trampolines
+        func.div_start = curr_addr;
+        curr_addr += func.size;
+    }
+    m_exec_code_size = curr_addr - orig_code;
+    os::API::DebugPrintf<1>("Divcode size:%d\n", m_exec_code_size);
+
+    // If we don't have enough room, we can't randomize in-place
+    if (m_exec_code_size > m_exec_section.size()) {
+        os::API::DebugPrintf<1>("Cannot randomize in place!\n");
+        m_in_place = false;
+    }
+#if RANDOLIB_FORCE_INPLACE
+    RANDO_ASSERT(m_in_place);
+#endif
+}
+
 void ExecSectionProcessor::ShuffleCode() {
     // Copy the code to a backup
     // FIXME: randomize the base address manually
     auto orig_code = m_exec_section.start().to_ptr();
-    m_exec_copy = reinterpret_cast<os::BytePointer>(os::API::MemMap(nullptr, m_exec_section.size(), os::PagePermissions::RW, true));
+    if (m_in_place) {
+        // If we're randomizing in-place, we don't care
+        // where the copy is in memory, since we release
+        // it shortly anyway
+        auto copy_addr = os::API::MemMap(nullptr, m_exec_code_size,
+                                         os::PagePermissions::RW, true);
+        m_exec_copy = reinterpret_cast<os::BytePointer>(copy_addr);
+    }
+    else {
+        do {
+            // Pick a random address within 2GB of the original code
+            // (this is required for 32-bit PC-relative relocations)
+            auto start_ptr = orig_code + m_exec_section.size() + (os::kPageSize - 1);
+            auto start_page = reinterpret_cast<uintptr_t>(start_ptr) >> os::kPageShift;
+            // The copy is within (2GB - the size of the section), so that
+            // a jump from the start of m_exec_data can reach
+            // the end of m_exec_copy without overflowing
+            auto max_copy_delta = (2U << 30) - m_exec_section.size();
+            auto copy_page = start_page + os::API::GetRandom(max_copy_delta >> os::kPageShift);
+            auto hint_addr = reinterpret_cast<void*>(copy_page << os::kPageShift);
+            auto copy_addr = os::API::MemMap(hint_addr, m_exec_code_size,
+                                             os::PagePermissions::RW, true);
+            m_exec_copy = reinterpret_cast<os::BytePointer>(copy_addr);
+        } while (m_exec_copy == nullptr);
+    }
+    os::API::DebugPrintf<1>("Divcode@%p\n", m_exec_copy);
+
     auto copy_delta = m_exec_copy - orig_code;
-    auto curr_addr = m_exec_copy;
-    for (size_t i = 0; i < m_num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
         auto si = m_shuffled_order[i];
         auto &func = m_functions[si];
         if (func.skip_copy) continue;
-        // TODO: handle 5-NOP padding between consecutive functions
-        while ((size_t) curr_addr % SR_FUNCTION_PRESERVE_ALIGN !=
-                (size_t) func.undiv_start % SR_FUNCTION_PRESERVE_ALIGN) {
-            *curr_addr = 0x90;
-            curr_addr++;
-        }
-        func.div_start = curr_addr;
+
+        // TODO: also add in Windows-specific function hot-patch trampolines
         os::API::DebugPrintf<3>("Moving %p[%d]=>%p@%p\n",
             func.undiv_start, func.size,
-            func.div_start - copy_delta, func.div_start);
-        m_module.LFWriteRandomizationRecord(func.undiv_start,
-                                            func.div_start - copy_delta, (uint32_t) func.size);
-        os::API::MemCpy(curr_addr, func.undiv_start, func.size);
-        curr_addr += func.size;
-        RANDO_ASSERT(curr_addr - m_exec_copy <= m_exec_section.size());
+            func.div_start, func.div_start + copy_delta);
+        func.div_start += copy_delta;
+        if (func.alignment_padding > 0)
+            os::API::InsertNOPs(func.div_start - func.alignment_padding,
+                                func.alignment_padding);
+        os::API::MemCpy(func.div_start, func.undiv_start, func.size);
     }
     if (m_in_place) {
-        os::API::MemCpy(orig_code, m_exec_copy, m_exec_section.size());
         os::API::DebugPrintf<3>("Copying code back %p[%u]=>%p\n",
-                                m_exec_copy, m_exec_section.size(), orig_code);
+                                m_exec_copy, m_exec_code_size, orig_code);
+        os::API::MemCpy(orig_code, m_exec_copy, m_exec_code_size);
+        // TODO: zero out the space left over
         // Revert the div_start addresses to the original section
-        for (size_t i = 0; i < m_num_funcs; i++)
+        for (size_t i = 0; i < m_functions.num_funcs; i++)
             m_functions[i].div_start -= copy_delta;
     } else {
-        for (size_t i = 0; i < m_num_funcs; i++) {
+        for (size_t i = 0; i < m_functions.num_funcs; i++) {
+#ifdef WIN32 // For now, we only replace the original code with CC's on Windows
             auto &func = m_functions[i];
             if (func.size < 7) {
                 os::API::DebugPrintf<2>("Smallfunc@%p[%d]\n", func.undiv_start, func.size);
@@ -330,6 +447,7 @@ void ExecSectionProcessor::ShuffleCode() {
             // We skip this for functions whose addresses aren't taken
             if (!m_trap_info.header()->has_data_refs())
                 PatchInTrampoline(func.undiv_start, func.div_start);
+#endif
         }
         if (m_trap_info.header()->has_data_refs()) {
             for (auto trap_entry : m_trap_info) {
@@ -337,7 +455,7 @@ void ExecSectionProcessor::ShuffleCode() {
                 if (m_exec_section.contains_addr(entry_addr)) {
                     for (auto ref : trap_entry.data_refs()) {
                         auto ref_addr = m_module.address_from_trap(ref).to_ptr();
-                        auto ref_func = FindFunction(ref_addr);
+                        auto ref_func = m_functions.FindFunction(ref_addr);
                         if (ref_func->undiv_contains(ref_addr))
                             PatchInTrampoline(ref_addr, ref_addr + ref_func->div_delta());
                     }
@@ -345,23 +463,6 @@ void ExecSectionProcessor::ShuffleCode() {
             }
         }
     }
-}
-
-// Binary search function that finds function containing given address
-Function *ExecSectionProcessor::FindFunction(os::BytePointer addr) {
-    // return null if no function contains addr
-    if (addr < m_functions[0].undiv_start || addr >= m_functions[m_num_funcs-1].undiv_end())
-        return nullptr;
-    size_t lo = 0, hi = m_num_funcs - 1;
-    while (lo < hi) {
-        auto mid = lo + ((hi - lo) >> 1);
-        if (addr >= m_functions[mid + 1].undiv_start) {
-            lo = mid + 1;
-        } else {
-            hi = mid;
-        }
-    }
-    return &m_functions[lo];
 }
 
 // TODO(performance): would be nice to turn reloc_type into a template parameter
@@ -374,16 +475,17 @@ void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
     static_assert(sizeof(*at_ptr) == 1, "Byte size not 8 bits");
     // Update the "at" address if it falls inside a diversified function
     if (esp->m_exec_section.contains_addr(reloc.get_source_address())) {
-        auto func_at = esp->FindFunction(at_ptr);
+        auto func_at = esp->m_functions.FindFunction(at_ptr);
         at_ptr = func_at->post_div_address(at_ptr);
         at_exec = true;
         reloc.set_source_ptr(at_ptr);
     }
     // Get target address
     os::BytePointer target_ptr = reloc.get_target_ptr();
-    os::API::DebugPrintf<5>("Reloc[%2d]@%p/%p=>%p\n", reloc.get_type(),
+    os::API::DebugPrintf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n", reloc.get_type(),
                             reloc.get_original_source_address().to_ptr(),
-                            at_ptr, target_ptr);
+                            at_ptr, *reinterpret_cast<uint32_t*>(at_ptr),
+                            *reinterpret_cast<uintptr_t*>(at_ptr), target_ptr);
     // Check if either source or target addresses fall inside our section
     // If not, then we really don't care about this relocation
     // TODO: we could do better: relocation could be inside exec_section
@@ -391,46 +493,30 @@ void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
     if (!at_exec && !esp->m_exec_section.contains_addr(target_ptr))
         return;
     // Compute new target address
-    auto target_func = esp->FindFunction(target_ptr);
-    if (reloc.get_addend() > 0 && target_func) {
-        auto target_sym = esp->FindFunction(target_ptr - reloc.get_addend());
-        if (target_sym && target_func != target_sym) {
-            target_ptr = target_sym->post_div_address(target_ptr, /*allow_overflow*/ true);
-            os::API::DebugPrintf<5>(" -> overflow (%p[%d] != %p[%d]); => %p\n",
-                                    target_func->undiv_start, target_func->size,
-                                    target_sym->undiv_start, target_sym->size, target_ptr);
-            reloc.set_target_ptr(target_ptr);
-            return;
-        }
-    }
+    auto target_func = esp->m_functions.FindFunction(target_ptr);
     target_ptr = target_func ? target_func->post_div_address(target_ptr) : target_ptr;
-    // os::API::DebugPrintf<5>("\x1b[A\t\t\t\t\t==>%p\n", target_ptr);
     // Update the relocation entry
+    os::API::DebugPrintf<6>("  setting => %p\n", target_ptr);
     reloc.set_target_ptr(target_ptr);
 }
 
 void ExecSectionProcessor::FixupRelocations() {
-    if (m_trap_info.header()->has_got_data()) {
-        // FIXME(performance): this is pretty slow (profile confirms it)
-        m_module.ForAllRelocations(m_trap_info.addn_info().got_start_end(), AdjustRelocation, this);
-    } else {
-        // FIXME(performance): this is pretty slow (profile confirms it)
-        m_module.ForAllRelocations(AdjustRelocation, this);
-    }
+    // FIXME(performance): this is pretty slow (profile confirms it)
+    m_module.ForAllRelocations(&m_functions, AdjustRelocation, this);
 }
 
 void ExecSectionProcessor::ProcessTrapRelocations() {
     if (m_trap_info.header()->has_nonexec_relocs()) {
         auto nonexec_relocs = m_trap_info.addn_info().nonexec_relocations();
         for (auto trap_reloc : nonexec_relocs) {
-            auto reloc = os::Module::Relocation(m_module, trap_reloc, /* exec */ false);
+            auto reloc = os::Module::Relocation(m_module, trap_reloc);
             AdjustRelocation(reloc, this);
         }
     }
     for (auto trap_entry : m_trap_info) {
         auto relocs = trap_entry.relocations();
         for (auto trap_reloc : relocs) {
-            auto reloc = os::Module::Relocation(m_module, trap_reloc, /* exec */ true);
+            auto reloc = os::Module::Relocation(m_module, trap_reloc);
             AdjustRelocation(reloc, this);
         }
     }
@@ -465,6 +551,7 @@ static RANDO_SECTION void RandomizeModule(os::Module &mod2, void *arg) {
 }
 
 extern "C"
+RANDO_PUBLIC
 RANDO_SECTION void _TRaP_RandoMain(os::Module::Handle asm_module) {
     os::API::Init();
     os::Module mod(asm_module);
