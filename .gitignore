@@ -163,4 +163,6 @@ $RECYCLE.BIN/
 
 # scons build data
 .sconsign.dblite
-sconsRelease
+
+# Selfrando output directory
+out/
