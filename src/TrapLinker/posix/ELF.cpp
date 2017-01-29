@@ -433,10 +433,8 @@ bool ElfObject::create_trap_info_impl() {
 #if RANDOLIB_DEBUG_LEVEL > 0
         trap_section_header.sh_info = section_ndx; // For debugging
 #endif
-#if RANDOLIB_ADD_TXTRP_TO_GROUPS
         if (builder.in_group())
             trap_section_header.sh_flags |= SHF_GROUP;
-#endif
 
         int trap_section_ndx = add_section(".txtrp", trap_section_header,
                                            DataBuffer(builder.get_trap_data(), 1));
@@ -451,7 +449,6 @@ bool ElfObject::create_trap_info_impl() {
         assert(!trap_relocs.empty() && "No relocations inside TRaP info");
         add_section_relocs(trap_section_ndx, trap_relocs);
 
-#if RANDOLIB_ADD_TXTRP_TO_GROUPS
         // FIXME: if we create a new group, it should go at the beginning of
         // the file
         if (builder.in_group()) {
@@ -464,7 +461,6 @@ bool ElfObject::create_trap_info_impl() {
             // FIXME: what ELF_T_xxx is a SHT_GROUP section???
             add_data(group_shndx, reinterpret_cast<void*>(group_elems), sizeof(group_elems), 1);
         }
-#endif
     }
 
     if (!m_modified)
