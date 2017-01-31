@@ -15,23 +15,23 @@
 void _TRaP_RandoMain(struct ModuleInfo* asm_module);
 
 extern char
-    _TRaP_orig_init __attribute__((weak)),
-    _TRaP_orig_entry __attribute__((weak)),
-    _TRaP_Linux_EntryPoint_init,
-    _TRaP_Linux_EntryPoint_entry,
-    _TRaP_Linux_EntryPoint_return,
-    _TRaP_xptramp_begin __attribute__((weak)),
-    _TRaP_xptramp_end __attribute__((weak)),
-    _TRaP_text_begin,
-    _TRaP_text_end,
-    _TRaP_trap_begin,
-    _TRaP_trap_end,
-    _TRaP_trap_end_page __attribute__((weak)),
-    _TRaP_got_begin,
-    _TRaP_got_end,
-    _TRaP_got_plt_begin,
-    _TRaP_got_plt_end,
-    _TRaP_dynamic;
+    _TRaP_orig_init __attribute__((weak, visibility("hidden"))),
+    _TRaP_orig_entry __attribute__((weak, visibility("hidden"))),
+    _TRaP_Linux_EntryPoint_init __attribute__((visibility("hidden"))),
+    _TRaP_Linux_EntryPoint_entry __attribute__((visibility("hidden"))),
+    _TRaP_Linux_EntryPoint_return __attribute__((visibility("hidden"))),
+    _TRaP_xptramp_begin __attribute__((weak, visibility("hidden"))),
+    _TRaP_xptramp_end __attribute__((weak, visibility("hidden"))),
+    _TRaP_text_begin __attribute__((visibility("hidden"))),
+    _TRaP_text_end __attribute__((visibility("hidden"))),
+    _TRaP_trap_begin __attribute__((visibility("hidden"))),
+    _TRaP_trap_end __attribute__((visibility("hidden"))),
+    _TRaP_trap_end_page __attribute__((weak, visibility("hidden"))),
+    _TRaP_got_begin __attribute__((visibility("hidden"))),
+    _TRaP_got_end __attribute__((visibility("hidden"))),
+    _TRaP_got_plt_begin __attribute__((visibility("hidden"))),
+    _TRaP_got_plt_end __attribute__((visibility("hidden"))),
+    _TRaP_dynamic __attribute__((visibility("hidden")));
 
 extern void _TRaP_Linux_EntryPoint_mprotect(void*, size_t, int) __attribute__((section(".selfrando.entry")));
 
