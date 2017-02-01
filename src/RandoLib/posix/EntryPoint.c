@@ -14,10 +14,12 @@
 
 void _TRaP_RandoMain(struct ModuleInfo* asm_module);
 
-#pragma GCC visibility push(hidden)
 extern char
     _TRaP_orig_init __attribute__((weak)),
-    _TRaP_orig_entry __attribute__((weak)),
+    _TRaP_orig_entry __attribute__((weak));
+
+#pragma GCC visibility push(hidden)
+extern char
     _TRaP_Linux_EntryPoint_init,
     _TRaP_Linux_EntryPoint_entry,
     _TRaP_Linux_EntryPoint_return,
@@ -27,7 +29,7 @@ extern char
     _TRaP_text_end,
     _TRaP_trap_begin,
     _TRaP_trap_end,
-    _TRaP_trap_end_page __attribute__((weak)),
+    _TRaP_trap_end_page __attribute__((weak)), // FIXME: this might not be available under -Bsymbolic
     _TRaP_got_begin,
     _TRaP_got_end,
     _TRaP_got_plt_begin,
