@@ -71,15 +71,24 @@ void _TRaP_Linux_EntryPointImpl(void) {
     module_info.dynamic = (BytePointer)&_TRaP_dynamic;
     module_info.program_info_table = &PIT;
 
+    // Save _TRaP_trap_end_page since it may be in the GOT
+    // and get accidentally relocated (this happens sometimes
+    // when .txtrp immediately precedes .text, so
+    // _TRaP_trap_end_page == _TRaP_text_begin)
+    char *orig_trap_end_page = &_TRaP_trap_end_page;
+
     _TRaP_RandoMain(&module_info);
 
 #if RANDOLIB_IS_X86_64 // FIXME: other architectures too
     // Prevent access to selfrando code and constants
-    if (&_TRaP_trap_end_page != NULL) {
-        size_t trap_page_size = &_TRaP_trap_end_page - &_TRaP_trap_begin;
+    if (orig_trap_end_page != NULL) {
+        size_t trap_page_size = orig_trap_end_page - &_TRaP_trap_begin;
         _TRaP_Linux_EntryPoint_mprotect((void*)&_TRaP_trap_begin,
                                         trap_page_size,
                                         PROT_NONE);
     }
+#else
+    // Add fake use to prevent compiler warnings
+    (void*) _orig_trap_end_page;
 #endif
 }
