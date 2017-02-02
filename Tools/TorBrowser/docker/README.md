@@ -52,11 +52,11 @@ added using `--build-arg`:
  * Building the Docker image requires a password. This password should not be
    considered secure, and can be easily revealed by calling `docker history` on
 the built image. We recommend that the built docker image (called `tbb-build`)
-be deleted as soon as possible after the build completes using `docker rmi
+is deleted as soon as possible after the build completes using `docker rmi
 tbb-build`.
 
  * The Docker container runs in privileged mode, with full access to the
    system (this is required to run QEMU and `make-vms.sh`).
-   Running `run_docker.sh` may require that current user be added to
+   Running `run_docker.sh` may require that the current user is added to
    the `docker` group either permanently or temporarily (the preferred approach)
    using `newgrp docker`.
