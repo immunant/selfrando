@@ -28,8 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "OS.h"
-#include "TrapInfo.h"
+#include "..\OS.h"
+#include "..\TrapInfo.h"
 
 #include <Windows.h>
 #include <winternl.h>
@@ -39,7 +39,7 @@
 #include <stdarg.h>
 
 extern "C" {
-#include "util/fnv.h"
+#include "../util/fnv.h"
 }
 
 #pragma comment(lib, "ntdll")
