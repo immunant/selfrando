@@ -88,7 +88,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="SConscript" />
+    <None Include="..\SConscript" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
