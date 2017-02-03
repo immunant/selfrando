@@ -1,0 +1,12 @@
+Import('env')
+
+SUBDIRS = ['LibWrapper,
+           'LinkWrapper',
+           'PatchEntry',
+           'TrapCommon',
+           'TrapLib',
+           'TrapObj',
+           'WrapperCommon']
+
+files = SConscript(dirs=SUBDIRS, exports=['env'], duplicate=0)
+Return('files')
