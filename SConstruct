@@ -50,6 +50,7 @@ defines = {
     'RANDOLIB_FORCE_INPLACE': 1 if env['FORCE_INPLACE'] else 0,
     'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']]
 }
+defines['RANDOLIB_IS_%s' % env['PLATFORM'].upper()] = 1
 defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1
 defines['RANDOLIB_LOG_TO_%s' % env['LOG'].upper()] = 1
 if env['DEBUG_SEED'] is not False:
