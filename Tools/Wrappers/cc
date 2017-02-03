@@ -8,7 +8,8 @@
 
 set -ue
 
-SR_PATH=$(readlink -f "$(dirname "$0")/../../../out/x86_64/bin")
-GOLD="$(which $(gcc -print-prog-name=ld.gold))"
+TC_PATH="$(dirname "$0")"
+CMD="$(basename "$0")"
+export PATH="$(echo $PATH | sed -E 's/^[^:]+://')"
 
-"$SR_PATH/ld.gold" -rpath "$SR_PATH" --traplinker-original-linker "$GOLD" "$@"
+exec "$CMD" "$@" -B"$TC_PATH" -ffunction-sections -fdata-sections

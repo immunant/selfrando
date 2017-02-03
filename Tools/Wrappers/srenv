@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+env PATH="$(dirname "$0")":"$PATH" $@

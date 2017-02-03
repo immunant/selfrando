@@ -8,7 +8,7 @@
 
 set -ue
 
-SR_PATH=$(readlink -f "$(dirname "$0")/../../../out/x86_64/bin")
+SR_PATH=$(readlink -f "$(dirname "$0")/../../out/x86_64/bin")
 GOLD="$(which $(gcc -print-prog-name=ld.gold))"
 
 "$SR_PATH/ld.gold" -rpath "$SR_PATH" --traplinker-original-linker "$GOLD" "$@"
