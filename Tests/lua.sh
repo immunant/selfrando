@@ -1,7 +1,7 @@
 #! /bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0" )" && pwd)"
-WRAPPER_DIR=$SCRIPT_DIR/../Tools/Wrappers/GCC
+WRAPPER_DIR=$SCRIPT_DIR/../Tools/Wrappers
 WORK_DIR=`mktemp -d` && cd $WORK_DIR
 
 # deletes the temp directory

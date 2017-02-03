@@ -9,7 +9,7 @@ NORMAL='\e[0;m'
 
 
 PWD="$(cd "$(dirname "$0" )" && pwd)"
-WRAPPER_DIR=$PWD/../Tools/Wrappers/GCC
+WRAPPER_DIR=$PWD/../Tools/Wrappers
 WORK_DIR=`mktemp -d` && cd $WORK_DIR
 PREFIX=$WORK_DIR/local/nginx
 VERSION=1.9.9
