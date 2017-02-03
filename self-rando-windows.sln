@@ -3,37 +3,37 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinkWrapper", "LinkWrapper\LinkWrapper.vcxproj", "{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinkWrapper", "src\TrapLinker\win32\LinkWrapper\LinkWrapper.vcxproj", "{E90598A6-8BB2-40DE-961A-399FAB7D9F1B}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8D036347-9D38-4DAB-8F2E-E16D23D674D3} = {8D036347-9D38-4DAB-8F2E-E16D23D674D3}
 		{5D7361A0-179C-47CB-9614-B1F73DAFFAF2} = {5D7361A0-179C-47CB-9614-B1F73DAFFAF2}
 		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE} = {7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandoLib", "RandoLib\RandoLib.vcxproj", "{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandoLib", "src\RandoLib\RandoLib.vcxproj", "{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapObj", "TrapObj\TrapObj.vcxproj", "{8D036347-9D38-4DAB-8F2E-E16D23D674D3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapObj", "src\TrapLinker\win32\TrapObj\TrapObj.vcxproj", "{8D036347-9D38-4DAB-8F2E-E16D23D674D3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatchEntry", "PatchEntry\PatchEntry.vcxproj", "{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatchEntry", "src\PatchEntry\win32\PatchEntry.vcxproj", "{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibWrapper", "LibWrapper\LibWrapper.vcxproj", "{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibWrapper", "src\TrapLinker\win32\LibWrapper\LibWrapper.vcxproj", "{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommon", "WrapperCommon\WrapperCommon.vcxproj", "{4647B789-1A03-4FA7-8F72-B2A894537EF9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommon", "src\TrapLinker\win32\WrapperCommon\WrapperCommon.vcxproj", "{4647B789-1A03-4FA7-8F72-B2A894537EF9}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapCommon", "TrapCommon\TrapCommon.vcxproj", "{87E459D4-62F5-4A2A-A175-B29E529F91C6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapCommon", "src\TrapLinker\win32\TrapCommon\TrapCommon.vcxproj", "{87E459D4-62F5-4A2A-A175-B29E529F91C6}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapLib", "TrapLib\TrapLib.vcxproj", "{747C9A54-A139-466F-BBB2-1E42EF3CF01C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapLib", "src\TrapLinker\win32\TrapLib\TrapLib.vcxproj", "{747C9A54-A139-466F-BBB2-1E42EF3CF01C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C55508A3-37D1-4B6C-8CE9-F2A3B76E791A}"
 	ProjectSection(SolutionItems) = preProject
-		Scripts\ida_textrap.py = Scripts\ida_textrap.py
-		Scripts\parse_textrap.py = Scripts\parse_textrap.py
+		Scripts\ida_textrap.py = scripts\ida_textrap.py
+		Scripts\parse_textrap.py = scripts\parse_textrap.py
 		SConstruct = SConstruct
-		Docs\textrap.txt = Docs\textrap.txt
-		Scripts\trap-msvc-libs.py = Scripts\trap-msvc-libs.py
+		Docs\textrap.txt = docs\textrap.txt
+		Scripts\trap-msvc-libs.py = scripts\trap-msvc-libs.py
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommonTests", "WrapperCommonTests\WrapperCommonTests.vcxproj", "{6F59C47A-4096-44C9-9909-C6316E69911A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommonTests", "src\TrapLinker\win32\WrapperCommonTests\WrapperCommonTests.vcxproj", "{6F59C47A-4096-44C9-9909-C6316E69911A}"
 	ProjectSection(ProjectDependencies) = postProject
 		{4647B789-1A03-4FA7-8F72-B2A894537EF9} = {4647B789-1A03-4FA7-8F72-B2A894537EF9}
 	EndProjectSection

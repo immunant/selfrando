@@ -106,27 +106,28 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="win32\EntryPoint.asm">
+    <MASM Include="EntryPoint.asm">
       <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</UseSafeExceptionHandlers>
       <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</UseSafeExceptionHandlers>
     </MASM>
-    <MASM Include="win32\TrapHeader.asm" />
+    <MASM Include="TrapHeader.asm" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="util\hash_32a.c" />
-    <ClCompile Include="RandoLib.cpp" />
-    <ClCompile Include="win32\OSImpl.cpp" />
-    <ClCompile Include="win32\Relocation.cpp" />
+    <ClCompile Include="..\util\hash_32a.c" />
+    <ClCompile Include="..\RandoLib.cpp" />
+    <ClCompile Include="OSImpl.cpp" />
+    <ClCompile Include="Relocation.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="util\fnv.h" />
-    <ClInclude Include="OS.h" />
-    <ClInclude Include="RandoLib.h" />
-    <ClInclude Include="TrapInfo.h" />
-    <ClInclude Include="win32\OSImpl.h" />
+    <ClInclude Include="..\util\fnv.h" />
+    <ClInclude Include="..\OS.h" />
+    <ClInclude Include="..\RandoLib.h" />
+    <ClInclude Include="..\TrapInfo.h" />
+    <ClInclude Include="..\TrapInfoCommon.h" />
+    <ClInclude Include="OSImpl.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="SConscript" />
+    <None Include="..\SConscript" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

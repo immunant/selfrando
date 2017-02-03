@@ -18,15 +18,12 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TrapCommon.h">
+    <ClInclude Include="COFF.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="COFF.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Trap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

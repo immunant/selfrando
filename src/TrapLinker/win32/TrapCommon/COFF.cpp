@@ -37,7 +37,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#include "coff.h"
+#include "COFF.h"
 
 #define VERBOSE 0
 
