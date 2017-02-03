@@ -28,6 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <Windows.h>
 #include <tchar.h>
 
 #include <cstdint>
@@ -40,6 +41,10 @@
 #include "COFF.h"
 
 #define VERBOSE 0
+
+static const char kTrapSectionName[] = ".txtrp$d";
+static const char kExportSectionName[] = ".edata";
+static const char kTrampolineSectionName[] = ".xptramp";
 
 // Special @feat.00 symbol that the assembler/compiler adds to mark the object file as SAFESEH-compatible (and maybe other reasons as well)
 static IMAGE_SYMBOL kFeatSymbol = { {'@', 'f', 'e', 'a', 't', '.', '0', '0' }, 0x11, IMAGE_SYM_ABSOLUTE, IMAGE_SYM_TYPE_NULL, IMAGE_SYM_CLASS_STATIC, 0 };

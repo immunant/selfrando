@@ -154,15 +154,15 @@ private:
     IMAGE_AUX_SYMBOL *m_aux_symbols;
 };
 
-class COFFFile : public Object {
+class COFFFile {
 public:
-    COFFFile(void *file_data) : Object(file_data) {
+    COFFFile(void *file_data) : m_file_data(file_data) {
         m_hdr = reinterpret_cast<IMAGE_FILE_HEADER*>(m_file_data);
     }
 
-    bool parse() override;
+    bool parse();
 
-    bool createTRaPInfo() override;
+    bool createTRaPInfo();
 
     const IMAGE_FILE_HEADER *header() const {
         return m_hdr;
@@ -204,9 +204,9 @@ public:
         m_strings = strings;
     }
 
-    void writeToFile(FILE *f) override;
+    void writeToFile(FILE *f);
 
-    size_t totalSize() const override;
+    size_t totalSize() const;
 
 private:
     template<typename T = void>
@@ -214,15 +214,12 @@ private:
         return reinterpret_cast<T*>(reinterpret_cast<char*>(m_file_data)+at);
     }
 
+    void *m_file_data;
     IMAGE_FILE_HEADER *m_hdr;
     std::vector<COFFSection> m_sections;
     char *m_strings;
     std::vector<COFFSymbol> m_symbols;
     std::unordered_map<size_t, size_t> m_symbols_by_index;
-
-    static const char kTrapSectionName[] = ".txtrp$d";
-    static const char kExportSectionName[] = ".edata";
-    static const char kTrampolineSectionName[] = ".xptramp";
 
     friend class COFFSection;
     friend class COFFSymbol;
