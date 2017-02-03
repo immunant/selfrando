@@ -12,7 +12,7 @@ install:
   # - export CXX="g++-4.9"; export CC="gcc-4.9";
 script:
   - sh scripts/build_libelf.sh $PWD/libelf # avoid using old distro's version
-  - scons arch=x86_64
+  - scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
   - Tests/thttpd.sh
   - Tests/lua.sh
   - Tests/nginx.sh
