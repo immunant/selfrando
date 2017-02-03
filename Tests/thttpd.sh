@@ -1,7 +1,11 @@
 #! /bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0" )" && pwd)"
-WRAPPER_DIR=$SCRIPT_DIR/../Tools/Wrappers/GCC
+if [[ "$CC" == clang ]]; then
+  WRAPPER_DIR=$SCRIPT_DIR/../Tools/Wrappers/Clang
+else
+  WRAPPER_DIR=$SCRIPT_DIR/../Tools/Wrappers/GCC
+fi
 WORK_DIR=`mktemp -d` && cd $WORK_DIR
 
 # deletes the temp directory

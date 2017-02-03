@@ -1,19 +1,33 @@
 language: cpp
-compiler: gcc
+compiler:
+  - gcc
+  - clang
 sudo: required
 dist: trusty
+addons:
+  apt:
+    sources:
+      ubuntu-toolchain-r-test
+    packages:
+      - zlib1g-dev
+      - pkg-config
+      - apache2-utils
+      - libxml2
+      - libxml2-dev
+      - libxslt1-dev
+      - libgd-dev
+      - libperl-dev
+      - libgd2-xpm-dev
+      - libssl-dev
+      - libpcre3-dev
 before_install:
-  # - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libelf-dev zlib1g-dev pkg-config apache2-utils # gcc-4.9 g++-4.9
-  # nginx dependencies
-  - sudo apt-get install -y libxml2-dev libxml2 libxslt1-dev libgd-dev libperl-dev libgd2-xpm-dev libssl-dev libpcre3-dev
 install:
   # - export CXX="g++-4.9"; export CC="gcc-4.9";
 script:
-  - scons arch=x86_64
+  - sh scripts/build_libelf.sh $PWD/libelf # avoid using old distro's version
+  - scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
   - Tests/thttpd.sh
   - Tests/lua.sh
   - Tests/nginx.sh
 after_success:
-  - bash <(curl -s https://codecov.io/bash)  
+  - bash <(curl -s https://codecov.io/bash)
