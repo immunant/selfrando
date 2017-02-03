@@ -164,7 +164,7 @@ bool TRaPCOFFFile(const _TCHAR *input_file, const _TCHAR *output_file) {
 		return false; 
 	}
 
-    auto trap_ok = TRaPCOFFFile(&coff_file);
+    auto trap_ok = coff_file.createTRaPInfo();
 	if (!trap_ok) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Didn't add TRaP info to '%s'\n", input_file);
@@ -188,7 +188,7 @@ bool TRaPCOFFFile(const _TCHAR *input_file, const _TCHAR *output_file) {
 bool TRaPCOFFLibrary(COFFLibrary *lib) {
     for (auto &obj_ptr : lib->objects()) {
         if (obj_ptr)
-            TRaPCOFFFile(obj_ptr.get());
+            obj_ptr->createTRaPInfo();
     }
     return true;
 }
