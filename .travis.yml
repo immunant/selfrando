@@ -1,5 +1,7 @@
 language: cpp
-compiler: gcc
+compiler:
+  - gcc
+  - clang
 sudo: required
 dist: trusty
 addons:
