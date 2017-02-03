@@ -34,7 +34,7 @@
 #include <winternl.h>
 
 class TrapInfo;
-class TrapReloc;
+struct TrapReloc;
 
 struct FunctionList;
 struct Function;
