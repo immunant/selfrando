@@ -18,4 +18,4 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "../TrapCommon/TrapCommon.h"
+#include "../TrapCommon/COFF.h"

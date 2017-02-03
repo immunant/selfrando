@@ -21,4 +21,4 @@
 #include <vector>
 
 #include "..\WrapperCommon\WrapperCommon.h"
-#include "..\TrapCommon\TrapCommon.h"
+#include "..\TrapCommon\COFF.h"
