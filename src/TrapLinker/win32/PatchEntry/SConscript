@@ -4,8 +4,8 @@ Import('env')
 env = env.Clone()
 files = None
 if env['PLATFORM'] == 'win32':
-    SOURCES = ['win32/PatchEntry.cpp',
-               'win32/stdafx.cpp']
+    SOURCES = ['PatchEntry.cpp',
+               'stdafx.cpp']
     files = env.Program('PatchEntry', SOURCES)
 
 # FIXME: for weird reasons, bash&UAC don't like programs named "Patch"

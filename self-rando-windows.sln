@@ -14,7 +14,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandoLib", "src\RandoLib\wi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapObj", "src\TrapLinker\win32\TrapObj\TrapObj.vcxproj", "{8D036347-9D38-4DAB-8F2E-E16D23D674D3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatchEntry", "src\PatchEntry\win32\PatchEntry.vcxproj", "{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PatchEntry", "src\TrapLinker\win32\PatchEntry\PatchEntry.vcxproj", "{5D7361A0-179C-47CB-9614-B1F73DAFFAF2}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibWrapper", "src\TrapLinker\win32\LibWrapper\LibWrapper.vcxproj", "{503B2D7E-9AA4-40AB-806A-DACB36BCDFFA}"
 EndProject
