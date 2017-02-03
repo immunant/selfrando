@@ -10,7 +10,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinkWrapper", "src\TrapLink
 		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE} = {7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandoLib", "src\RandoLib\RandoLib.vcxproj", "{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandoLib", "src\RandoLib\win32\RandoLib.vcxproj", "{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TrapObj", "src\TrapLinker\win32\TrapObj\TrapObj.vcxproj", "{8D036347-9D38-4DAB-8F2E-E16D23D674D3}"
 EndProject
