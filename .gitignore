@@ -166,3 +166,5 @@ $RECYCLE.BIN/
 
 # Selfrando output directory
 out/
+self-rando-windows.VC.db
+self-rando-windows.VC.VC.opendb
