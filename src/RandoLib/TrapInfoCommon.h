@@ -35,6 +35,7 @@ enum ExtraInfo : uint32_t {
 };
 
 static inline uint32_t RelocExtraInfo(unsigned type) {
+#if RANDOLIB_IS_POSIX
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64
     switch (type) {
@@ -99,6 +100,8 @@ static inline uint32_t RelocExtraInfo(unsigned type) {
     };
 #else
 #assert "Invalid target architecture"
+#endif
+#elif RANDOLIB_IS_WIN32
 #endif
 
     return EXTRA_NONE;
