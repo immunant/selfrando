@@ -7,7 +7,7 @@
  */
 
 
-#include "OS.h"
+#include "..\OS.h"
 
 void os::APIImpl::InsertNOPs(os::BytePointer at, size_t count) {
     switch(count) {
