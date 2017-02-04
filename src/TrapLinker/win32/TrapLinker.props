@@ -12,6 +12,12 @@
     <ClCompile>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>$(SolutionDir)$(Configuration)\PatchEntry.exe $(SolutionDir)$(Configuration)\$(ProjectName).exe</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Run PatchEntry on the output executable</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="MSVC_LINKER">
