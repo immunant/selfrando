@@ -20,6 +20,7 @@ addons:
       - libgd2-xpm-dev
       - libssl-dev
       - libpcre3-dev
+      - libreadline-dev
 before_install:
 install:
   # - export CXX="g++-4.9"; export CC="gcc-4.9";
