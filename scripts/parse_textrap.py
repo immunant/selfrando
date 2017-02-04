@@ -45,7 +45,7 @@ trap_address = None
 trap_data, trap_data_len = '', 0
 got_plt_address = 0
 if platform.system() == 'Windows':
-    import pefile.pefile as pefile
+    import pefile
     infile = pefile.PE(sys.argv[1])
     trap_list = [sec for sec in infile.sections if sec.Name[:6] == ".txtrp"]
     if len(trap_list) == 0:
