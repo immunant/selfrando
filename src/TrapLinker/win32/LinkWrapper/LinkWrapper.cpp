@@ -66,7 +66,11 @@ static void ProcessArg(const _TCHAR *arg) {
 
 static void ProcessCommands(const _TCHAR *file) {
 	FILE *f;
-	int err = _tfopen_s(&f, file, TEXT("r"));
+#ifdef UNICODE
+    int err = _wfopen_s(&f, file, L"r,ccs=unicode");
+#else
+    int err = fopen_s(&f, file, "r");
+#endif
 	if (err)
 		return;
 
