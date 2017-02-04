@@ -21,6 +21,7 @@ wget -O $LIBELF_FILE $LIBELF_URL
 tar xjf $LIBELF_FILE
 
 NUM_PROCS=`nproc --all`
+CC=gcc # doesn't build with clang
 
 cd "elfutils-$LIBELF_VER"
 ./configure --quiet --prefix=$OUTDIR/libelf-prefix
