@@ -56,6 +56,9 @@ if platform.system() == 'Windows':
     trap_data = trap_sec.get_data()
     trap_data_len = min(trap_sec.SizeOfRawData, trap_sec.Misc_VirtualSize)
     #print repr(trap_sec.get_data())
+    
+    reloc_has_extra_symbol = lambda reloc_type : False
+    reloc_has_extra_addend = lambda reloc_type : False
 
 elif platform.system() == 'Linux':
     readelf_path = 'readelf'
