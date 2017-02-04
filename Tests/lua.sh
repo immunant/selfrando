@@ -10,7 +10,7 @@ WORK_DIR=`mktemp -d` && cd $WORK_DIR
 
 # deletes the temp directory
 function cleanup {
-  # rm -rf "$WORK_DIR"
+  rm -rf "$WORK_DIR"
   echo "Deleted temp working directory $WORK_DIR"
 }
 
@@ -26,7 +26,7 @@ NUM_PROCS=`nproc --all`
 
 cd $LUA_HOME
 sed --in-place -e 's/^CC=/CC?=/g' ./src/Makefile
-MYCFLAGS=" -ffunction-sections"
+MYCFLAGS="-ffunction-sections"
 MYLDFLAGS="-B$SELFRANDO_BIN -Wl,-rpath,$SELFRANDO_BIN -Wl,--gc-sections" 
 make linux -j$NUM_PROCS MYCFLAGS="$MYCFLAGS" MYLDFLAGS="$MYLDFLAGS"
 
