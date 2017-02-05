@@ -8,11 +8,18 @@ WARNING='\e[1;36m'
 NORMAL='\e[0;m'
 
 
-PWD="$(cd "$(dirname "$0" )" && pwd)"
-WRAPPER_DIR=$PWD/../Tools/Wrappers
+SCRIPT_DIR="$(cd "$(dirname "$0" )" && pwd)"
+SELFRANDO_BIN=$SCRIPT_DIR/../out/$(uname -p)/bin
+if [ ! -e "$SELFRANDO_BIN/traplinker" ]; then
+  echo "Build selfrando before running this script"
+  exit 1
+fi
 WORK_DIR=`mktemp -d` && cd $WORK_DIR
 PREFIX=$WORK_DIR/local/nginx
-VERSION=1.9.9
+VERSION=1.9.15
+SR_OPT="-g -O2 -fPIE -fstack-protector -ffunction-sections"
+LD_OPT="-B$SELFRANDO_BIN -Wl,-rpath,$SELFRANDO_BIN -Wl,--gc-sections"
+NUM_PROCS=`nproc --all`
 
 # deletes the temp directory
 function cleanup {
@@ -63,22 +70,22 @@ command -v ab >/dev/null 2>&1 || { echo >&2 -e "${WARNING}Apache bench (ab) not 
 
 if [ ! -d $WORK_DIR/nginx-$VERSION ];then
   echo -e "\n${INFO}Download source code in progress...${NORMAL}"
-  curl http://nginx.org/download/nginx-$VERSION.tar.gz | tar xz
+  curl -s http://nginx.org/download/nginx-$VERSION.tar.gz | tar xz
 fi
 
 if [ ! -d $WORK_DIR/nginx-$VERSION ];then
   echo -e "\n${WARNING}Nginx source code folder not found${NORMAL}"
-  exit 0
+  exit 1
 fi
 
 cd $WORK_DIR/nginx-$VERSION
 
-$WRAPPER_DIR/srenv ./configure $OPTIONS ||  { echo >&2 -e "${WARNING}configure failed.${NORMAL}"; exit 1; }
+./configure $OPTIONS --with-cc-opt="$SR_OPT" --with-ld-opt="$LD_OPT" ||  { echo >&2 -e "${WARNING}configure failed.${NORMAL}"; exit 1; }
 echo -e "\n${INFO}Compiling nginx...${NORMAL}"
-$WRAPPER_DIR/srenv make CCOPT="--no-warn" --quiet  ||  { echo >&2 -e "${WARNING}make failed.${NORMAL}"; exit 1; }
+make -j$NUM_PROCS CCOPT="-w" --quiet  ||  { echo >&2 -e "${WARNING}make failed.${NORMAL}"; exit 1; }
 
 echo -e "\n${INFO}Installing nginx...${NORMAL}"
-$WRAPPER_DIR/srenv make install CCOPT="--no-warn" --quiet ||  { echo >&2 -e "${WARNING}make install failed.${NORMAL}"; exit 1; }
+make install CCOPT="-w" --quiet ||  { echo >&2 -e "${WARNING}make install failed.${NORMAL}"; exit 1; }
 CONF=$PREFIX/conf/nginx.conf
 if [ ! -f $CONF ];then
   echo -e "\n${WARNING}Nginx configuration file not found${NORMAL}"
