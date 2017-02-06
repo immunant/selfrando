@@ -28,12 +28,16 @@ struct Function;
 extern "C" {
 void _TRaP_qsort(void *, size_t, size_t,
                  int (*)(const void *, const void *));
-int _TRaP_libc_rand_r(unsigned int*);
 time_t _TRaP_libc_time(time_t*);
 extern void *_TRaP_libc_memcpy(void *__restrict, const void *__restrict, size_t);
 extern int _TRaP_libc_memcmp(const void*, const void*, size_t);
 extern char *_TRaP_libc_getenv(const char*);
 extern long _TRaP_libc_strtol(const char*, char **, int);
+#if RANDOLIB_RNG_IS_RAND_R
+int _TRaP_libc_rand_r(unsigned int*);
+#elif RANDOLIB_RNG_IS_URANDOM
+long _TRaP_rand_linux(long);
+#endif
 }
 
 namespace os {
@@ -336,6 +340,7 @@ public:
     }
 
     static inline size_t GetRandom(size_t max) {
+#if RANDOLIB_RNG_IS_RAND_R
 #if RANDOLIB_IS_ARM
         // On some architectures, we want to avoid the division below
         // because it's implemented in libgcc.so
@@ -351,6 +356,11 @@ public:
         }
 #else
         return static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed)) % max; // FIXME: better RNG
+#endif
+#elif RANDOLIB_RNG_IS_URANDOM
+        return _TRaP_rand_linux(max);
+#else
+#error Unknown RNG setting
 #endif
     }
 

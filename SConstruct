@@ -17,6 +17,8 @@ vars.Add('DEBUG_SEED', 'Fixed seed to use for debugging', False) # We need to us
 vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertion) if in-place randomization would fail', 0))
 vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files to /tmp/',
                       'no', allowed_values=('no', 'env', 'always')))
+vars.Add(EnumVariable('RNG', 'Random number generator to use',
+                      'urandom', allowed_values=('rand_r', 'urandom')))
 
 def decode_debug_level(var):
     if var == 'env':
@@ -55,6 +57,7 @@ defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1
 defines['RANDOLIB_LOG_TO_%s' % env['LOG'].upper()] = 1
 if env['DEBUG_SEED'] is not False:
     defines['RANDOLIB_DEBUG_SEED'] = env['DEBUG_SEED']
+defines['RANDOLIB_RNG_IS_%s' % env['RNG'].upper()] = 1
 
 env.Append(CPPDEFINES = defines)
 

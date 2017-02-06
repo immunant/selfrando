@@ -39,6 +39,8 @@ ssize_t _TRaP_libc_write(int, const void*, size_t);
 int _TRaP_libc_open(const char*, int, ...);
 int _TRaP_libc____close(int);
 pid_t _TRaP_libc___getpid(void);
+
+void _TRaP_rand_close_fd(void);
 }
 
 namespace os {
@@ -104,18 +106,24 @@ RANDO_SECTION void API::Init() {
 #undef STRINGIFY_MACRO
 #endif
 
+#if RANDOLIB_RNG_IS_RAND_R
 #ifdef RANDOLIB_DEBUG_SEED
     rand_seed = RANDOLIB_DEBUG_SEED;
-#else
+#else // RANDOLIB_DEBUG_SEED
     const char *seed_var = GetEnv("SELFRANDO_random_seed");
     if (seed_var != nullptr) {
         rand_seed = _TRaP_libc_strtol(seed_var, nullptr, 0);
     } else {
         rand_seed = GetTime();
     }
-#endif
+#endif // RANDOLIB_DEBUG_SEED
     // TODO: use fnv hash to mix up the seed
     DebugPrintf<1>("Rand seed:%u\n", rand_seed);
+#elif RANDOLIB_RNG_IS_URANDOM
+    DebugPrintf<1>("Using /dev/urandom as RNG\n");
+#else
+#error Unknown RNG setting
+#endif
 }
 
 RANDO_SECTION void API::Finish() {
@@ -123,6 +131,9 @@ RANDO_SECTION void API::Finish() {
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
     if (log_fd != -1)
         _TRaP_libc____close(log_fd);
+#endif
+#if RANDOLIB_RNG_IS_URANDOM
+    _TRaP_rand_close_fd();
 #endif
 }
 

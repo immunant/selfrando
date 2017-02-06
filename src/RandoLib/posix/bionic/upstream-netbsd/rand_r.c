@@ -33,8 +33,10 @@
 
 #include <stdlib.h>
 
+#if RANDOLIB_RNG_IS_RAND_R
 int
 _TRaP_libc_rand_r(unsigned int *seed)
 {
 	return ((*seed = *seed * 1103515245 + 12345) & RAND_MAX);
 }
+#endif

@@ -15,6 +15,9 @@ SOURCES.extend([Glob('bionic/stubs/*.c'),
                 Glob('bionic/arch-%s/*.c' % target),
                 Glob('bionic/arch-%s/*.cpp' % target)])
 
+if env['RNG'] == 'urandom':
+    SOURCES.append('util/rand_linux.cpp')
+
 lib_env = env.Clone()
 lib_env.Append(CPPPATH = ['#/src/RandoLib',
                           '#/src/RandoLib/posix/%s' % target,
