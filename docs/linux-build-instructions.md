@@ -10,4 +10,5 @@ To build a load-time self-randomizing program, take the following steps:
 ```
 - Run the program.
 
-These instructions were tested on Ubuntu 14.04 and 16.04.
+These instructions were tested on Ubuntu 14.04 and 16.04, and should work with
+both GCC and clang.
