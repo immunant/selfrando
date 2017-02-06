@@ -2,7 +2,7 @@ import sys
 import os
 
 vars = Variables(None, ARGUMENTS)
-vars.Add(EnumVariable(('TARGET_ARCH', 'arch'), 'Target architecture', 'x86',
+vars.Add(EnumVariable(('TARGET_ARCH', 'arch'), 'Target architecture', 'x86_64',
                       allowed_values=('x86', 'x86_64', 'arm', 'arm64')))
 vars.Add(EnumVariable('LOG', 'Logging to perform', 'default',
                       allowed_values=('default', 'none', 'console', 'file', 'system')))
