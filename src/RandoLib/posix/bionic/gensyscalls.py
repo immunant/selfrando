@@ -228,12 +228,12 @@ def add_footer(pointer_length, stub, syscall):
     # Add any aliases for this syscall.
     aliases = syscall["aliases"]
     for alias in aliases:
-        stub += "\nALIAS_SYMBOL(__TRaP_libc_%s, __TRaP_libc_%s)\n" % (alias, syscall["func"])
+        stub += "\nALIAS_SYMBOL(%s, %s)\n" % (alias, syscall["func"])
 
     # Use hidden visibility on LP64 for any functions beginning with underscores.
     # Force hidden visibility for any functions which begin with 3 underscores
     if (pointer_length == 64 and syscall["func"].startswith("__")) or syscall["func"].startswith("___"):
-        stub += '.hidden __TRaP_libc_' + syscall["func"] + '\n'
+        stub += '.hidden _TRaP_libc_' + syscall["func"] + '\n'
 
     return stub
 
