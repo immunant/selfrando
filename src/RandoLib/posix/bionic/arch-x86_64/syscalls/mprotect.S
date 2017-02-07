@@ -3,7 +3,11 @@
 #include <private/bionic_asm.h>
 
 ENTRY(mprotect)
+#ifdef __NR_mprotect
     movl    $__NR_mprotect, %eax
     syscall
+#else
+    mov     $-ENOSYS, %eax
+#endif
     ret
 END(mprotect)

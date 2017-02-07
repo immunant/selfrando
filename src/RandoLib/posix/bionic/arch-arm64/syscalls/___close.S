@@ -3,8 +3,12 @@
 #include <private/bionic_asm.h>
 
 ENTRY(___close)
+#ifdef __NR_close
     mov     x8, __NR_close
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(___close)
 .hidden _TRaP_libc____close

@@ -355,4 +355,5 @@ pid_t       __getpid:getpid()  all
 int __gettimeofday:gettimeofday(timeval*, timezone*)    all
 int     cacheflush:__ARM_NR_cacheflush(long start, long end, long flags)  arm
 
+int getrandom(void*, size_t, unsigned int) all
 

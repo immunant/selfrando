@@ -15,8 +15,12 @@ ENTRY(lseek)
     mov     16(%esp), %ebx
     mov     20(%esp), %ecx
     mov     24(%esp), %edx
+#ifdef __NR_lseek
     movl    $__NR_lseek, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %edx
     popl    %ecx
     popl    %ebx

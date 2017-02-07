@@ -3,8 +3,12 @@
 #include <private/bionic_asm.h>
 
 ENTRY(__getpid)
+#ifdef __NR_getpid
     mov     x8, __NR_getpid
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(__getpid)
 .hidden _TRaP_libc___getpid

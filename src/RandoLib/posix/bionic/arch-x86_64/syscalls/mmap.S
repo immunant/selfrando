@@ -4,8 +4,12 @@
 
 ENTRY(mmap)
     movq    %rcx, %r10
+#ifdef __NR_mmap
     movl    $__NR_mmap, %eax
     syscall
+#else
+    mov     $-ENOSYS, %eax
+#endif
     ret
 END(mmap)
 

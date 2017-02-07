@@ -11,8 +11,12 @@ ENTRY(munmap)
     .cfi_rel_offset ecx, 0
     mov     12(%esp), %ebx
     mov     16(%esp), %ecx
+#ifdef __NR_munmap
     movl    $__NR_munmap, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %ecx
     popl    %ebx
     ret

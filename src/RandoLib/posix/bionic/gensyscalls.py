@@ -61,15 +61,20 @@ ENTRY(%(func)s)
 #
 
 arm_eabi_call_default = syscall_stub_header + """\
+#ifdef %(__NR_name)s
     mov     ip, r7
     ldr     r7, =%(__NR_name)s
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(%(func)s)
 """
 
 arm_eabi_call_long = syscall_stub_header + """\
+#ifdef %(__NR_name)s
     mov     ip, sp
     stmfd   sp!, {r4, r5, r6, r7}
     .cfi_def_cfa_offset 16
@@ -82,6 +87,9 @@ arm_eabi_call_long = syscall_stub_header + """\
     swi     #0
     ldmfd   sp!, {r4, r5, r6, r7}
     .cfi_def_cfa_offset 0
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(%(func)s)
 """
@@ -92,8 +100,12 @@ END(%(func)s)
 #
 
 arm64_call = syscall_stub_header + """\
+#ifdef %(__NR_name)s
     mov     x8, %(__NR_name)s
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(%(func)s)
 """
@@ -106,8 +118,12 @@ END(%(func)s)
 x86_registers = [ "ebx", "ecx", "edx", "esi", "edi", "ebp" ]
 
 x86_call = """\
+#ifdef %(__NR_name)s
     movl    $%(__NR_name)s, %%eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %%eax
+#endif
 """
 
 x86_return = """\
@@ -121,8 +137,12 @@ END(%(func)s)
 #
 
 x86_64_call = """\
+#ifdef %(__NR_name)s
     movl    $%(__NR_name)s, %%eax
     syscall
+#else
+    mov     $-ENOSYS, %%eax
+#endif
     ret
 END(%(func)s)
 """

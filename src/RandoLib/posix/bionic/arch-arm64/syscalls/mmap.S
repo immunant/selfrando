@@ -3,8 +3,12 @@
 #include <private/bionic_asm.h>
 
 ENTRY(mmap)
+#ifdef __NR_mmap
     mov     x8, __NR_mmap
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(mmap)
 

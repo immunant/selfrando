@@ -3,9 +3,13 @@
 #include <private/bionic_asm.h>
 
 ENTRY(lseek)
+#ifdef __NR_lseek
     mov     ip, r7
     ldr     r7, =__NR_lseek
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(lseek)

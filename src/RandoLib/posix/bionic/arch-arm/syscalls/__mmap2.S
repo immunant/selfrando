@@ -3,6 +3,7 @@
 #include <private/bionic_asm.h>
 
 ENTRY(__mmap2)
+#ifdef __NR_mmap2
     mov     ip, sp
     stmfd   sp!, {r4, r5, r6, r7}
     .cfi_def_cfa_offset 16
@@ -15,5 +16,8 @@ ENTRY(__mmap2)
     swi     #0
     ldmfd   sp!, {r4, r5, r6, r7}
     .cfi_def_cfa_offset 0
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(__mmap2)

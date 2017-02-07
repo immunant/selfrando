@@ -19,8 +19,12 @@ ENTRY(__openat)
     mov     24(%esp), %ecx
     mov     28(%esp), %edx
     mov     32(%esp), %esi
+#ifdef __NR_openat
     movl    $__NR_openat, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %esi
     popl    %edx
     popl    %ecx

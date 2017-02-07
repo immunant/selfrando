@@ -3,7 +3,11 @@
 #include <private/bionic_asm.h>
 
 ENTRY(read)
+#ifdef __NR_read
     mov     x8, __NR_read
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(read)

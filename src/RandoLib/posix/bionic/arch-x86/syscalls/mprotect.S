@@ -15,8 +15,12 @@ ENTRY(mprotect)
     mov     16(%esp), %ebx
     mov     20(%esp), %ecx
     mov     24(%esp), %edx
+#ifdef __NR_mprotect
     movl    $__NR_mprotect, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %edx
     popl    %ecx
     popl    %ebx

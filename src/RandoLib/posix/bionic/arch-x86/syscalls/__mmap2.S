@@ -27,8 +27,12 @@ ENTRY(__mmap2)
     mov     40(%esp), %esi
     mov     44(%esp), %edi
     mov     48(%esp), %ebp
+#ifdef __NR_mmap2
     movl    $__NR_mmap2, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %ebp
     popl    %edi
     popl    %esi

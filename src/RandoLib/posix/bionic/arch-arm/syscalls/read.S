@@ -3,9 +3,13 @@
 #include <private/bionic_asm.h>
 
 ENTRY(read)
+#ifdef __NR_read
     mov     ip, r7
     ldr     r7, =__NR_read
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(read)

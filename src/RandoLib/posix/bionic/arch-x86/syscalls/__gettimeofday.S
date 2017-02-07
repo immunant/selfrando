@@ -11,8 +11,12 @@ ENTRY(__gettimeofday)
     .cfi_rel_offset ecx, 0
     mov     12(%esp), %ebx
     mov     16(%esp), %ecx
+#ifdef __NR_gettimeofday
     movl    $__NR_gettimeofday, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %ecx
     popl    %ebx
     ret

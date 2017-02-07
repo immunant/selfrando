@@ -7,7 +7,7 @@ ENTRY(getrandom)
     movl    $__NR_getrandom, %eax
     syscall
 #else
-    mov $-ENOSYS, %eax
+    mov     $-ENOSYS, %eax
 #endif
     ret
 END(getrandom)

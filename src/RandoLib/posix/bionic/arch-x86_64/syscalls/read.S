@@ -3,7 +3,11 @@
 #include <private/bionic_asm.h>
 
 ENTRY(read)
+#ifdef __NR_read
     movl    $__NR_read, %eax
     syscall
+#else
+    mov     $-ENOSYS, %eax
+#endif
     ret
 END(read)

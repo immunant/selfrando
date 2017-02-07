@@ -3,9 +3,13 @@
 #include <private/bionic_asm.h>
 
 ENTRY(__openat)
+#ifdef __NR_openat
     mov     ip, r7
     ldr     r7, =__NR_openat
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(__openat)

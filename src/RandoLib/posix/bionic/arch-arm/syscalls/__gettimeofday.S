@@ -3,9 +3,13 @@
 #include <private/bionic_asm.h>
 
 ENTRY(__gettimeofday)
+#ifdef __NR_gettimeofday
     mov     ip, r7
     ldr     r7, =__NR_gettimeofday
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(__gettimeofday)

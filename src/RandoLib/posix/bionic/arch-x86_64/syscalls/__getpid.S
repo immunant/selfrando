@@ -3,8 +3,12 @@
 #include <private/bionic_asm.h>
 
 ENTRY(__getpid)
+#ifdef __NR_getpid
     movl    $__NR_getpid, %eax
     syscall
+#else
+    mov     $-ENOSYS, %eax
+#endif
     ret
 END(__getpid)
 .hidden _TRaP_libc___getpid

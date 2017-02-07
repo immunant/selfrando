@@ -4,8 +4,12 @@
 
 ENTRY(__openat)
     movq    %rcx, %r10
+#ifdef __NR_openat
     movl    $__NR_openat, %eax
     syscall
+#else
+    mov     $-ENOSYS, %eax
+#endif
     ret
 END(__openat)
 .hidden _TRaP_libc___openat

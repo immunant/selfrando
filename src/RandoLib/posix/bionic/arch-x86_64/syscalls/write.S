@@ -3,7 +3,11 @@
 #include <private/bionic_asm.h>
 
 ENTRY(write)
+#ifdef __NR_write
     movl    $__NR_write, %eax
     syscall
+#else
+    mov     $-ENOSYS, %eax
+#endif
     ret
 END(write)

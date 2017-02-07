@@ -3,8 +3,12 @@
 #include <private/bionic_asm.h>
 
 ENTRY(lseek)
+#ifdef __NR_lseek
     mov     x8, __NR_lseek
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(lseek)
 

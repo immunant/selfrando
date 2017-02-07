@@ -7,8 +7,12 @@ ENTRY(___close)
     .cfi_def_cfa_offset 8
     .cfi_rel_offset ebx, 0
     mov     8(%esp), %ebx
+#ifdef __NR_close
     movl    $__NR_close, %eax
     int     $0x80
+#else
+    mov     $-ENOSYS, %eax
+#endif
     popl    %ebx
     ret
 END(___close)

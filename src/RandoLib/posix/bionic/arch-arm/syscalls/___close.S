@@ -3,10 +3,14 @@
 #include <private/bionic_asm.h>
 
 ENTRY(___close)
+#ifdef __NR_close
     mov     ip, r7
     ldr     r7, =__NR_close
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(___close)
 .hidden _TRaP_libc____close

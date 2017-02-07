@@ -3,9 +3,13 @@
 #include <private/bionic_asm.h>
 
 ENTRY(__getpid)
+#ifdef __NR_getpid
     mov     ip, r7
     ldr     r7, =__NR_getpid
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(__getpid)

@@ -9,6 +9,5 @@ ENTRY(getrandom)
 #else
     mov     x0, #-ENOSYS
 #endif
-
     ret
 END(getrandom)

@@ -3,7 +3,11 @@
 #include <private/bionic_asm.h>
 
 ENTRY(mprotect)
+#ifdef __NR_mprotect
     mov     x8, __NR_mprotect
     svc     #0
+#else
+    mov     x0, #-ENOSYS
+#endif
     ret
 END(mprotect)

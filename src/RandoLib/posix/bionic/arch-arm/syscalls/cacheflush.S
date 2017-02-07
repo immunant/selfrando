@@ -3,9 +3,13 @@
 #include <private/bionic_asm.h>
 
 ENTRY(cacheflush)
+#ifdef __ARM_NR_cacheflush
     mov     ip, r7
     ldr     r7, =__ARM_NR_cacheflush
     swi     #0
     mov     r7, ip
+#else
+    mov     r0, #-ENOSYS
+#endif
     bx      lr
 END(cacheflush)
