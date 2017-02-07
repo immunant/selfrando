@@ -91,7 +91,7 @@ _TRaP_rand_getentropy(void *buf, size_t buflen) {
     for (nread = 0; nread < buflen;) {
       ssize_t i = _TRaP_libc_read(_TRaP_rand_urandom_fd, out, buflen - nread);
       if (i < 0) {
-        if (errno == EAGAIN) {
+        if (i == -EAGAIN) {
           continue;
         }
         RANDO_ASSERT(false);
