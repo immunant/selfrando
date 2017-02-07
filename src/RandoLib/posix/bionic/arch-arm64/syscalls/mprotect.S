@@ -5,10 +5,5 @@
 ENTRY(mprotect)
     mov     x8, __NR_mprotect
     svc     #0
-
-    cmn     x0, #(MAX_ERRNO + 1)
-    cneg    x0, x0, hi
-    b.hi    __set_errno_internal
-
     ret
 END(mprotect)

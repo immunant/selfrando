@@ -9,13 +9,6 @@ ENTRY(___close)
     mov     8(%esp), %ebx
     movl    $__NR_close, %eax
     int     $0x80
-    cmpl    $-MAX_ERRNO, %eax
-    jb      1f
-    negl    %eax
-    pushl   %eax
-    call    __set_errno_internal
-    addl    $4, %esp
-1:
     popl    %ebx
     ret
 END(___close)

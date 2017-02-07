@@ -21,13 +21,6 @@ ENTRY(__openat)
     mov     32(%esp), %esi
     movl    $__NR_openat, %eax
     int     $0x80
-    cmpl    $-MAX_ERRNO, %eax
-    jb      1f
-    negl    %eax
-    pushl   %eax
-    call    __set_errno_internal
-    addl    $4, %esp
-1:
     popl    %esi
     popl    %edx
     popl    %ecx

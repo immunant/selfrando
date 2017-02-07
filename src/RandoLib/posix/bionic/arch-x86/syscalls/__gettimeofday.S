@@ -13,13 +13,6 @@ ENTRY(__gettimeofday)
     mov     16(%esp), %ecx
     movl    $__NR_gettimeofday, %eax
     int     $0x80
-    cmpl    $-MAX_ERRNO, %eax
-    jb      1f
-    negl    %eax
-    pushl   %eax
-    call    __set_errno_internal
-    addl    $4, %esp
-1:
     popl    %ecx
     popl    %ebx
     ret

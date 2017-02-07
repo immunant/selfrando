@@ -5,12 +5,6 @@
 ENTRY(___close)
     movl    $__NR_close, %eax
     syscall
-    cmpq    $-MAX_ERRNO, %rax
-    jb      1f
-    negl    %eax
-    movl    %eax, %edi
-    call    __set_errno_internal
-1:
     ret
 END(___close)
 .hidden _TRaP_libc____close

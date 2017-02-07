@@ -17,13 +17,6 @@ ENTRY(mprotect)
     mov     24(%esp), %edx
     movl    $__NR_mprotect, %eax
     int     $0x80
-    cmpl    $-MAX_ERRNO, %eax
-    jb      1f
-    negl    %eax
-    pushl   %eax
-    call    __set_errno_internal
-    addl    $4, %esp
-1:
     popl    %edx
     popl    %ecx
     popl    %ebx

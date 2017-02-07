@@ -5,11 +5,6 @@
 ENTRY(___close)
     mov     x8, __NR_close
     svc     #0
-
-    cmn     x0, #(MAX_ERRNO + 1)
-    cneg    x0, x0, hi
-    b.hi    __set_errno_internal
-
     ret
 END(___close)
 .hidden _TRaP_libc____close

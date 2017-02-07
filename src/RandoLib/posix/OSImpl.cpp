@@ -67,7 +67,7 @@ RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
 #if RANDOLIB_LOG_TO_CONSOLE
     _TRaP_libc_write(2, tmp, len);
 #elif RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
-    if (log_fd != -1)
+    if (log_fd > 0)
         _TRaP_libc_write(log_fd, tmp, len);
 #endif
 #elif RANDOLIB_LOG_TO_SYSTEM

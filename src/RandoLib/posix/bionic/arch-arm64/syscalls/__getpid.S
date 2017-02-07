@@ -5,11 +5,6 @@
 ENTRY(__getpid)
     mov     x8, __NR_getpid
     svc     #0
-
-    cmn     x0, #(MAX_ERRNO + 1)
-    cneg    x0, x0, hi
-    b.hi    __set_errno_internal
-
     ret
 END(__getpid)
 .hidden _TRaP_libc___getpid

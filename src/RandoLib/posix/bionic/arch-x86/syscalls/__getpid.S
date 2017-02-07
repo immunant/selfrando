@@ -5,12 +5,5 @@
 ENTRY(__getpid)
     movl    $__NR_getpid, %eax
     int     $0x80
-    cmpl    $-MAX_ERRNO, %eax
-    jb      1f
-    negl    %eax
-    pushl   %eax
-    call    __set_errno_internal
-    addl    $4, %esp
-1:
     ret
 END(__getpid)

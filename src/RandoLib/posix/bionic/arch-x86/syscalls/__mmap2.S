@@ -29,13 +29,6 @@ ENTRY(__mmap2)
     mov     48(%esp), %ebp
     movl    $__NR_mmap2, %eax
     int     $0x80
-    cmpl    $-MAX_ERRNO, %eax
-    jb      1f
-    negl    %eax
-    pushl   %eax
-    call    __set_errno_internal
-    addl    $4, %esp
-1:
     popl    %ebp
     popl    %edi
     popl    %esi

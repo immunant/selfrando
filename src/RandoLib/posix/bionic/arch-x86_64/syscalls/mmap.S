@@ -6,12 +6,6 @@ ENTRY(mmap)
     movq    %rcx, %r10
     movl    $__NR_mmap, %eax
     syscall
-    cmpq    $-MAX_ERRNO, %rax
-    jb      1f
-    negl    %eax
-    movl    %eax, %edi
-    call    __set_errno_internal
-1:
     ret
 END(mmap)
 

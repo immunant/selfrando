@@ -5,12 +5,6 @@
 ENTRY(__getpid)
     movl    $__NR_getpid, %eax
     syscall
-    cmpq    $-MAX_ERRNO, %rax
-    jb      1f
-    negl    %eax
-    movl    %eax, %edi
-    call    __set_errno_internal
-1:
     ret
 END(__getpid)
 .hidden _TRaP_libc___getpid
