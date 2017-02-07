@@ -1,34 +1,40 @@
 language: cpp
 compiler:
-  - gcc
-  - clang
+- gcc
+- clang
 sudo: required
 dist: trusty
+notifications:
+  slack:
+    secure: i4nY4FyKdOeOV81T1XYDAKxft0j3yUcmZTnVkZmb5ZhRPYYP9TSKgUEnKQmuaXP+KbuJs9TXChM/izVi8tV6NW4LWSQ8Z0u3s6BPthp58jSsASGgtknV3B2rBFAFcHLjonbExH+3XOjpvsxlWLKVFG4q3OUAc9ZRSVGeG0B5WfWG5q5sRBT6nVdmaPg5dk/301O7Iw2tFcawS8viontKch1Hc67krIXIONwlA2yWb3HiGhw6jbHqxGVoqbvSLU09l58RSjpiJ/NwqKhWOLmrlnGaxnNfmqBFj6z7gqAdHSJI3EgxN8n27JbXBR7AcsvBEKidVaPlERKjrJJY2q9DKmsnkrzzo3EfkXn/wsRWuUC6gDxKW1y+mhlgqTiFOM6XwFHYZV+FrROqQ3sIb7LK/PeoNIYfrHTtdD5nVh3tO1DM7aTXyzSlpVWqEjb1kLTpB8KH++SzlhblDj1KNfDo8xRZ3mIS7hVKmotHxt7gHvc3HK1H2PXb38HJpPwy6U0VSE624yaukIjJScXUzS8ycwdzKFw6Hh1hU3TVNe+kfIat+GV6OQK+163aK6IoVeHeEs+oLmhcCam1HwWZAy5hWm4sQ3hQTFTh9RnHwIN3sAh7dkyWtBVhvARcOLDbKmJ8nwTUO3yQblfCGDEA7Fzljz8e8RYl5dM0wV9QBGsrD4M=
+    on_success: always
+    on_failure: always
+  email: false
 addons:
   apt:
     sources:
       ubuntu-toolchain-r-test
     packages:
-      - zlib1g-dev
-      - pkg-config
-      - apache2-utils
-      - libxml2
-      - libxml2-dev
-      - libxslt1-dev
-      - libgd-dev
-      - libperl-dev
-      - libgd2-xpm-dev
-      - libssl-dev
-      - libpcre3-dev
-      - libreadline-dev
+    - zlib1g-dev
+    - pkg-config
+    - apache2-utils
+    - libxml2
+    - libxml2-dev
+    - libxslt1-dev
+    - libgd-dev
+    - libperl-dev
+    - libgd2-xpm-dev
+    - libssl-dev
+    - libpcre3-dev
+    - libreadline-dev
 before_install:
 install:
   # - export CXX="g++-4.9"; export CC="gcc-4.9";
 script:
-  - sh scripts/build_libelf.sh $PWD/libelf # avoid using old distro's version
-  - scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
-  - Tests/thttpd.sh
-  - Tests/lua.sh
-  - Tests/nginx.sh
+- sh scripts/build_libelf.sh $PWD/libelf # avoid using old distro's version
+- scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
+- Tests/thttpd.sh
+- Tests/lua.sh
+- Tests/nginx.sh
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)
