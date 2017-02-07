@@ -6,9 +6,9 @@
  *
  */
 
-#include "OS.h"
-#include "RandoLib.h"
-#include "TrapInfo.h"
+#include <OS.h>
+#include <RandoLib.h>
+#include <TrapInfo.h>
 
 #include <stdio.h>
 #include <stdint.h>

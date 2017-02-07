@@ -6,8 +6,8 @@
  *
  */
 
-#include "OS.h"
-#include "TrapInfo.h"
+#include <OS.h>
+#include <TrapInfo.h>
 
 #include <elf.h>
 

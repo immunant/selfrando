@@ -33,8 +33,8 @@
 #define __RANDOLIB_TRAPINFO_H
 #pragma once
 
-#include "OS.h"
-#include "TrapInfoCommon.h"
+#include <OS.h>
+#include <TrapInfoCommon.h>
 
 #include <utility>
 

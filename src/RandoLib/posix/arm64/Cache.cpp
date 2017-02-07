@@ -6,7 +6,7 @@
  *
  */
 
-#include "OS.h"
+#include <OS.h>
 
 void os::Module::Section::flush_icache() {
     uint64_t ctr_value;

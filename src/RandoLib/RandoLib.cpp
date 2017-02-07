@@ -29,9 +29,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "OS.h"
-#include "RandoLib.h"
-#include "TrapInfo.h"
+#include <OS.h>
+#include <RandoLib.h>
+#include <TrapInfo.h>
 
 #include <stdint.h>
 #include <stdarg.h>

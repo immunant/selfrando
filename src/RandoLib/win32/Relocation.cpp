@@ -6,8 +6,8 @@
  *
  */
 
-#include "..\OS.h"
-#include "..\TrapInfo.h"
+#include <OS.h>
+#include <TrapInfo.h>
 
 os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),

@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "OS.h"
+#include <OS.h>
 
 static const char kHexTableLo[] = "0123456789abcdef";
 static const char kHexTableHi[] = "0123456789abcdef";

@@ -33,7 +33,7 @@
 #define __RANDOLIB_H
 #pragma once
 
-#include "OS.h"
+#include <OS.h>
 
 #pragma pack(1) // TODO: MSVC-only; use gcc equivalent on Linux
 struct RANDO_SECTION Function {

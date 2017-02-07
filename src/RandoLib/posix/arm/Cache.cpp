@@ -6,7 +6,7 @@
  *
  */
 
-#include "OS.h"
+#include <OS.h>
 
 // Implemented in posix/bionic/arch-arm/cacheflush.S
 extern "C" int _TRaP_libc_cacheflush(long start, long end, long flags);

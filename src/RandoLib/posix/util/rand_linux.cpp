@@ -32,10 +32,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "OS.h"
+#include <OS.h>
 
 extern "C" {
-#include "util/fnv.h"
+#include <util/fnv.h>
 
 int _TRaP_libc_getrandom(void*, size_t, unsigned int);
 int _TRaP_libc_open(const char*, int, ...);
