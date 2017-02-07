@@ -30,6 +30,7 @@
 #define _PRIVATE_BIONIC_ASM_H_
 
 #include <asm/unistd.h> /* For system call numbers. */
+#include <asm/errno.h>
 #define MAX_ERRNO 4095  /* For recognizing system call error returns. */
 
 #define __bionic_asm_custom_entry(f)

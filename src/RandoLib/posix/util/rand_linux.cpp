@@ -34,28 +34,20 @@
 
 #include "OS.h"
 
-#ifndef __NR_getrandom
-/* I think the Tor Browser build system uses ancient headers, that aren't
- * guaranteed to have this defined.
- */
-#ifdef __x86_64__
-#define __NR_getrandom 278
-#elif defined __i386__
-#define __NR_getrandom 278
-#else
-#error Unsupported architecture.
-#endif
-#endif
-
 extern "C" {
 #include "util/fnv.h"
 
+int _TRaP_libc_getrandom(void*, size_t, unsigned int);
 int _TRaP_libc_open(const char*, int, ...);
 ssize_t _TRaP_libc_read(int, void*, size_t);
 int _TRaP_libc____close(int);
 }
 
+#ifdef __NR_getrandom
 static int _TRaP_rand_getrandom_works = 1;
+#else
+static int _TRaP_rand_getrandom_works = 0;
+#endif
 static int _TRaP_rand_urandom_fd = -1;
 
 inline static int
@@ -64,20 +56,19 @@ _TRaP_rand_getentropy(void *buf, size_t buflen) {
 
   /* I assume this doesn't need to be thread safe... */
   if (buflen > 255) {
-    errno = EIO;
-    return -1;
+    return -EIO;
   }
 
   if (_TRaP_rand_getrandom_works) {
     do {
-      l = syscall(__NR_getrandom, buf, buflen, 0);
+      l = _TRaP_libc_getrandom(buf, buflen, 0);
       if (l < 0) {
-        switch (errno) {
-          case ENOSYS:
+        switch (l) {
+          case -ENOSYS:
             /* Must be an old Linux, call into the fallback. */
             _TRaP_rand_getrandom_works = 0;
             return _TRaP_rand_getentropy(buf, buflen);
-          case EINTR:
+          case -EINTR:
             break;
           default:
             RANDO_ASSERT(false);
