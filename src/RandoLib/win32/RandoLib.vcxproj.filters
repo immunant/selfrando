@@ -13,16 +13,22 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\32-bit Files">
+      <UniqueIdentifier>{686e649e-2359-4dc1-85b5-d25ac310dcc1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\64-bit Files">
+      <UniqueIdentifier>{3cab46ba-f60a-4777-9d0d-fa03c047489d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="EntryPoint.asm">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\32-bit Files</Filter>
     </MASM>
     <MASM Include="TrapHeader.asm">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\32-bit Files</Filter>
     </MASM>
   </ItemGroup>
   <ItemGroup>
@@ -35,11 +41,11 @@
     <ClCompile Include="OSImpl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Relocation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\arch\x86\Util.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Relocation.cpp">
+      <Filter>Source Files\32-bit Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
