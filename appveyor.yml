@@ -10,4 +10,4 @@ build:
   parallel: true  
 
 test_script:
-	$(configuration)/SimpleRandoTest.exe
+- $(configuration)/SimpleRandoTest.exe
