@@ -62,9 +62,9 @@ static inline RANDO_SECTION ptrdiff_t ReadSLEB128(os::BytePointer *trap_ptr) {
     (*trap_ptr)++;
     shift += 7;
 
-    ptrdiff_t sign_bit = 1LL << (shift - 1);
+    ptrdiff_t sign_bit = static_cast<ptrdiff_t>(1) << (shift - 1);
     if ((res & sign_bit) != 0)
-        res |= -(1LL << shift);
+        res |= -(static_cast<ptrdiff_t>(1) << shift);
     return res;
 }
 
