@@ -161,6 +161,8 @@ public:
 
         static Type get_pointer_reloc_type();
 
+        static Type type_from_based(Type based_type);
+
         static void fixup_export_trampoline(BytePointer*, const Module&, Callback, void*);
 
     private:

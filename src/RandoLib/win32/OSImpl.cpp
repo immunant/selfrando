@@ -389,7 +389,8 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
     // Fix up the entry point
     if (m_info->new_entry != nullptr) {
         *m_info->new_entry = RVA2Address(m_info->original_entry_rva).to_ptr<uintptr_t>();
-        Relocation entry_reloc(*this, address_from_ptr(m_info->new_entry), IMAGE_REL_I386_DIR32);
+        Relocation entry_reloc(*this, address_from_ptr(m_info->new_entry),
+                               Relocation::get_pointer_reloc_type());
         (*callback)(entry_reloc, callback_arg);
         API::DebugPrintf<1>("New program entry:%p\n", *m_info->new_entry);
     }
@@ -409,16 +410,13 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                   reloc_ptr < reinterpret_cast<WORD*>(block_ptr); reloc_ptr++) {
             // Handle one relocation
             // 1) get target of relocation
-            auto reloc_type = (*reloc_ptr >> 12),
-                reloc_offset = (*reloc_ptr & 0xfff);
-            if (reloc_type == IMAGE_REL_BASED_ABSOLUTE)
+            auto reloc_based_type = (*reloc_ptr >> 12),
+                 reloc_offset = (*reloc_ptr & 0xfff);
+            auto reloc_arch_type = Relocation::type_from_based(reloc_based_type);
+            if (reloc_arch_type == 0)
                 continue;
-            if (reloc_type != IMAGE_REL_BASED_HIGHLOW) { // TODO: handle this better
-                API::DebugPrintf<1>("Unknown relocation type: %d\n", (int)reloc_type);
-                continue;
-            }
             auto reloc_rva = fixup_block->VirtualAddress + reloc_offset;
-            Relocation reloc(*this, RVA2Address(reloc_rva), IMAGE_REL_I386_DIR32);
+            Relocation reloc(*this, RVA2Address(reloc_rva), reloc_arch_type);
             (*callback)(reloc, callback_arg);
         }
         API::MemProtect(fixup_addr.to_ptr(), kPageSize, block_old_perms);

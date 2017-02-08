@@ -52,6 +52,17 @@ os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
     return IMAGE_REL_I386_DIR32;
 }
 
+os::Module::Relocation::Type
+os::Module::Relocation::type_from_based(os::Module::Relocation::Type based_type) {
+    if (based_type == IMAGE_REL_BASED_ABSOLUTE)
+        return 0;
+    if (based_type == IMAGE_REL_BASED_HIGHLOW)
+        return IMAGE_REL_I386_DIR32;
+
+    API::DebugPrintf<1>("Unknown relocation type: %d\n", (int) based_type);
+    return 0;
+}
+
 void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                      const Module &module,
                                                      os::Module::Relocation::Callback callback,
