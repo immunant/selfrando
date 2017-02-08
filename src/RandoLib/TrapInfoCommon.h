@@ -34,7 +34,7 @@ enum ExtraInfo : uint32_t {
     RELOC_IGNORE = 0x4, // Ignore this relocation
 };
 
-static inline uint32_t RelocExtraInfo(unsigned type) {
+static inline RANDO_SECTION uint32_t RelocExtraInfo(unsigned type) {
 #if RANDOLIB_IS_POSIX
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64
