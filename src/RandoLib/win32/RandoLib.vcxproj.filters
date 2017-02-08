@@ -24,10 +24,10 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="EntryPoint.asm">
+    <MASM Include="x86\EntryPoint.asm">
       <Filter>Source Files\32-bit Files</Filter>
     </MASM>
-    <MASM Include="TrapHeader.asm">
+    <MASM Include="x86\TrapHeader.asm">
       <Filter>Source Files\32-bit Files</Filter>
     </MASM>
   </ItemGroup>
@@ -44,7 +44,7 @@
     <ClCompile Include="..\arch\x86\Util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Relocation.cpp">
+    <ClCompile Include="x86\Relocation.cpp">
       <Filter>Source Files\32-bit Files</Filter>
     </ClCompile>
   </ItemGroup>

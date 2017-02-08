@@ -1,9 +1,9 @@
 Import('env', 'SOURCES')
 
 SOURCES.extend(['OSImpl.cpp',
-                'EntryPoint.asm',
-                'TrapHeader.asm',
-                'Relocation.cpp'])
+                '%s/EntryPoint.asm' % env['TARGET_ARCH'],
+                '%s/TrapHeader.asm' % env['TARGET_ARCH'],
+                '%s/Relocation.cpp' % env['TARGET_ARCH']])
 
 lib_env = env.Clone()
 lib_env.Append(CPPPATH = '#/RandoLib')
