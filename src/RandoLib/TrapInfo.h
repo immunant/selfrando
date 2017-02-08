@@ -367,7 +367,7 @@ public:
 };
 
 #pragma pack(1)
-struct TrapSymbol {
+struct RANDO_SECTION TrapSymbol {
     uintptr_t address;
     uintptr_t alignment;
     size_t size;
