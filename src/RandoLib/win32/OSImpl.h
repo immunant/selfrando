@@ -33,8 +33,6 @@
 #include <Windows.h>
 #include <winternl.h>
 
-#include <utility>
-
 class TrapInfo;
 struct TrapReloc;
 
@@ -292,9 +290,10 @@ public:
     static void SystemMessage(const char *fmt, ...);
 
     template<int level, typename... Args>
-    static inline void DebugPrintf(Args&&... args) {
+    static inline void DebugPrintf(Args... args) {
+        // FIXME: this should use std::forward, but can we pull in <utility>???
         if (level <= kDebugLevel)
-            DebugPrintfImpl(std::forward<Args>(args)...);
+            DebugPrintfImpl(args...);
     }
 
     // C library functions
