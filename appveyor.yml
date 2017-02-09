@@ -12,7 +12,7 @@ notifications:
   on_build_failure: true
   on_build_status_changed: true
 
-image: Previous Visual Studio 2015
+image: Visual Studio 2013
 
 configuration:
 - Debug
