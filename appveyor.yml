@@ -23,4 +23,4 @@ configuration:
 #- x64
 
 test_script:
-- $(configuration)/SimpleRandoTest.exe
+- %CONFIGURATION%/SimpleRandoTest.exe
