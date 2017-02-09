@@ -12,7 +12,7 @@ notifications:
   on_build_failure: true
   on_build_status_changed: true
 
-image: Visual Studio 2015
+image: Visual Studio 2013
 
 configuration:
 - Debug
@@ -23,4 +23,4 @@ configuration:
 #- x64
 
 test_script:
-- $(configuration)/SimpleRandoTest.exe
+- cmd: "%APPVEYOR_BUILD_FOLDER%\\%CONFIGURATION%\\SimpleRandoTest.exe"
