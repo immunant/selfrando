@@ -4,7 +4,9 @@ configuration:
 - Debug
 - Release
 
-platform: x64
+platform: 
+- X86
+# - x64
 
 build:
   parallel: true  
