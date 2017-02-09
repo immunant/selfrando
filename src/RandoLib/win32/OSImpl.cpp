@@ -28,8 +28,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _CRT_NO_VA_START_VALIDATION // Disable this since it puts __vcrt_va_start_verify_argument_type() in .text
-
 #include <OS.h>
 #include <TrapInfo.h>
 
@@ -368,7 +366,6 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
 }
 
 RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback_arg) {
-#if 0
     PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
     // Reserved3[1] == ImageBaseAddress
     for (LIST_ENTRY *mod_ptr = peb->Ldr->InMemoryOrderModuleList.Flink; mod_ptr;) {
@@ -384,7 +381,6 @@ RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback
         if (mod_ptr == &peb->Ldr->InMemoryOrderModuleList)
             break;
     }
-#endif
 }
 
 RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
@@ -396,8 +392,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
         Relocation entry_reloc(*this, address_from_ptr(m_info->new_entry),
                                Relocation::get_pointer_reloc_type());
         (*callback)(entry_reloc, callback_arg);
-        API::DebugPrintf<1>("New program entry:%p\n",
-                            reinterpret_cast<void*>(*m_info->new_entry));
+        API::DebugPrintf<1>("New program entry:%p\n", *m_info->new_entry);
     }
     // Fix up relocations
     RANDO_ASSERT(m_reloc_section != nullptr);
