@@ -28,6 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _CRT_NO_VA_START_VALIDATION // Disable this since it puts __vcrt_va_start_verify_argument_type() in .text
+
 #include <OS.h>
 #include <TrapInfo.h>
 
