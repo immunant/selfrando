@@ -368,6 +368,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
 }
 
 RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback_arg) {
+#if 0
     PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
     // Reserved3[1] == ImageBaseAddress
     for (LIST_ENTRY *mod_ptr = peb->Ldr->InMemoryOrderModuleList.Flink; mod_ptr;) {
@@ -383,6 +384,7 @@ RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback
         if (mod_ptr == &peb->Ldr->InMemoryOrderModuleList)
             break;
     }
+#endif
 }
 
 RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
