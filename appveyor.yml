@@ -23,4 +23,4 @@ configuration:
 #- x64
 
 test_script:
-- ps: $env:CONFIGURATION/SimpleRandoTest.exe
+- ps: $env:CONFIGURATION\SimpleRandoTest.exe
