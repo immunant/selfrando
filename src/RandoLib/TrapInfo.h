@@ -36,8 +36,6 @@
 #include <OS.h>
 #include <TrapInfoCommon.h>
 
-#include <utility>
-
 // FIXME: is uintptr_t the correct type here?
 static inline RANDO_SECTION uintptr_t ReadULEB128(os::BytePointer *trap_ptr) {
     uintptr_t res = 0, shift = 0;

@@ -35,7 +35,6 @@
 
 #include <stdint.h>
 #include <stdarg.h>
-#include <utility>
 
 // Binary search function that finds function containing given address
 // TODO: move this to a separate .cpp file???
