@@ -1,15 +1,26 @@
+version: 1.0.{build}
+build:
+  project: self-rando-windows.sln
+  parallel: true
+  verbosity: minimal
+notifications:
+- provider: Slack
+  auth_token:
+    secure: WuzJD0mLtM12sadwBu33d9wz20w10vIXbfYO2omvQwED4YTqk+DImfrBbYl1lewuiKXMs5ma7BV9d4qCzznZJw==
+  channel: '#selfrando'
+  on_build_success: false
+  on_build_failure: true
+  on_build_status_changed: true
+
 image: Visual Studio 2015
 
 configuration:
 - Debug
 - Release
 
-platform: 
-- Any CPU
-# - x64
-
-build:
-  parallel: true  
+#platform: 
+#- Any CPU
+#- x64
 
 test_script:
 - $(configuration)/SimpleRandoTest.exe
