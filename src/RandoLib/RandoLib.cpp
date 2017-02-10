@@ -253,7 +253,7 @@ void ExecSectionProcessor::BuildFunctions() {
         m_functions[func_idx].undiv_start = m_exec_section.start().to_ptr();
         m_functions[func_idx].skip_copy = false;
         m_functions[func_idx].from_trap = true; // FIXME: false instead???
-        m_functions[func_idx].undiv_alignment = os::API::kPageAlignment;
+        m_functions[func_idx].undiv_alignment = os::API::kTextAlignment;
         func_idx++;
     }
     RANDO_ASSERT(func_idx == m_functions.num_funcs);
