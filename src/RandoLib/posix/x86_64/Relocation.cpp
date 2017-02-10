@@ -34,8 +34,7 @@ static inline bool is_patched_tls_get_addr_call(os::BytePointer at_ptr) {
     return (at_ptr[-12] == 0x64 && at_ptr[-11] == 0x48 &&
             at_ptr[-10] == 0x8b && at_ptr[-9]  == 0x04 &&
             at_ptr[-8]  == 0x25 && at_ptr[-3]  == 0x48 &&
-            ((at_ptr[-2] == 0x03 && at_ptr[-1] == 0x05) ||
-             (at_ptr[-2] == 0x8d && at_ptr[-1] == 0x80)));
+            at_ptr[-2]  == 0x8d && at_ptr[-1]  == 0x80);
 }
 
 static inline bool is_pcrel_tlsxd(os::BytePointer at_ptr) {
