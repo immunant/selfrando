@@ -211,7 +211,14 @@
     </MASM>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\arch\x86\Util.cpp" />
+    <ClCompile Include="..\arch\x86\Util.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\arch\x86_64\Util.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\util\hash_32a.c" />
     <ClCompile Include="..\RandoLib.cpp" />
     <ClCompile Include="OSImpl.cpp" />

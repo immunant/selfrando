@@ -41,11 +41,14 @@
     <ClCompile Include="OSImpl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\arch\x86\Util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="x86\Relocation.cpp">
       <Filter>Source Files\32-bit Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\arch\x86\Util.cpp">
+      <Filter>Source Files\32-bit Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\arch\x86_64\Util.cpp">
+      <Filter>Source Files\64-bit Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
