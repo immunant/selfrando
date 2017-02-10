@@ -58,6 +58,7 @@ traplinker_env.Command('ld.gold', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
 
 files = [Glob('traplinker'), Glob('ld'), Glob('ld.bfd'), Glob('ld.gold'),
          Glob('linker_script.ld'), Glob('linker_id.sh'),
-         Glob('linker_script_got_only.ld'), Glob('linker_script_got_plt.ld')]
+         Glob('linker_script_got_only.ld'), Glob('linker_script_got_plt.ld'),
+         Glob('provide_TRaP_end_page.ld')]
 
 Return('files')

@@ -55,6 +55,7 @@ static char kSelfrandoObject[] = "/selfrando_txtrp.o";
 static char kTrapScript[] = "/linker_script.ld";
 static char kTrapGOTOnlyScript[] = "/linker_script_got_only.ld";
 static char kTrapGOTPLTScript[] = "/linker_script_got_plt.ld";
+static char kProvideTRaPEndPageScript[] = "/provide_TRaP_end_page.ld";
 #if 0 // FIXME: put this back in when we need it
 static const char *kExecSections[][2] = {
     { ".text", ".txtrp" }, // FIXME: ".trap.text" would be nicer
@@ -846,6 +847,7 @@ std::vector<char*> ArgParser::create_new_invocation(
         std::string trap_footer = randolib_install_path + kTrapFooter;
         std::string trap_footer_page = randolib_install_path + kTrapFooterPage;
         std::string trap_script = randolib_install_path + kTrapScript;
+        std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
 
         std::string trap_got_script = randolib_install_path;
 #if RANDOLIB_IS_ARM
@@ -891,8 +893,10 @@ std::vector<char*> ArgParser::create_new_invocation(
             m_args.emplace_back("--whole-archive", true);
             m_args.emplace_back(static_selfrando.c_str(), true);
             m_args.emplace_back("--no-whole-archive", true);
+            m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         } else {
             m_args.emplace_back("-lselfrando", true);
+            m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         }
     }
 
