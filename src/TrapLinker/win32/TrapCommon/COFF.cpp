@@ -49,12 +49,6 @@ static const char kTrampolineSectionName[] = ".xptramp";
 // Special @feat.00 symbol that the assembler/compiler adds to mark the object file as SAFESEH-compatible (and maybe other reasons as well)
 static IMAGE_SYMBOL kFeatSymbol = { {'@', 'f', 'e', 'a', 't', '.', '0', '0' }, 0x11, IMAGE_SYM_ABSOLUTE, IMAGE_SYM_TYPE_NULL, IMAGE_SYM_CLASS_STATIC, 0 };
 
-// Blacklisted function that aren't allowed in .txtrp
-static std::unordered_set<std::string> kFunctionBlacklist = {
-    // ftol2.obj from msvcrt.lib
-    "__ftol2_pentium4", "__ftol2_sse_excpt", "__ftol2",
-};
-
 class BackedCOFFSection {
 public:
     BackedCOFFSection() = delete;
@@ -369,12 +363,6 @@ bool COFFFile::createTRaPInfo() {
             continue;
         auto sec_idx = sym.header()->SectionNumber;
         if (sec_idx <= 0 || sec_idx > IMAGE_SYM_SECTION_MAX)
-            continue;
-        // Check if the symbol has been blacklisted
-        // FIXME: Yes, this is UGLY!!! We need a better way of detecting which functions
-        // get jumped to using 2-byte JMP's (this happens sometimes, for example in ftol2.obj)
-        // or the previous function falls thru to (__ftol2_sse does this in ftol2.obj)
-        if (kFunctionBlacklist.find(sym.name()) != kFunctionBlacklist.end())
             continue;
         func_sym_info[sec_idx][sym.header()->Value] = sym.index();
     }
