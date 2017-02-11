@@ -39,15 +39,6 @@ import os
 import shutil
 from subprocess import call
 
-# the MSVC libraries we want to add TRaP info to
-msvc_target_libs = ["%s.lib" % lib for lib in
-    ['libcmt', 'libcmtd', 'libcpmt', 'libcpmt1', 'libcpmtd', 'libcpmtd0',
-    'libcpmtd1', 'msvcrt', 'msvcrtd', 'msvcprt', 'msvcprtd']]
-
-win_sdk_target_libs = ["%s.lib" % lib for lib in
-    ['kernel32', 'user32', 'gdi32', 'winspool', 'shell32', 'ole32',
-    'oleauth32', 'uuid', 'comdlg32', 'advapi32']]
-
 def get_files_in_dir(base_path='..', exclude_debug=False):
     files = []
     assert os.path.exists(base_path), "invalid path %s" % base_path
