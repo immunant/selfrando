@@ -1,4 +1,6 @@
 version: 1.0.{build}
+before_build:
+- cmd: call "%VS140COMNTOOLS%vsvars32.bat" & "%APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
 build:
   project: self-rando-windows.sln
   parallel: true
@@ -23,5 +25,4 @@ configuration:
 #- x64
 
 test_script:
-- cmd: vcvars32.bat & "%APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%CONFIGURATION%\\SimpleRandoTest.exe"
