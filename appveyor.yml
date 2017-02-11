@@ -18,9 +18,10 @@ configuration:
 # - Debug # Broken for VS2015 Update 3
 - Release
 
-#platform: 
+#platform:
 #- Any CPU
 #- x64
 
 test_script:
+- cmd: vcvars32.bat & "%APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%CONFIGURATION%\\SimpleRandoTest.exe"
