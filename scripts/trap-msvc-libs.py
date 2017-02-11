@@ -59,29 +59,25 @@ def get_exe_path(exe_name='TrapLib.exe'):
     assert len(traplib_exes), "%s not found" % exe_name
     return traplib_exes[0]
 
-def get_progfiles_dir():
-    return os.environ['ProgramFiles']
 
-def get_vs_basedir():
-    prog_files = get_progfiles_dir()
-    vs_basedirs = os.listdir(prog_files)
-    vs_basedirs = filter(lambda d: 'Microsoft Visual Studio' in d, vs_basedirs)
+def get_path_to_link_exe():
 
-    assert len(vs_basedirs), "Visual Studio installation not found."
-     # grab the last VS basedir found to get latest version
-    return os.path.join(prog_files, vs_basedirs[-1])
-
+    assert os.environ['VCINSTALLDIR'] is not None, "Error, %VCINSTALLDIR% is " \
+        + "not set (run vsvars32.bat or equivalent)."
+    base_path = os.environ['VCINSTALLDIR']
+    link_path = os.path.join(base_path, "bin", "amd64_x86", "link.exe")
+    assert os.path.exists(link_path) and os.path.isfile(link_path), \
+        "Invalid path to link.exe: {}".format(link_path)
+    return link_path
 
 def set_env_vars():
     """Note: only tested on Windows 8.1 64-bit with VS 2013."""
     lines = ["#!/bin/sh","# set env. variables"]
 
     # MSVC_LINKER
-    link_exe = os.path.join(get_vs_basedir(), "VC", "BIN", "amd64_x86", "link.exe")
-    assert os.path.exists(link_exe) and os.path.isfile(link_exe), \
-        "Invalid path to link.exe: {}".format(link_exe)
+    link_exe = get_path_to_link_exe()
 
-    link_exe = link_exe.replace("\\", "/")
+    link_exe = link_exe.replace("\\", "/") # convert to posix syntax
     lines.append("export MSVC_LINKER=\"%s\"" % link_exe)
 
     def cygwinify(path):
@@ -112,6 +108,7 @@ def set_env_vars():
     os.chmod(outpath, 0o755)
     print "Set build environment variables by sourcing %s" % os.path.basename(outpath)
 
+
 def get_libs_from_env():
     libs = []
     assert os.environ['LIB'] is not None, r"Error, %LIB% is not set."
@@ -140,11 +137,12 @@ if __name__ == '__main__':
 
     # invoke traplib.exe on each of the libraries we found
     processed = set()
+    print 'Added TRaP info to: ',
     for lib in input_libs:
         lib_basename = os.path.basename(lib)
         if lib_basename in processed:  # prefer early paths in %LIB%
             continue
-        print 'Adding TRaP info to {}'.format(lib_basename)
+        print "{}, ".format(lib_basename),
         outfile = os.path.join(out_path, lib_basename)
         call([trap_lib_exe, lib, outfile])
         processed.add(lib_basename)
@@ -155,5 +153,6 @@ if __name__ == '__main__':
         if os.path.exists(pdb) and os.path.isfile(pdb) \
             and not os.path.exists(pdb_copy):
             shutil.copy2(pdb, out_path)
+    print ""
 
     set_env_vars()
