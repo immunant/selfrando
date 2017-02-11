@@ -1,8 +1,9 @@
 version: 1.0.{build}
 before_build:
-- cmd: echo "%VS140COMNTOOLS%\vsvars32.bat"
+# - cmd: echo "%VS140COMNTOOLS%\vsvars32.bat"
 - cmd: call "%VS140COMNTOOLS%\vsvars32.bat"
-- cmd: "%APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
+- cmd: "SET PATH=C:\\Python27;%PATH%"
+- cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
 build:
   project: self-rando-windows.sln
   parallel: true
