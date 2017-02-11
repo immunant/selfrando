@@ -78,7 +78,9 @@ def set_env_vars():
 
     # MSVC_LINKER
     link_exe = os.path.join(get_vs_basedir(), "VC", "BIN", "amd64_x86", "link.exe")
-    assert os.path.exists(link_exe) and os.path.isfile(link_exe)
+    assert os.path.exists(link_exe) and os.path.isfile(link_exe), \
+        "Invalid path to link.exe: {}".format(link_exe)
+
     link_exe = link_exe.replace("\\", "/")
     lines.append("export MSVC_LINKER=\"%s\"" % link_exe)
 
