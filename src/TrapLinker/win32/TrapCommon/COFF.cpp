@@ -590,7 +590,7 @@ bool COFFLibrary::parse() {
         }
         ptr += member_size;
         // Member headers start at even offsets; the librarian adds '\n' bytes as padding
-        while ((*ptr) == IMAGE_ARCHIVE_PAD[0])
+        if ((ptr - file_start) & 1)
             ptr++;
     }
 
