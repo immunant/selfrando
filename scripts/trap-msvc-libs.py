@@ -149,7 +149,7 @@ if __name__ == '__main__':
     processed = set()
     for lib in input_libs:
         lib_basename = os.path.basename(lib)
-        if lib_basename in processed:  # prefer early paths in 5LIB%
+        if lib_basename in processed:  # prefer early paths in %LIB%
             continue
         print 'Adding TRaP info to {}'.format(lib_basename)
         outfile = os.path.join(out_path, lib_basename)
