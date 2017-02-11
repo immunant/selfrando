@@ -69,10 +69,7 @@ def get_exe_path(exe_name='TrapLib.exe'):
     return traplib_exes[0]
 
 def get_progfiles_dir():
-    if os.environ['ARCHITECTURE'] == '64':
-        return os.path.abspath('\\Program Files (x86)')
-    else:
-        return os.path.abspath('\\Program Files')
+    return os.environ['ProgramFiles']
 
 def get_vs_basedir():
     prog_files = get_progfiles_dir()
@@ -83,24 +80,6 @@ def get_vs_basedir():
      # grab the last VS basedir found to get latest version
     return os.path.join(prog_files, vs_basedirs[-1])
 
-def get_msvc_libs():
-    vs_libdir = os.path.join(get_vs_basedir(), "VC\lib")
-    assert os.path.exists(vs_libdir), "Visual Studio libraries not found"
-    vs_libs = get_files_in_dir(vs_libdir)
-    vs_libs = filter(lambda l: os.path.basename(l) in msvc_target_libs, vs_libs)
-    # exclude files in subdirs (e.g. amd64, arm, store)
-    vs_libs = filter(lambda l: os.path.dirname(l) == vs_libdir, vs_libs)
-    return vs_libs
-
-def get_win_sdk_libs():
-    prog_files = get_progfiles_dir()
-    #FIXME: assumes path is 'Windows Kits\8.1\Lib\winv6.3\um\x86'
-    win_sdk_basedir = os.path.join(prog_files, 'Windows Kits', '8.1', 'Lib',
-        'winv6.3', 'um', 'x86')
-    assert os.path.exists(win_sdk_basedir), "Windows libraries not found"
-    win_sdk_libs = get_files_in_dir(win_sdk_basedir)
-    win_sdk_libs = filter(lambda l: os.path.basename(l).lower() in win_sdk_target_libs, win_sdk_libs)
-    return win_sdk_libs
 
 def set_env_vars():
     """Note: only tested on Windows 8.1 64-bit with VS 2013."""
@@ -140,11 +119,25 @@ def set_env_vars():
     os.chmod(outpath, 0o755)
     print "Set build environment variables by sourcing %s" % os.path.basename(outpath)
 
+def get_libs_from_env():
+    libs = []
+    assert os.environ['LIB'] is not None, r"Error, %LIB% is not set."
+    dirs = filter(lambda d: d, os.environ['LIB'].split(';'))
+    for d in dirs:
+        assert os.path.exists(d) and os.path.isdir(d)
+        files = os.listdir(d)
+        files = map(lambda f: os.path.join(d, f), files)
+        lib_filter = lambda f: os.path.isfile(f) and f.endswith(".lib")
+        libs += filter(lib_filter, files)
+
+    return libs
+
+
 if __name__ == '__main__':
 
-    # figure out the paths to the files we need
+    # locate the files we need
     trap_lib_exe = get_exe_path()
-    input_libs = get_msvc_libs() + get_win_sdk_libs()
+    input_libs = get_libs_from_env()
 
     # make sure the output directory exists
     out_path = os.path.abspath('..\TrappedMSVCLibs')
@@ -153,14 +146,21 @@ if __name__ == '__main__':
         print 'Created output directory %s...' % out_path
 
     # invoke traplib.exe on each of the libraries we found
+    processed = set()
     for lib in input_libs:
-        print 'Adding TRaP info to %s' % os.path.basename(lib)
-        outfile = os.path.join(out_path, os.path.basename(lib))
+        lib_basename = os.path.basename(lib)
+        if lib_basename in processed:  # prefer early paths in 5LIB%
+            continue
+        print 'Adding TRaP info to {}'.format(lib_basename)
+        outfile = os.path.join(out_path, lib_basename)
         call([trap_lib_exe, lib, outfile])
+        processed.add(lib_basename)
         # now copy the .pdb to it remains alongside the .lib
         assert lib.lower().endswith('.lib')
         pdb = lib[:-4] + ".pdb"
-        if os.path.exists(pdb) and os.path.isfile(pdb):
+        pdb_copy = os.path.join(out_path, os.path.basename(pdb))
+        if os.path.exists(pdb) and os.path.isfile(pdb) \
+            and not os.path.exists(pdb_copy):
             shutil.copy2(pdb, out_path)
 
     set_env_vars()
