@@ -61,7 +61,6 @@ def get_exe_path(exe_name='TrapLib.exe'):
 
 
 def get_path_to_link_exe():
-
     assert os.environ['VCINSTALLDIR'] is not None, "Error, %VCINSTALLDIR% is " \
         + "not set (run vsvars32.bat or equivalent)."
     base_path = os.environ['VCINSTALLDIR']
@@ -93,14 +92,17 @@ def set_env_vars():
         exes_path = os.path.join(scpt_path, os.pardir, "Debug")
         exes_path = os.path.abspath(exes_path)
         assert os.path.exists(exes_path) and os.path.isdir(exes_path)
-        lines.append("export PATH=%s:$PATH" % cygwinify(exes_path))
+        lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
 
     # LIB and LIBPATH
     libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs")
     libs_path = os.path.abspath(libs_path)
-    assert os.path.exists(libs_path) and os.path.isdir(libs_path)
-    lines.append("export LIB=\"%s;\"$LIB" % libs_path)
-    lines.append("export LIBPATH=\"%s;\"$LIBPATH" % libs_path)
+    if not os.path.exists(libs_path):
+        os.mkdir(libs_path)
+    else:
+        assert os.path.isdir(libs_path)
+    lines.append("export LIB=\"%s\":$LIB" % libs_path)
+    lines.append("export LIBPATH=\"%s\":$LIBPATH" % libs_path)
 
     outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin.sh"))
     with open(outpath, "w") as fh:
@@ -130,7 +132,8 @@ if __name__ == '__main__':
     input_libs = get_libs_from_env()
 
     # make sure the output directory exists
-    out_path = os.path.abspath('..\TrappedMSVCLibs')
+    scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
+    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs')
     if not os.path.isdir(out_path):
         os.mkdir(out_path)
         print 'Created output directory %s...' % out_path
