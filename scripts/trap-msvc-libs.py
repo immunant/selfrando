@@ -118,7 +118,7 @@ def get_libs_from_env():
         assert os.path.exists(d) and os.path.isdir(d)
         files = os.listdir(d)
         files = map(lambda f: os.path.join(d, f), files)
-        lib_filter = lambda f: os.path.isfile(f) and f.endswith(".lib")
+        lib_filter = lambda f: os.path.isfile(f) and f.lower().endswith(".lib")
         libs += filter(lib_filter, files)
 
     return libs
