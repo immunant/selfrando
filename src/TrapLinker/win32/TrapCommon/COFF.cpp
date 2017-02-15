@@ -232,14 +232,9 @@ bool ConvertExports(COFFObject *exp, COFFObject *tramp) {
 }
 
 bool ConvertExports(const _TCHAR *input_file, const _TCHAR *output_file) {
-    std::shared_ptr<BYTE> file_contents;
-    auto read_ok = ReadEntireFile(input_file, &file_contents, nullptr);
+    COFFObject exp_file;
+    auto read_ok = exp_file.readFromFile(input_file);
     if (!read_ok)
-        return false;
-
-    COFFObject exp_file(file_contents);
-    auto parse_ok = exp_file.parse();
-    if (!parse_ok)
         return false;
 
     IMAGE_FILE_HEADER tramp_hdr;
