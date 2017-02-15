@@ -115,7 +115,12 @@ static void ProcessInputFile(const _TCHAR *file) {
 	// TODO: parallelize this (using WaitForMultipleObjects)
     // FIXME: output to a temporary file instead, and erase it afterwards
     // FIXME: Trap.cpp leaks some memory
-    TRaPCOFFObject(file, file);
+    COFFObject coff_file;
+    if (!coff_file.readFromFile(file))
+        return;
+    if (!coff_file.createTRaPInfo())
+        return;
+    coff_file.writeToFile(file);
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
