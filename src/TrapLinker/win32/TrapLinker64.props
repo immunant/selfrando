@@ -5,7 +5,7 @@
     <MSVC_LINKER>$(VC_ExecutablePath_x64)\link.exe</MSVC_LINKER>
   </PropertyGroup>
   <PropertyGroup>
-    <ExecutablePath>$(SolutionDir)$(Platform)\$(Configuration);$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(SystemRoot)\SysWow64;$(FxCopDir);$(PATH);</ExecutablePath>
+    <ExecutablePath>$(SolutionDir)\$(Configuration);$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(SystemRoot)\SysWow64;$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(SolutionDir)\TrappedMSVCLibs\x86_64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
   </PropertyGroup>
@@ -14,7 +14,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <PostBuildEvent>
-      <Command>$(SolutionDir)$(Configuration)\PatchEntry.exe $(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName).exe</Command>
+      <Command>$(SolutionDir)\$(Configuration)\PatchEntry.exe $(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName).exe</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Run PatchEntry on the output executable</Message>
