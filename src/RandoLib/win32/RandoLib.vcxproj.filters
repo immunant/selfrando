@@ -30,6 +30,12 @@
     <MASM Include="x86\TrapHeader.asm">
       <Filter>Source Files\32-bit Files</Filter>
     </MASM>
+    <MASM Include="x86_64\EntryPoint.asm">
+      <Filter>Source Files\64-bit Files</Filter>
+    </MASM>
+    <MASM Include="x86_64\TrapHeader.asm">
+      <Filter>Source Files\64-bit Files</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\RandoLib.cpp">
@@ -48,6 +54,9 @@
       <Filter>Source Files\32-bit Files</Filter>
     </ClCompile>
     <ClCompile Include="..\arch\x86_64\Util.cpp">
+      <Filter>Source Files\64-bit Files</Filter>
+    </ClCompile>
+    <ClCompile Include="x86_64\Relocation.cpp">
       <Filter>Source Files\64-bit Files</Filter>
     </ClCompile>
   </ItemGroup>
