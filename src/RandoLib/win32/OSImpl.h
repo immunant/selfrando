@@ -46,7 +46,7 @@ namespace os {
 // so it can continue to execute.
 #define RANDO_SECTION   __declspec(code_seg(".rndtext"))
 
-#define RANDO_PUBLIC
+#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
 
 // OS-specific typedefs
 typedef LARGE_INTEGER Time;

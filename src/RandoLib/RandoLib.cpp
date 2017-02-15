@@ -549,9 +549,7 @@ static RANDO_SECTION void RandomizeModule(os::Module &mod2, void *arg) {
     mod2.ForAllExecSections(false, RandomizeExecSection, nullptr);
 }
 
-extern "C"
-RANDO_PUBLIC
-RANDO_SECTION void _TRaP_RandoMain(os::Module::Handle asm_module) {
+RANDO_MAIN_FUNCTION() {
     os::API::Init();
     os::Module mod(asm_module);
     // For every section in the current program...

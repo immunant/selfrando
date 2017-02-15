@@ -57,6 +57,8 @@ extern "C" {
 #define RANDO_PUBLIC  __attribute__((visibility("hidden")))
 #endif
 
+#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void _TRaP_RandoMain(os::Module::Handle asm_module)
+
 typedef time_t Time;
 
 class Module {

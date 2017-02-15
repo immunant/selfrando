@@ -32,7 +32,7 @@
 .model flat
 
 public __TRaP_RandoEntry
-extern __TRaP_RandoMain:near
+extern __TRaP_RandoMain@4:near
 
 rndentry segment byte public flat read execute alias(".rndentr")
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
@@ -59,9 +59,9 @@ do_rando:
 	push dword ptr [__TRaP_OriginalEntry]
 	; Push pointer to ModuleInfo structure as single parameter
 	push esp
-	call __TRaP_RandoMain
+	call __TRaP_RandoMain@4
 	; Pop parameters
-	add esp, 16
+	add esp, 12
 
 	; Pop registers
 	pop edi
