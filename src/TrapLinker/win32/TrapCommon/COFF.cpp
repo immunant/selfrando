@@ -118,7 +118,7 @@ private:
 std::vector<BackedCOFFSection> new_sections;
 std::vector<std::unique_ptr<IMAGE_SYMBOL>> new_symbols;
 
-static bool ReadEntireFile(const _TCHAR *file, std::vector<BYTE> *file_contents) {
+static bool ReadEntireFile(const _TCHAR *file, std::shared_ptr<BYTE> *file_contents, size_t *file_size_ptr) {
     FILE *fp;
     int err = _tfopen_s(&fp, file, TEXT("rb"));
     if (err) {
@@ -129,35 +129,32 @@ static bool ReadEntireFile(const _TCHAR *file, std::vector<BYTE> *file_contents)
     fseek(fp, 0, SEEK_END);
     long file_size = ftell(fp);
     assert(file_size != -1 && "Invalid file size");
+    if (file_size_ptr != nullptr)
+        *file_size_ptr = file_size;
     //printf("Total file size: %ld\n", file_size);
 
-    file_contents->resize(file_size, 0);
+    file_contents->reset(new BYTE[file_size], std::default_delete<BYTE[]>());
     fseek(fp, 0, SEEK_SET);
-    long file_read = fread(file_contents->data(), 1, file_size, fp);
-    if (file_read < file_size)
+    long file_read = fread(file_contents->get(), 1, file_size, fp);
+    if (file_read < file_size) {
+        file_contents->reset();
+        if (file_size_ptr != nullptr)
+            *file_size_ptr = 0;
         return false;
+    }
     fclose(fp);
     return true;
 }
 
 // Returns true upon success and false otherwise.
 bool TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file) {
-    std::vector<BYTE> file_contents;
-    auto read_ok = ReadEntireFile(input_file, &file_contents);
+    COFFObject coff_file;
+    auto read_ok = coff_file.readFromFile(input_file);
 	if (!read_ok) {
-		if (VERBOSE)
-			fwprintf_s(stderr, L"Failed to read file '%s'\n", input_file);
-		return false;
-	}
-
-    COFFObject coff_file(file_contents.data());
-    auto parse_ok = coff_file.parse();
-	if (!parse_ok) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Failed to parse file '%s'\n", input_file);
 		return false; 
 	}
-
     auto trap_ok = coff_file.createTRaPInfo();
 	if (!trap_ok) {
 		if (VERBOSE)
@@ -176,17 +173,9 @@ bool TRaPCOFFLibrary(COFFLibrary *lib) {
 }
 
 bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file) {
-	std::vector<BYTE> file_contents;
-	auto read_ok = ReadEntireFile(input_file, &file_contents);
+	COFFLibrary coff_lib;
+	auto read_ok = coff_lib.readFromFile(input_file);
 	if (!read_ok) {
-		if (VERBOSE)
-			fwprintf_s(stderr, L"Failed to read library '%s'\n", input_file);
-		return false;
-	}
-
-	COFFLibrary coff_lib(file_contents.data(), file_contents.size());
-	auto parse_ok = coff_lib.parse();
-	if (!parse_ok) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Failed to parse library '%s'\n", input_file);
 		return true; // Return false here???
@@ -243,29 +232,22 @@ bool ConvertExports(COFFObject *exp, COFFObject *tramp) {
 }
 
 bool ConvertExports(const _TCHAR *input_file, const _TCHAR *output_file) {
-    std::vector<BYTE> file_contents;
-    auto read_ok = ReadEntireFile(input_file, &file_contents);
+    std::shared_ptr<BYTE> file_contents;
+    auto read_ok = ReadEntireFile(input_file, &file_contents, nullptr);
     if (!read_ok)
         return false;
 
-    COFFObject exp_file(file_contents.data());
+    COFFObject exp_file(file_contents);
     auto parse_ok = exp_file.parse();
     if (!parse_ok)
         return false;
 
     IMAGE_FILE_HEADER tramp_hdr;
-    COFFObject tramp_file(&tramp_hdr);
+    COFFObject tramp_file(COFFObject::fromRawData(&tramp_hdr));
     auto converted = ConvertExports(&exp_file, &tramp_file);
     if (!converted)
         return false;
-
-    FILE *fp;
-    int err = _tfopen_s(&fp, output_file, TEXT("wb"));
-    if (err)
-        return false;
-    tramp_file.writeToFile(fp);
-    fclose(fp);
-    return true;
+    return tramp_file.writeToFile(output_file);
 }
 
 COFFSection::COFFSection(COFFObject *file, IMAGE_SECTION_HEADER *hdr) : m_file(file), m_hdr(hdr) {
@@ -297,7 +279,7 @@ size_t COFFSymbol::writeToFile(FILE *f) {
 }
 
 bool COFFObject::parse() {
-    if (m_hdr->Machine != IMAGE_FILE_MACHINE_I386)
+    if (header()->Machine != IMAGE_FILE_MACHINE_I386)
         return false;
 #if 0
     printf("Read header machine:%hx sections:%d symbols:%d chars:%hx\n",
@@ -305,26 +287,33 @@ bool COFFObject::parse() {
 #endif
 
     // Read sections
-    IMAGE_SECTION_HEADER *sec_hdr = reinterpret_cast<IMAGE_SECTION_HEADER*>(m_hdr + 1);
+    IMAGE_SECTION_HEADER *sec_hdr = reinterpret_cast<IMAGE_SECTION_HEADER*>(header() + 1);
     m_sections.clear();
-    for (size_t sec = 0; sec < m_hdr->NumberOfSections; sec++, sec_hdr++)
+    for (size_t sec = 0; sec < header()->NumberOfSections; sec++, sec_hdr++)
         m_sections.emplace_back(this, sec_hdr);
 
     assert(m_hdr->PointerToSymbolTable != 0 && "Missing symbol table");
-    IMAGE_SYMBOL *sym_ptr = filePtr<IMAGE_SYMBOL>(m_hdr->PointerToSymbolTable);
+    IMAGE_SYMBOL *sym_ptr = filePtr<IMAGE_SYMBOL>(header()->PointerToSymbolTable);
 
     // Build string table
-    m_strings = reinterpret_cast<char*>(sym_ptr + m_hdr->NumberOfSymbols);
+    m_strings = reinterpret_cast<char*>(sym_ptr + header()->NumberOfSymbols);
 
     // Build symbol table
     m_symbols.clear();
-    for (size_t sym = 0; sym < m_hdr->NumberOfSymbols; sym++, sym_ptr++) {
+    for (size_t sym = 0; sym < header()->NumberOfSymbols; sym++, sym_ptr++) {
         BYTE num_aux = sym_ptr->NumberOfAuxSymbols;
         m_symbols_by_index[sym] = m_symbols.size();
         m_symbols.emplace_back(this, sym_ptr, sym);
         sym += num_aux, sym_ptr += num_aux;
     }
     return true;
+}
+
+bool COFFObject::readFromFile(const _TCHAR *filename) {
+    auto read_ok = ReadEntireFile(filename, &m_file_data, nullptr);
+    if (!read_ok)
+        return false;
+    return parse();
 }
 
 bool COFFObject::createTRaPInfo() {
@@ -458,18 +447,18 @@ const COFFSection *COFFObject::findSection(const char *name) const {
 
 void COFFObject::writeToFile(FILE *f) {
     // FIXME: handle errors
-    m_hdr->NumberOfSections = m_sections.size();
-    size_t file_pos = sizeof(IMAGE_FILE_HEADER) + m_hdr->NumberOfSections * sizeof(IMAGE_SECTION_HEADER);
+    header()->NumberOfSections = m_sections.size();
+    size_t file_pos = sizeof(IMAGE_FILE_HEADER) + header()->NumberOfSections * sizeof(IMAGE_SECTION_HEADER);
     for (auto &sec : m_sections) {
         sec.placeAtPos(file_pos);
         file_pos += sec.dataSize();
         file_pos += sec.relocSize();
     }
-    auto old_sym_ptr = m_hdr->PointerToSymbolTable;
-    m_hdr->PointerToSymbolTable = file_pos;
+    auto old_sym_ptr = header()->PointerToSymbolTable;
+    header()->PointerToSymbolTable = file_pos;
 
     // Caller is responsible for moving file pointer to start of file
-    fwrite(m_hdr, sizeof(IMAGE_FILE_HEADER), 1, f);
+    fwrite(header(), sizeof(IMAGE_FILE_HEADER), 1, f);
     for (auto &sec : m_sections)
         sec.writeHeaderToFile(f);
     for (auto &sec : m_sections) {
@@ -534,7 +523,7 @@ static void WriteBigEndian(T *ptr, T val) {
 }
 
 bool COFFLibrary::parse() {
-    auto file_start = reinterpret_cast<BYTE*>(m_file_data);
+    auto file_start = m_file_data.get();
     auto file_end = file_start + m_file_size;
     if (memcmp(file_start, IMAGE_ARCHIVE_START, IMAGE_ARCHIVE_START_SIZE) != 0)
         return false; // File is not an archive
@@ -571,7 +560,7 @@ bool COFFLibrary::parse() {
         auto is_internal_member = (is_linker_member || is_longnames_member);
         if (!is_internal_member) {
             // Regular object (or import) member
-            m_objects.emplace_back(new COFFObject(ptr));
+            m_objects.emplace_back(new COFFObject(std::shared_ptr<BYTE>(m_file_data, ptr)));
             auto &obj = m_objects.back();
             if (!obj->parse()) {
                 // Clear the pointer and release the COFFObject
@@ -610,6 +599,13 @@ bool COFFLibrary::parse() {
             }
         }
     return true;
+}
+
+bool COFFLibrary::readFromFile(const _TCHAR *filename) {
+    auto read_ok = ReadEntireFile(filename, &m_file_data, &m_file_size);
+    if (!read_ok)
+        return false;
+    return parse();
 }
 
 void COFFLibrary::writeToFile(FILE *fp) {

@@ -156,20 +156,29 @@ private:
 
 class COFFObject {
 public:
-    COFFObject(void *file_data) : m_file_data(file_data) {
-        m_hdr = reinterpret_cast<IMAGE_FILE_HEADER*>(m_file_data);
+    COFFObject() : m_file_data(nullptr)
+    { }
+
+    COFFObject(std::shared_ptr<BYTE> file_data) : m_file_data(file_data)
+    { }
+
+    template<typename T>
+    static COFFObject fromRawData(T *data) {
+        return COFFObject(std::shared_ptr<BYTE>(reinterpret_cast<BYTE*>(data), [] (BYTE *p) {}));
     }
 
     bool parse();
 
+    bool readFromFile(const _TCHAR *filename);
+
     bool createTRaPInfo();
 
     const IMAGE_FILE_HEADER *header() const {
-        return m_hdr;
+        return reinterpret_cast<const IMAGE_FILE_HEADER*>(m_file_data.get());
     }
 
     IMAGE_FILE_HEADER *header() {
-        return m_hdr;
+        return reinterpret_cast<IMAGE_FILE_HEADER*>(m_file_data.get());
     }
 
     const std::vector<COFFSection> &sections() const {
@@ -188,7 +197,7 @@ public:
 
     void addSymbol(const COFFSymbol &sym) {
         m_symbols.push_back(sym);
-        m_hdr->NumberOfSymbols += 1 + sym.header()->NumberOfAuxSymbols;
+        header()->NumberOfSymbols += 1 + sym.header()->NumberOfAuxSymbols;
         // TODO: set sym.m_index
     }
 
@@ -213,11 +222,10 @@ public:
 private:
     template<typename T = void>
     T *filePtr(size_t at) {
-        return reinterpret_cast<T*>(reinterpret_cast<char*>(m_file_data)+at);
+        return reinterpret_cast<T*>(reinterpret_cast<char*>(m_file_data.get())+at);
     }
 
-    void *m_file_data;
-    IMAGE_FILE_HEADER *m_hdr;
+    std::shared_ptr<BYTE> m_file_data;
     std::vector<COFFSection> m_sections;
     char *m_strings;
     std::vector<COFFSymbol> m_symbols;
@@ -237,9 +245,17 @@ struct COFFArchiveMember {
 
 class COFFLibrary {
 public:
-    COFFLibrary(void *file_data, size_t file_size) : m_file_data(file_data), m_file_size(file_size) { }
+    COFFLibrary()
+        : m_file_data(nullptr), m_file_size(0)
+    { }
+
+    COFFLibrary(std::shared_ptr<BYTE> file_data, size_t file_size)
+        : m_file_data(file_data), m_file_size(file_size)
+    { }
 
     bool parse();
+
+    bool readFromFile(const _TCHAR *filename);
 
     const std::vector<std::unique_ptr<COFFObject>> &objects() const {
         return m_objects;
@@ -250,10 +266,9 @@ public:
     bool writeToFile(const _TCHAR *filename);
 
 private:
-    void *m_file_data;
+    std::shared_ptr<BYTE> m_file_data;
     size_t m_file_size;
     std::vector<COFFArchiveMember> m_members;
     std::vector<std::unique_ptr<COFFObject>> m_objects;
     std::vector<std::unique_ptr<std::vector<DWORD>>> m_linker_symbols;
 };
-
