@@ -687,4 +687,5 @@ bool COFFLibrary::writeToFile(const _TCHAR *filename) {
     fclose(fp);
 	if (VERBOSE)
 		fwprintf_s(stderr, L"Success: added TRaP info to '%s'\n", filename);
+    return true;
 }
