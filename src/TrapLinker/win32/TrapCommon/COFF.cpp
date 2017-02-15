@@ -280,7 +280,7 @@ bool COFFObject::parse() {
         return false;
 #if 0
     printf("Read header machine:%hx sections:%d symbols:%d chars:%hx\n",
-        m_hdr->Machine, m_hdr->NumberOfSections, m_hdr->NumberOfSymbols, m_hdr->Characteristics);
+        header()->Machine, header()->NumberOfSections, header()->NumberOfSymbols, header()->Characteristics);
 #endif
 
     // Read sections
