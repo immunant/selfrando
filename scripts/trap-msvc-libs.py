@@ -95,7 +95,7 @@ def set_env_vars():
         lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
 
     # LIB and LIBPATH
-    libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs")
+    libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs32")
     libs_path = os.path.abspath(libs_path)
     if not os.path.exists(libs_path):
         os.mkdir(libs_path)
@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
     # make sure the output directory exists
     scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs')
+    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs32')
     if not os.path.isdir(out_path):
         os.mkdir(out_path)
         print 'Created output directory %s...' % out_path
