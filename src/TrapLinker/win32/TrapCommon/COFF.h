@@ -206,6 +206,8 @@ public:
 
     void writeToFile(FILE *f);
 
+    bool writeToFile(const _TCHAR *filename);
+
     size_t totalSize() const;
 
 private:
@@ -244,6 +246,8 @@ public:
     }
 
     void writeToFile(FILE *fp);
+
+    bool writeToFile(const _TCHAR *filename);
 
 private:
     void *m_file_data;

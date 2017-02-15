@@ -164,19 +164,7 @@ bool TRaPCOFFFile(const _TCHAR *input_file, const _TCHAR *output_file) {
 			fwprintf_s(stderr, L"Didn't add TRaP info to '%s'\n", input_file);
 		return true; // If TRaPCOFF returned false, the file already had TRaP info
 	}
-
-    FILE *fp;
-    int err = _tfopen_s(&fp, output_file, TEXT("wb"));
-	if (err) {
-		if (VERBOSE)
-			fwprintf_s(stderr, L"Failed to write trapped file '%s'\n", output_file);
-		return false;
-	}
-    coff_file.writeToFile(fp);
-    fclose(fp);
-	if (VERBOSE)
-		fwprintf_s(stderr, L"Success: added TRaP info to '%s'\n", output_file);
-    return true;
+    return coff_file.writeToFile(output_file);
 }
 
 bool TRaPCOFFLibrary(COFFLibrary *lib) {
@@ -209,19 +197,7 @@ bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file) {
 			fwprintf_s(stderr, L"Didn't add TRaP info to '%s'\n", input_file);
 		return true; // FIXME: should be false if TRaPCOFF returns an actual error
     }
-
-    FILE *fp;
-    int err = _tfopen_s(&fp, output_file, TEXT("wb"));
-	if (err) {
-		if (VERBOSE)
-			fwprintf_s(stderr, L"Failed to write trapped library '%s'\n", output_file);
-		return false;
-	}
-    coff_lib.writeToFile(fp);
-    fclose(fp);
-	if (VERBOSE)
-		fwprintf_s(stderr, L"Success: added TRaP info to '%s'\n", output_file);
-    return true;
+    return coff_lib.writeToFile(output_file);
 }
 
 bool ConvertExports(COFFFile *exp, COFFFile *tramp) {
@@ -511,6 +487,21 @@ void COFFFile::writeToFile(FILE *f) {
     fwrite(m_strings, strings_size, 1, f);
 }
 
+bool COFFFile::writeToFile(const _TCHAR *filename) {
+    FILE *fp;
+    int err = _tfopen_s(&fp, filename, TEXT("wb"));
+    if (err) {
+        if (VERBOSE)
+            fwprintf_s(stderr, L"Failed to write trapped file '%s'\n", filename);
+        return false;
+    }
+    writeToFile(fp);
+    fclose(fp);
+    if (VERBOSE)
+        fwprintf_s(stderr, L"Success: added TRaP info to '%s'\n", filename);
+    return true;
+}
+
 size_t COFFFile::totalSize() const {
     size_t res = sizeof(IMAGE_FILE_HEADER);
     for (auto &sec : m_sections)
@@ -687,4 +678,18 @@ void COFFLibrary::writeToFile(FILE *fp) {
         if (member.size & 1)
             fwrite(IMAGE_ARCHIVE_PAD, 1, 1, fp);
     }
+}
+
+bool COFFLibrary::writeToFile(const _TCHAR *filename) {
+    FILE *fp;
+    int err = _tfopen_s(&fp, filename, TEXT("wb"));
+	if (err) {
+		if (VERBOSE)
+			fwprintf_s(stderr, L"Failed to write trapped library '%s'\n", filename);
+		return false;
+	}
+    writeToFile(fp);
+    fclose(fp);
+	if (VERBOSE)
+		fwprintf_s(stderr, L"Success: added TRaP info to '%s'\n", filename);
 }
