@@ -56,7 +56,7 @@ class RANDO_SECTION Module {
 public:
     struct ModuleInfo {
         uintptr_t original_entry_rva;
-        uintptr_t *new_entry;
+        BytePointer entry_loop;
         HANDLE module;
     };
     typedef ModuleInfo *Handle;

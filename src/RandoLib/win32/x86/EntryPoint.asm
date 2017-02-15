@@ -34,9 +34,6 @@
 public __TRaP_RandoEntry
 extern __TRaP_RandoMain:near
 
-.data
-__TRaP_NewEntry dd 0
-
 rndentry segment byte public flat read execute alias(".rndentr")
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
 ; We store it in a separate section to make it easier to patch on-disk, and also to un-map from memory
@@ -44,11 +41,11 @@ __TRaP_OriginalEntry dd 0
 
 ; New program entry point, that AddressOfEntryPoint will point to
 __TRaP_RandoEntry proc
-	; Check if we already randomized the program
-	mov eax, dword ptr [__TRaP_NewEntry]
-	test eax, eax
-	jnz have_rando
+entry_loop:
+    db 0E9h
+    dd 0
 
+do_rando:
 	; Save registers (for some reason, the C code doesn't seem to)
 	push ebp
 	push ebx
@@ -57,7 +54,7 @@ __TRaP_RandoEntry proc
 	; WARNING: PatchEntry expects this to be at a fixed offset
 	; PatchEntry changes this to "PUSH 0 ; NOP" if we're not in a DLL
 	push dword ptr [esp + 20] ; asm_module (DLL-only)
-	lea eax, dword ptr [__TRaP_NewEntry]
+    lea eax, entry_loop
 	push eax
 	push dword ptr [__TRaP_OriginalEntry]
 	; Push pointer to ModuleInfo structure as single parameter
@@ -72,12 +69,7 @@ __TRaP_RandoEntry proc
 	pop ebx
 	pop ebp
 
-	; Load the new entry point from where RandoLib put it
-	mov eax, dword ptr [__TRaP_NewEntry]
-
-have_rando:
-	; FIXME: this could be useful to attackers???
-	jmp dword ptr eax
+    jmp entry_loop
 __TRaP_RandoEntry endp
 rndentry ends
 

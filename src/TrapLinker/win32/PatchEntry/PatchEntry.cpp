@@ -42,7 +42,7 @@ struct ExportTrampoline {
     DWORD offset;
 };
 
-static const int kPush0Offset = 13;
+static const int kPush0Offset = 9;
 
 int _tmain(int argc, _TCHAR* argv[])
 {

@@ -391,13 +391,20 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                                              Relocation::Callback callback,
                                              void *callback_arg) const {
     // Fix up the entry point
-    if (m_info->new_entry != nullptr) {
-        *m_info->new_entry = RVA2Address(m_info->original_entry_rva).to_ptr<uintptr_t>();
-        Relocation entry_reloc(*this, address_from_ptr(m_info->new_entry),
-                               Relocation::get_pointer_reloc_type());
-        (*callback)(entry_reloc, callback_arg);
-        API::DebugPrintf<1>("New program entry:%p\n", *m_info->new_entry);
-    }
+    RANDO_ASSERT(m_info->entry_loop != nullptr);
+    RANDO_ASSERT(m_info->entry_loop[0] == 0xE9);
+    BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
+    Relocation entry_reloc(*this, address_from_ptr(&new_entry),
+                           Relocation::get_pointer_reloc_type());
+    (*callback)(entry_reloc, callback_arg);
+    API::DebugPrintf<1>("New program entry:%p\n", new_entry);
+
+    // Patch the entry loop jump
+    // FIXME: this is x86-specific
+    auto entry_old_perms = API::MemProtect(m_info->entry_loop, 5, PagePermissions::RW);
+    *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
+    API::MemProtect(m_info->entry_loop, 5, entry_old_perms);
+
     // Fix up relocations
     RANDO_ASSERT(m_reloc_section != nullptr);
     Section reloc_section(*this, m_reloc_section);
