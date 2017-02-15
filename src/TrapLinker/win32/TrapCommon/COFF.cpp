@@ -208,6 +208,7 @@ bool ConvertExports(COFFObject *exp, COFFObject *tramp) {
     new_sections.emplace_back(kTrampolineSectionName, tramp_sec_chars);
     auto &tramp_sec = new_sections.back();
 
+    WORD rel32_rel_type = (exp->header()->Machine == IMAGE_FILE_MACHINE_I386) ? IMAGE_REL_I386_REL32 : IMAGE_REL_AMD64_REL32;
     for (auto &sym : exp->symbols())
         if (sym.header()->StorageClass == IMAGE_SYM_CLASS_EXTERNAL) {
             // Bingo: we found an external symbol; add a trampoline for it and copy the symbol
@@ -219,7 +220,7 @@ bool ConvertExports(COFFObject *exp, COFFObject *tramp) {
             tramp_sec.addDataByte(0);
             tramp_sec.addDataByte(0);
             // TODO: align the jumps to 8-bytes or more???
-            tramp_sec.addRelocation(IMAGE_RELOCATION{ jmp_ofs_pos, sym_index, IMAGE_REL_I386_REL32 });
+            tramp_sec.addRelocation(IMAGE_RELOCATION{ jmp_ofs_pos, sym_index, rel32_rel_type });
             // Copy the symbol as-is to the trampoline file
             tramp->addSymbol(sym);
             // TODO: also add .txtrp TRaP info for this jump
@@ -274,7 +275,8 @@ size_t COFFSymbol::writeToFile(FILE *f) {
 }
 
 bool COFFObject::parse() {
-    if (header()->Machine != IMAGE_FILE_MACHINE_I386)
+    if (header()->Machine != IMAGE_FILE_MACHINE_I386 &&
+        header()->Machine != IMAGE_FILE_MACHINE_AMD64)
         return false;
 #if 0
     printf("Read header machine:%hx sections:%d symbols:%d chars:%hx\n",
@@ -318,6 +320,8 @@ bool COFFObject::createTRaPInfo() {
         return false;
     // Didn't find any .txtrp sections, add them now
     std::unordered_map<SHORT, std::map<DWORD, size_t>> func_sym_info;
+    WORD sym_rel_type = (header()->Machine == IMAGE_FILE_MACHINE_I386) ? IMAGE_REL_I386_DIR32NB : IMAGE_REL_AMD64_ADDR32NB;
+    WORD rel32_rel_type = (header()->Machine == IMAGE_FILE_MACHINE_I386) ? IMAGE_REL_I386_REL32 : IMAGE_REL_AMD64_REL32;
     for (auto &sym : symbols()) {
         if (!ISFCN(sym.header()->Type))
             continue;
@@ -345,7 +349,7 @@ bool COFFObject::createTRaPInfo() {
         new_sec.addDataByte(0);
         new_sec.addDataByte(0);
         new_sec.addDataByte(0);
-        new_sec.addRelocation(IMAGE_RELOCATION{ 0, first_sym_it->second, IMAGE_REL_I386_DIR32NB });
+        new_sec.addRelocation(IMAGE_RELOCATION{ 0, first_sym_it->second, sym_rel_type });
 
         // The first symbol might not start at the beginning of the section, so encode its offset
         // FIXME: could we encode this inside the relocation itself???
@@ -368,7 +372,7 @@ bool COFFObject::createTRaPInfo() {
         size_t sec_pos = 0;
         for (size_t i = 0; i < sec_hdr->NumberOfRelocations; i++) {
             auto &reloc = sec_relocs[i];
-            if (reloc.Type == IMAGE_REL_I386_REL32) {
+            if (reloc.Type == rel32_rel_type) {
                 assert(reloc.VirtualAddress > sec_pos && "Found REL32 relocation with offset 0");
                 new_sec.addULEB128(reloc.VirtualAddress - sec_pos);
                 new_sec.addULEB128(reloc.Type);
