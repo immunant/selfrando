@@ -37,20 +37,20 @@
 #include <vector>
 
 class COFFLibrary;
-class COFFFile;
+class COFFObject;
 class COFFSection;
 class COFFSymbol;
 
-extern bool TRaPCOFFFile(COFFFile *coff);
-extern bool TRaPCOFFFile(const _TCHAR *input_file, const _TCHAR *output_file);
+extern bool TRaPCOFFObject(COFFObject *coff);
+extern bool TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file);
 extern bool TRaPCOFFLibrary(COFFLibrary *lib);
 extern bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file);
-extern bool ConvertExports(COFFFile *exp, COFFFile *tramp);
+extern bool ConvertExports(COFFObject *exp, COFFObject *tramp);
 extern bool ConvertExports(const _TCHAR *input_file, const _TCHAR *output_file);
 
 class COFFSection {
 public:
-    COFFSection(COFFFile *file, IMAGE_SECTION_HEADER *hdr);
+    COFFSection(COFFObject *file, IMAGE_SECTION_HEADER *hdr);
     COFFSection(IMAGE_SECTION_HEADER *hdr, void *data, IMAGE_RELOCATION *relocs);
 
     const IMAGE_SECTION_HEADER *header() const {
@@ -112,7 +112,7 @@ public:
     }
 
 protected:
-    COFFFile *m_file;
+    COFFObject *m_file;
     IMAGE_SECTION_HEADER *m_hdr;
     void *m_data;
     IMAGE_RELOCATION *m_relocs;
@@ -122,7 +122,7 @@ protected:
 
 class COFFSymbol {
 public:
-    COFFSymbol(COFFFile *file, IMAGE_SYMBOL *sym, size_t index);
+    COFFSymbol(COFFObject *file, IMAGE_SYMBOL *sym, size_t index);
     COFFSymbol(IMAGE_SYMBOL *sym, IMAGE_AUX_SYMBOL *aux_syms) : m_file(nullptr), m_sym(sym), m_aux_symbols(aux_syms) {
         m_index = -1; // FIXME
         m_actual_name = reinterpret_cast<char*>(sym->N.ShortName);
@@ -147,16 +147,16 @@ public:
     }
 
 private:
-    COFFFile *m_file;
+    COFFObject *m_file;
     IMAGE_SYMBOL *m_sym;
     size_t m_index;
     char *m_actual_name;
     IMAGE_AUX_SYMBOL *m_aux_symbols;
 };
 
-class COFFFile {
+class COFFObject {
 public:
-    COFFFile(void *file_data) : m_file_data(file_data) {
+    COFFObject(void *file_data) : m_file_data(file_data) {
         m_hdr = reinterpret_cast<IMAGE_FILE_HEADER*>(m_file_data);
     }
 
@@ -241,7 +241,7 @@ public:
 
     bool parse();
 
-    const std::vector<std::unique_ptr<COFFFile>> &objects() const {
+    const std::vector<std::unique_ptr<COFFObject>> &objects() const {
         return m_objects;
     }
 
@@ -253,6 +253,7 @@ private:
     void *m_file_data;
     size_t m_file_size;
     std::vector<COFFArchiveMember> m_members;
-    std::vector<std::unique_ptr<COFFFile>> m_objects;
+    std::vector<std::unique_ptr<COFFObject>> m_objects;
     std::vector<std::unique_ptr<std::vector<DWORD>>> m_linker_symbols;
 };
+

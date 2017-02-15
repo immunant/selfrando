@@ -141,7 +141,7 @@ static bool ReadEntireFile(const _TCHAR *file, std::vector<BYTE> *file_contents)
 }
 
 // Returns true upon success and false otherwise.
-bool TRaPCOFFFile(const _TCHAR *input_file, const _TCHAR *output_file) {
+bool TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file) {
     std::vector<BYTE> file_contents;
     auto read_ok = ReadEntireFile(input_file, &file_contents);
 	if (!read_ok) {
@@ -150,7 +150,7 @@ bool TRaPCOFFFile(const _TCHAR *input_file, const _TCHAR *output_file) {
 		return false;
 	}
 
-    COFFFile coff_file(file_contents.data());
+    COFFObject coff_file(file_contents.data());
     auto parse_ok = coff_file.parse();
 	if (!parse_ok) {
 		if (VERBOSE)
@@ -200,7 +200,7 @@ bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file) {
     return coff_lib.writeToFile(output_file);
 }
 
-bool ConvertExports(COFFFile *exp, COFFFile *tramp) {
+bool ConvertExports(COFFObject *exp, COFFObject *tramp) {
     auto edata_sec = exp->findSection(kExportSectionName);
     if (edata_sec == nullptr)
         return false;
@@ -248,13 +248,13 @@ bool ConvertExports(const _TCHAR *input_file, const _TCHAR *output_file) {
     if (!read_ok)
         return false;
 
-    COFFFile exp_file(file_contents.data());
+    COFFObject exp_file(file_contents.data());
     auto parse_ok = exp_file.parse();
     if (!parse_ok)
         return false;
 
     IMAGE_FILE_HEADER tramp_hdr;
-    COFFFile tramp_file(&tramp_hdr);
+    COFFObject tramp_file(&tramp_hdr);
     auto converted = ConvertExports(&exp_file, &tramp_file);
     if (!converted)
         return false;
@@ -268,7 +268,7 @@ bool ConvertExports(const _TCHAR *input_file, const _TCHAR *output_file) {
     return true;
 }
 
-COFFSection::COFFSection(COFFFile *file, IMAGE_SECTION_HEADER *hdr) : m_file(file), m_hdr(hdr) {
+COFFSection::COFFSection(COFFObject *file, IMAGE_SECTION_HEADER *hdr) : m_file(file), m_hdr(hdr) {
     m_data = file->filePtr(hdr->PointerToRawData);
     m_relocs = file->filePtr<IMAGE_RELOCATION>(hdr->PointerToRelocations);
 }
@@ -277,7 +277,7 @@ COFFSection::COFFSection(IMAGE_SECTION_HEADER *hdr, void *data, IMAGE_RELOCATION
     : m_file(nullptr), m_hdr(hdr), m_data(data), m_relocs(relocs) {
 }
 
-COFFSymbol::COFFSymbol(COFFFile *file, IMAGE_SYMBOL *sym, size_t index) : m_file(file), m_sym(sym), m_index(index) {
+COFFSymbol::COFFSymbol(COFFObject *file, IMAGE_SYMBOL *sym, size_t index) : m_file(file), m_sym(sym), m_index(index) {
     m_actual_name = reinterpret_cast<char*>(sym->N.ShortName);
     if (sym->N.Name.Short == 0) {
         m_actual_name = file->m_strings + sym->N.Name.Long;
@@ -296,7 +296,7 @@ size_t COFFSymbol::writeToFile(FILE *f) {
     return res; // FIXME: better error handling
 }
 
-bool COFFFile::parse() {
+bool COFFObject::parse() {
     if (m_hdr->Machine != IMAGE_FILE_MACHINE_I386)
         return false;
 #if 0
@@ -327,7 +327,7 @@ bool COFFFile::parse() {
     return true;
 }
 
-bool COFFFile::createTRaPInfo() {
+bool COFFObject::createTRaPInfo() {
     // Check if the file already contains .txtrp
     auto trap_sec = findSection(kTrapSectionName);
     if (trap_sec != nullptr)
@@ -422,7 +422,7 @@ bool COFFFile::createTRaPInfo() {
 
 
 #if 0
-void COFFFile::parse_debug_s(void *debug_data, uint32_t debug_size) {
+void COFFObject::parse_debug_s(void *debug_data, uint32_t debug_size) {
     uint32_t *debug_ptr = (uint32_t*)debug_data,
         *debug_end = debug_ptr + (debug_size / 4);
     assert(debug_ptr[0] == 0x4 && "Invalid debug$S signature");
@@ -440,7 +440,7 @@ void COFFFile::parse_debug_s(void *debug_data, uint32_t debug_size) {
 }
 #endif
 
-const COFFSection *COFFFile::findSection(const char *name) const {
+const COFFSection *COFFObject::findSection(const char *name) const {
     // The Name field in the section header is 8 bytes long
     // It either contains an 8-char name, or a shorted one padded with \0
     // Whatever the caller passes in name, we need to convert to this format
@@ -456,7 +456,7 @@ const COFFSection *COFFFile::findSection(const char *name) const {
     return nullptr;
 }
 
-void COFFFile::writeToFile(FILE *f) {
+void COFFObject::writeToFile(FILE *f) {
     // FIXME: handle errors
     m_hdr->NumberOfSections = m_sections.size();
     size_t file_pos = sizeof(IMAGE_FILE_HEADER) + m_hdr->NumberOfSections * sizeof(IMAGE_SECTION_HEADER);
@@ -487,7 +487,7 @@ void COFFFile::writeToFile(FILE *f) {
     fwrite(m_strings, strings_size, 1, f);
 }
 
-bool COFFFile::writeToFile(const _TCHAR *filename) {
+bool COFFObject::writeToFile(const _TCHAR *filename) {
     FILE *fp;
     int err = _tfopen_s(&fp, filename, TEXT("wb"));
     if (err) {
@@ -502,7 +502,7 @@ bool COFFFile::writeToFile(const _TCHAR *filename) {
     return true;
 }
 
-size_t COFFFile::totalSize() const {
+size_t COFFObject::totalSize() const {
     size_t res = sizeof(IMAGE_FILE_HEADER);
     for (auto &sec : m_sections)
         res += sec.totalSize();
@@ -571,10 +571,10 @@ bool COFFLibrary::parse() {
         auto is_internal_member = (is_linker_member || is_longnames_member);
         if (!is_internal_member) {
             // Regular object (or import) member
-            m_objects.emplace_back(new COFFFile(ptr));
+            m_objects.emplace_back(new COFFObject(ptr));
             auto &obj = m_objects.back();
             if (!obj->parse()) {
-                // Clear the pointer and release the COFFFile
+                // Clear the pointer and release the COFFObject
                 obj.reset();
                 // TODO: save some memory by doing a pop_back()???
             }

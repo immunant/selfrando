@@ -40,7 +40,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		printf("Usage: TrapObj <input file> <output file>\n");
 		return 1;
 	}
-    auto trap_res = TRaPCOFFFile(argv[1], argv[2]);
+    auto trap_res = TRaPCOFFObject(argv[1], argv[2]);
     if (!trap_res)
         return 1;
 	return 0;

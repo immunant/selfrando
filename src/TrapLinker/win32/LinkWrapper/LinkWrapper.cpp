@@ -108,14 +108,14 @@ static void ProcessInputFile(const _TCHAR *file) {
         TRaPCOFFLibrary(file, file);
         return;
     } else if (_tcsicmp(dot, TEXT(".obj")) != 0 &&
-             _tcsicmp(dot, TEXT(".o")) != 0) // FIXME: create a list of allowed object file extensions (or let TRaPCOFFFile detect object files itself)
+             _tcsicmp(dot, TEXT(".o")) != 0) // FIXME: create a list of allowed object file extensions (or let TRaPCOFFObject detect object files itself)
 		return;
 
 	// Run TrapObj.exe <file.obj> <file.obj>
 	// TODO: parallelize this (using WaitForMultipleObjects)
     // FIXME: output to a temporary file instead, and erase it afterwards
     // FIXME: Trap.cpp leaks some memory
-    TRaPCOFFFile(file, file);
+    TRaPCOFFObject(file, file);
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
