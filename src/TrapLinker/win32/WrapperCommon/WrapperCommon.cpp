@@ -32,7 +32,8 @@
 
 #pragma comment(lib, "shlwapi")
 
-static _TCHAR kLinkerVar[] = TEXT("MSVC_LINKER");
+static _TCHAR kLinkerPathVar[] = TEXT("MSVC_LINKER_PATH");
+static _TCHAR kLinkerName[] = TEXT("\\link.exe");
 
 # define BACKSLASH TCHAR('\\')
 # define DOUBLEQUOTE TCHAR('"')
@@ -92,11 +93,19 @@ TString LocateRandoFile(const _TCHAR *file, bool quote) {
 
 TString LocateMSVCLinker() {
     TString linker_path;
-    auto linker_path_len = GetEnvironmentVariable(kLinkerVar, NULL, 0);
-    assert(linker_path_len > 0 && "MSVC_LINKER variable not set");
+    auto linker_path_len = GetEnvironmentVariable(kLinkerPathVar, NULL, 0);
+    assert(linker_path_len > 0 && "MSVC_LINKER_PATH variable not set");
     linker_path.resize(linker_path_len, 'X');
-    GetEnvironmentVariable(kLinkerVar, const_cast<_TCHAR*>(linker_path.data()), linker_path_len + 1);
-    return linker_path;
+    GetEnvironmentVariable(kLinkerPathVar, const_cast<_TCHAR*>(linker_path.data()), linker_path_len + 1);
+
+    std::basic_istringstream<TCHAR> iss(linker_path);
+    TString path;
+    while (std::getline(iss, path, _T(';'))) {
+        path.append(kLinkerName);
+        if (PathFileExists(path.c_str()))
+            return path;
+    }
+    return TString();
 }
 
 // helper method to print out args passed to link.exe

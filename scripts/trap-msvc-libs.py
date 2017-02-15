@@ -77,7 +77,7 @@ def set_env_vars():
     link_exe = get_path_to_link_exe()
 
     link_exe = link_exe.replace("\\", "/") # convert to posix syntax
-    lines.append("export MSVC_LINKER=\"%s\"" % link_exe)
+    lines.append("export MSVC_LINKER_PATH=\"%s\"" % os.path.dirname(link_exe))
 
     def cygwinify(path):
         return "/" + path.replace(":", "").replace("\\", "/")

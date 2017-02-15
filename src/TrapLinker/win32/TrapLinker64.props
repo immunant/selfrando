@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <MSVC_LINKER>$(VC_ExecutablePath_x64)\link.exe</MSVC_LINKER>
+    <MSVC_LINKER_PATH>$(VC_ExecutablePath_x64)</MSVC_LINKER_PATH>
   </PropertyGroup>
   <PropertyGroup>
     <ExecutablePath>$(SolutionDir)\$(Configuration);$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(SystemRoot)\SysWow64;$(FxCopDir);$(PATH);</ExecutablePath>
@@ -21,8 +21,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <BuildMacro Include="MSVC_LINKER">
-      <Value>$(MSVC_LINKER)</Value>
+    <BuildMacro Include="MSVC_LINKER_PATH">
+      <Value>$(MSVC_LINKER_PATH)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
   </ItemGroup>
