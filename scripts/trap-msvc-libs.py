@@ -98,7 +98,7 @@ def set_env_vars():
     libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs", "x86")
     libs_path = os.path.abspath(libs_path)
     if not os.path.exists(libs_path):
-        os.mkdir(libs_path)
+        os.makedirs(libs_path)
     else:
         assert os.path.isdir(libs_path)
     lines.append("export LIB=\"%s\":$LIB" % libs_path)
@@ -116,7 +116,9 @@ def get_libs_from_env():
     assert os.environ['LIB'] is not None, r"Error, %LIB% is not set."
     dirs = filter(lambda d: d, os.environ['LIB'].split(';'))
     for d in dirs:
-        assert os.path.exists(d) and os.path.isdir(d)
+        if not os.path.exists(d):
+            continue
+        assert os.path.isdir(d)
         files = os.listdir(d)
         files = map(lambda f: os.path.join(d, f), files)
         lib_filter = lambda f: os.path.isfile(f) and f.lower().endswith(".lib")
@@ -135,7 +137,7 @@ if __name__ == '__main__':
     scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
     out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs', 'x86')
     if not os.path.isdir(out_path):
-        os.mkdir(out_path)
+        os.makedirs(out_path)
         print 'Created output directory %s...' % out_path
 
     # invoke traplib.exe on each of the libraries we found
