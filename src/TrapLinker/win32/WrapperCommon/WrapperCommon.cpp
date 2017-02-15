@@ -101,9 +101,16 @@ TString LocateMSVCLinker() {
     std::basic_istringstream<TCHAR> iss(linker_path);
     TString path;
     while (std::getline(iss, path, _T(';'))) {
-        path.append(kLinkerName);
-        if (PathFileExists(path.c_str()))
-            return path;
+        if (path.empty())
+            continue;
+
+        // We need to copy path to a new string because std::getline
+        // appends a NULL character to the end of path, which we don't want
+        const _TCHAR *path_str = path.c_str();
+        TString exact_path(path_str, wcslen(path_str));
+        exact_path.append(kLinkerName);
+        if (PathFileExists(exact_path.c_str()))
+            return exact_path;
     }
     return TString();
 }
