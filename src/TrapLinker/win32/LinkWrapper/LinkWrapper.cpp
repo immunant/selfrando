@@ -48,7 +48,6 @@ static void ProcessCommands(const _TCHAR *file);
 static void ProcessInputFile(const _TCHAR *file);
 
 bool lib_mode = false;
-WORD target_machine = IMAGE_FILE_MACHINE_UNKNOWN;
 
 static void ProcessArg(const _TCHAR *arg) {
     if (arg[0] == '@') {
@@ -119,13 +118,6 @@ static void ProcessInputFile(const _TCHAR *file) {
     COFFObject coff_file;
     if (!coff_file.readFromFile(file))
         return;
-    if (target_machine == IMAGE_FILE_MACHINE_UNKNOWN) {
-        target_machine = coff_file.header()->Machine;
-    } else if (coff_file.header()->Machine != target_machine) {
-        fprintf(stderr, "Machine type mismatch:%hd != %hd\n",
-                coff_file.header()->Machine, target_machine);
-        return;
-    }
     if (!coff_file.createTRaPInfo())
         return;
     coff_file.writeToFile(file);
