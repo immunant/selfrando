@@ -53,9 +53,11 @@ do_rando:
     push rax
 	; Push pointer to ModuleInfo structure as single parameter
     mov rcx, rsp
-    sub rsp, 32
+    ; We need to reserve at least 32 bytes on the stack for the parameters,
+    ; but we reserve 40 to keep the stack aligned to 16 bytes
+    sub rsp, 40
 	call _TRaP_RandoMain
-    add rsp, 32
+    add rsp, 40
 
     jmp entry_loop
 __TRaP_RandoEntry endp
