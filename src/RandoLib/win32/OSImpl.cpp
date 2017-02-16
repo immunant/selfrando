@@ -241,8 +241,12 @@ RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms)
 
 RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_name(name) {
     RANDO_ASSERT(info != nullptr);
-    m_handle = (info->module == nullptr) ? APIImpl::kernel32_GetModuleHandleA(nullptr)
-                                         : info->module;
+    if ((info->dll_characteristics & IMAGE_FILE_DLL) == 0) {
+        // We can't trust info->module, so get the module from the OS
+        m_handle = APIImpl::kernel32_GetModuleHandleA(nullptr);
+    } else {
+        m_handle = info->module;
+    }
     m_dos_hdr = RVA2Address(0).to_ptr<IMAGE_DOS_HEADER*>();
     m_nt_hdr = RVA2Address(m_dos_hdr->e_lfanew).to_ptr<IMAGE_NT_HEADERS*>();
     m_sections = IMAGE_FIRST_SECTION(m_nt_hdr);

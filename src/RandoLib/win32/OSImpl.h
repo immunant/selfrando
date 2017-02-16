@@ -57,6 +57,7 @@ public:
     struct ModuleInfo {
         uintptr_t original_entry_rva;
         BytePointer entry_loop;
+        DWORD dll_characteristics;
         HANDLE module;
     };
     typedef ModuleInfo *Handle;

@@ -38,6 +38,7 @@ rndentry segment byte public flat read execute alias(".rndentr")
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
 ; We store it in a separate section to make it easier to patch on-disk, and also to un-map from memory
 __TRaP_OriginalEntry dd 0
+__TRaP_DllCharacteristics dd 0
 
 ; New program entry point, that AddressOfEntryPoint will point to
 __TRaP_RandoEntry proc
@@ -51,9 +52,8 @@ do_rando:
 	push ebx
 	push esi
 	push edi
-	; WARNING: PatchEntry expects this to be at a fixed offset
-	; PatchEntry changes this to "PUSH 0 ; NOP" if we're not in a DLL
 	push dword ptr [esp + 20] ; asm_module (DLL-only)
+    push dword ptr [__TRaP_DllCharacteristics]
     lea eax, entry_loop
 	push eax
 	push dword ptr [__TRaP_OriginalEntry]
@@ -61,7 +61,7 @@ do_rando:
 	push esp
 	call __TRaP_RandoMain@4
 	; Pop parameters
-	add esp, 12
+	add esp, 16
 
 	; Pop registers
 	pop edi
