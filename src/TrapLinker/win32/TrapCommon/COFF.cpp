@@ -382,7 +382,11 @@ bool COFFObject::createTRaPInfo() {
         size_t sec_pos = 0;
         for (size_t i = 0; i < sec_hdr->NumberOfRelocations; i++) {
             auto &reloc = sec_relocs[i];
-            if (reloc.Type == rel32_rel_type) {
+            // FIXME: make this prettier
+            if (reloc.Type == rel32_rel_type ||
+                (header()->Machine == IMAGE_FILE_MACHINE_AMD64 &&
+                 reloc.Type >= IMAGE_REL_AMD64_REL32_1 &&
+                 reloc.Type <= IMAGE_REL_AMD64_REL32_5)) {
                 assert(reloc.VirtualAddress > sec_pos && "Found REL32 relocation with offset 0");
                 new_sec.addULEB128(reloc.VirtualAddress - sec_pos);
                 new_sec.addULEB128(reloc.Type);

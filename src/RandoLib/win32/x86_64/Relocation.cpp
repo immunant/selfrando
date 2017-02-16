@@ -26,6 +26,16 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
         return m_orig_src_addr.to_ptr() + sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
+    case IMAGE_REL_AMD64_REL32_1:
+        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + 1 + *reinterpret_cast<int32_t*>(at_ptr);
+    case IMAGE_REL_AMD64_REL32_2:
+        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + 2 + *reinterpret_cast<int32_t*>(at_ptr);
+    case IMAGE_REL_AMD64_REL32_3:
+        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + 3 + *reinterpret_cast<int32_t*>(at_ptr);
+    case IMAGE_REL_AMD64_REL32_4:
+        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + 4 + *reinterpret_cast<int32_t*>(at_ptr);
+    case IMAGE_REL_AMD64_REL32_5:
+        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + 5 + *reinterpret_cast<int32_t*>(at_ptr);
     default:
         return nullptr;
     }
@@ -40,6 +50,26 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     case IMAGE_REL_AMD64_REL32:
         // FIXME: check for overflow here???
         *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t)));
+        break;
+    case IMAGE_REL_AMD64_REL32_1:
+        // FIXME: check for overflow here???
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t) + 1));
+        break;
+    case IMAGE_REL_AMD64_REL32_2:
+        // FIXME: check for overflow here???
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t) + 2));
+        break;
+    case IMAGE_REL_AMD64_REL32_3:
+        // FIXME: check for overflow here???
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t) + 3));
+        break;
+    case IMAGE_REL_AMD64_REL32_4:
+        // FIXME: check for overflow here???
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t) + 4));
+        break;
+    case IMAGE_REL_AMD64_REL32_5:
+        // FIXME: check for overflow here???
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t) + 5));
         break;
     default:
         RANDO_ASSERT(false);
