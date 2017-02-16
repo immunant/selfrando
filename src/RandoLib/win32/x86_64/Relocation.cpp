@@ -48,7 +48,7 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
 }
 
 os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
-    return IMAGE_REL_AMD64_REL32;
+    return IMAGE_REL_AMD64_ADDR64;
 }
 
 os::Module::Relocation::Type
