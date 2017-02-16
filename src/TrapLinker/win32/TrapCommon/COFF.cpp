@@ -349,6 +349,16 @@ bool COFFObject::createTRaPInfo() {
         new_sec.addDataByte(0);
         new_sec.addDataByte(0);
         new_sec.addDataByte(0);
+        if (header()->Machine == IMAGE_FILE_MACHINE_AMD64) {
+            // FIXME: we're cheating a bit here: the field needs to be 64 bits wide on all OSes
+            // but we only have a 32-bit ADDR32NB relocation; for now, we'll just leave the
+            // upper 4 bytes zeroed out. Hopefully, this will all be fixed when we implement
+            // abbrevs
+            new_sec.addDataByte(0);
+            new_sec.addDataByte(0);
+            new_sec.addDataByte(0);
+            new_sec.addDataByte(0);
+        }
         new_sec.addRelocation(IMAGE_RELOCATION{ 0, first_sym_it->second, sym_rel_type });
 
         // The first symbol might not start at the beginning of the section, so encode its offset

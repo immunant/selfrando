@@ -34,6 +34,6 @@ trapheader segment readonly byte read discard alias(".txtrp$a")
 
 __TRaP_Header:
 db 01h			 ; Header version 1
-db 91h, 00h, 00h ; Flags = 0x000091
+db 11h, 00h, 00h ; Flags = 0x000091
 
 end
