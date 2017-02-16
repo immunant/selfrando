@@ -161,8 +161,7 @@ private:
     FunctionList m_functions;
     size_t *m_shuffled_order;
 
-    typedef bool (*FunctionPredicate)(ExecSectionProcessor*, const Function&);
-
+    template<typename FunctionPredicate>
     void IterateTrapFunctions(FunctionPredicate);
 
     void CountFunctions();
@@ -185,6 +184,8 @@ private:
     }
 };
 
+template<typename FunctionPredicate>
+RANDO_ALWAYS_INLINE
 void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
     for (auto trap_entry : m_trap_info) {
         auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
@@ -212,7 +213,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     RANDO_ASSERT(sym.size > 0);
                     new_func.size = sym.size;
                 }
-                pred(this, new_func);
+                pred(new_func);
             }
             if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
                 Function new_func = {};
@@ -222,7 +223,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 new_func.undiv_start =
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
                 new_func.undiv_alignment = 1;
-                pred(this, new_func);
+                pred(new_func);
 
                 // Add what comes after the padding (if anything is left)
                 new_func = {};
@@ -232,7 +233,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr() +
                     trap_entry.padding_size();
                 new_func.undiv_alignment = 1;
-                pred(this, new_func);
+                pred(new_func);
             }
         }
     }
@@ -245,15 +246,15 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
         new_func.skip_copy = false;
         new_func.from_trap = true; // FIXME: false instead???
         new_func.undiv_alignment = os::API::kTextAlignment;
-        pred(this, new_func);
+        pred(new_func);
     }
 }
 
 void ExecSectionProcessor::CountFunctions() {
     m_functions.num_funcs = 0;
     m_func_at_start = false;
-    IterateTrapFunctions([] (ExecSectionProcessor *esp, const Function &new_func) {
-        esp->m_functions.num_funcs++;
+    IterateTrapFunctions([this] (const Function &new_func) {
+        m_functions.num_funcs++;
         return true;
     });
     os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_funcs);
@@ -261,13 +262,12 @@ void ExecSectionProcessor::CountFunctions() {
 
 void ExecSectionProcessor::BuildFunctions() {
     m_functions.allocate();
-    size_t old_num_funcs = m_functions.num_funcs;
-    m_functions.num_funcs = 0;
-    IterateTrapFunctions([] (ExecSectionProcessor *esp, const Function &new_func) {
-        esp->m_functions.functions[esp->m_functions.num_funcs++] = new_func;
+    size_t func_idx = 0;
+    IterateTrapFunctions([this, &func_idx] (const Function &new_func) {
+        m_functions.functions[func_idx++] = new_func;
         return true;
     });
-    RANDO_ASSERT(old_num_funcs == m_functions.num_funcs);
+    RANDO_ASSERT(func_idx == m_functions.num_funcs);
 }
 
 template<typename T>
