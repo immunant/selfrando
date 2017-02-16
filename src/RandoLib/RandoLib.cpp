@@ -161,6 +161,10 @@ private:
     FunctionList m_functions;
     size_t *m_shuffled_order;
 
+    typedef bool (*FunctionPredicate)(ExecSectionProcessor*, const Function&);
+
+    void IterateTrapFunctions(FunctionPredicate);
+
     void CountFunctions();
     void BuildFunctions();
     void SortFunctions();
@@ -181,90 +185,89 @@ private:
     }
 };
 
-void ExecSectionProcessor::CountFunctions() {
-    m_functions.num_funcs = 0;
-    m_func_at_start = false;
-    for (auto trap_entry : m_trap_info) {
-        auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
-        if (m_exec_section.contains_addr(entry_addr)) {
-            for (auto sym : trap_entry.symbols()) {
-                if (m_module.address_from_trap(sym.address) == m_exec_section.start())
-                    m_func_at_start = true;
-                m_functions.num_funcs++;
-            }
-
-            // If we have padding, we will be creating a pseudo-function to
-            // cover it
-            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
-                m_functions.num_funcs += 2;
-            }
-        }
-    }
-    // If no TRaP function starts at the beginning of the section, we add our own pseudo-function
-    // spanning from the beginning of the section to the first proper TRaP function
-    if (needs_start_function())
-        m_functions.num_funcs++;
-    os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_funcs);
-}
-
-void ExecSectionProcessor::BuildFunctions() {
-    m_functions.allocate();
-    size_t func_idx = 0;
+void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
     for (auto trap_entry : m_trap_info) {
         auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
         if (m_exec_section.contains_addr(entry_addr)) {
             for (auto sym : trap_entry.symbols()) {
                 auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
+                if (m_module.address_from_trap(sym.address) == m_exec_section.start())
+                    m_func_at_start = true;
 #if RANDOLIB_IS_ARM
-                if ((uint32_t)start_addr & 1 == 1) {
+                if ((uint32_t) start_addr & 1 == 1) {
                     // This is a thumb function that actually starts one byte earlier
                     start_addr--;
                 }
 #endif
-
-                m_functions[func_idx].undiv_start = start_addr;
-                m_functions[func_idx].skip_copy = false;
-                m_functions[func_idx].from_trap = true;
+                Function new_func = {};
+                new_func.undiv_start = start_addr;
+                new_func.skip_copy = false;
+                new_func.from_trap = true;
                 if (m_trap_info.header()->has_symbol_p2align()) {
-                    m_functions[func_idx].undiv_alignment = sym.alignment;
+                    new_func.undiv_alignment = sym.alignment;
                 } else {
-                    m_functions[func_idx].undiv_alignment = os::API::kFunctionAlignment;
+                    new_func.undiv_alignment = os::API::kFunctionAlignment;
                 }
                 if (m_trap_info.header()->has_symbol_size()) {
                     RANDO_ASSERT(sym.size > 0);
-                    m_functions[func_idx].size = sym.size;
+                    new_func.size = sym.size;
                 }
-                func_idx++;
+                pred(this, new_func);
             }
             if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
+                Function new_func = {};
                 // Add the padding as skip_copy
-                m_functions[func_idx].skip_copy = true;
-                m_functions[func_idx].from_trap = false;
-                m_functions[func_idx].undiv_start =
+                new_func.skip_copy = true;
+                new_func.from_trap = false;
+                new_func.undiv_start =
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
-                m_functions[func_idx].undiv_alignment = 1;
-                func_idx++;
+                new_func.undiv_alignment = 1;
+                pred(this, new_func);
 
                 // Add what comes after the padding (if anything is left)
-                m_functions[func_idx].skip_copy = false;
-                m_functions[func_idx].from_trap = false;
-                m_functions[func_idx].undiv_start =
+                new_func = {};
+                new_func.skip_copy = false;
+                new_func.from_trap = false;
+                new_func.undiv_start =
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr() +
                     trap_entry.padding_size();
-                m_functions[func_idx].undiv_alignment = 1;
-                func_idx++;
+                new_func.undiv_alignment = 1;
+                pred(this, new_func);
             }
         }
     }
+    // If no TRaP function starts at the beginning of the section, we add our own pseudo-function
+    // spanning from the beginning of the section to the first proper TRaP function
     if (needs_start_function()) {
         RANDO_ASSERT(!m_trap_info.header()->has_symbol_size());
-        m_functions[func_idx].undiv_start = m_exec_section.start().to_ptr();
-        m_functions[func_idx].skip_copy = false;
-        m_functions[func_idx].from_trap = true; // FIXME: false instead???
-        m_functions[func_idx].undiv_alignment = os::API::kTextAlignment;
-        func_idx++;
+        Function new_func = {};
+        new_func.undiv_start = m_exec_section.start().to_ptr();
+        new_func.skip_copy = false;
+        new_func.from_trap = true; // FIXME: false instead???
+        new_func.undiv_alignment = os::API::kTextAlignment;
+        pred(this, new_func);
     }
-    RANDO_ASSERT(func_idx == m_functions.num_funcs);
+}
+
+void ExecSectionProcessor::CountFunctions() {
+    m_functions.num_funcs = 0;
+    m_func_at_start = false;
+    IterateTrapFunctions([] (ExecSectionProcessor *esp, const Function &new_func) {
+        esp->m_functions.num_funcs++;
+        return true;
+    });
+    os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_funcs);
+}
+
+void ExecSectionProcessor::BuildFunctions() {
+    m_functions.allocate();
+    size_t old_num_funcs = m_functions.num_funcs;
+    m_functions.num_funcs = 0;
+    IterateTrapFunctions([] (ExecSectionProcessor *esp, const Function &new_func) {
+        esp->m_functions.functions[esp->m_functions.num_funcs++] = new_func;
+        return true;
+    });
+    RANDO_ASSERT(old_num_funcs == m_functions.num_funcs);
 }
 
 template<typename T>
