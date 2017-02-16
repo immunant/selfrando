@@ -30,7 +30,7 @@
 ;
 
 public __TRaP_RandoEntry
-extern __TRaP_RandoMain:near
+extern _TRaP_RandoMain:near
 
 rndentry segment byte read execute alias(".rndentr")
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
@@ -54,7 +54,7 @@ do_rando:
 	; Push pointer to ModuleInfo structure as single parameter
     mov rcx, rsp
     sub rsp, 32
-	call __TRaP_RandoMain
+	call _TRaP_RandoMain
     add rsp, 32
 
     jmp entry_loop
