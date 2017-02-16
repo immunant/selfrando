@@ -205,12 +205,11 @@ int _tmain(int argc, _TCHAR* argv[])
     // When producing an executable/DLL, add in RandoLib.lib
     TString rando_lib_path, exports_file;
     if (!lib_mode) {
-        rando_lib_path = LocateRandoFile(kRandoLib, true);
         exports_file = EmitExports(escaped_args);
         linker_args.push_back(exports_file.data());
         linker_args.push_back(kLinkerExtraArg1);
         linker_args.push_back(kLinkerExtraArg2);
-        linker_args.push_back(const_cast<_TCHAR*>(rando_lib_path.data()));
+        linker_args.push_back(kRandoLib);
         // We need to disable incremental linking because it breaks our stuff
         // (for some reason, the linker adds an extra 0 byte to the end of each .txtrp entry)
         linker_args.push_back(kLinkerNoIncrementalArg);
