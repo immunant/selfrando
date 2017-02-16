@@ -74,8 +74,12 @@ public:
             trap_entry.dump();
 
         // FIXME: in non-profiling runs, GetTime shouldn't cost any CPU cycles
+#if RANDOLIB_MEASURE_TIME
         os::Time t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
 #define TAKE_TIME(var)  ((var) = os::API::GetTime())
+#else
+#define TAKE_TIME(var)
+#endif
         TAKE_TIME(t1);
         CountFunctions();
         TAKE_TIME(t2);
@@ -105,8 +109,12 @@ public:
         TAKE_TIME(t9);
         FixupExports();
         TAKE_TIME(t10);
-//#define PRINT_TIME(func, from, to)  DebugPrintf<1>("Module@%p time " #func ":%lldus\n", m_module, os::API::TimeDeltaMicroSec((from), (to)))
+#if RANDOLIB_MEASURE_TIME
+        //#define PRINT_TIME(func, from, to)  DebugPrintf<1>("Module@%p time " #func ":%lldus\n", m_module, os::API::TimeDeltaMicroSec((from), (to)))
 #define PRINT_TIME(func, from, to)  ((void*) os::API::TimeDeltaMicroSec((from), (to)))
+#else
+#define PRINT_TIME(func, from, to)
+#endif
         PRINT_TIME(CountFunctions,   t1, t2);
         PRINT_TIME(BuildFunctions,   t2, t3);
         PRINT_TIME(SortFunctions,    t3, t4);
