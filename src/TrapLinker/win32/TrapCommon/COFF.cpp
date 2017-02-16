@@ -289,7 +289,7 @@ bool COFFObject::parse() {
     for (size_t sec = 0; sec < header()->NumberOfSections; sec++, sec_hdr++)
         m_sections.emplace_back(this, sec_hdr);
 
-    assert(m_hdr->PointerToSymbolTable != 0 && "Missing symbol table");
+    assert(header()->PointerToSymbolTable != 0 && "Missing symbol table");
     IMAGE_SYMBOL *sym_ptr = filePtr<IMAGE_SYMBOL>(header()->PointerToSymbolTable);
 
     // Build string table
