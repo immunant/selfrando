@@ -39,6 +39,9 @@ import os
 import shutil
 from subprocess import call
 
+def get_platform_name():
+    return os.environ['PLATFORM'].lower()
+
 def get_files_in_dir(base_path='..', exclude_debug=False):
     files = []
     assert os.path.exists(base_path), "invalid path %s" % base_path
@@ -82,19 +85,21 @@ def set_env_vars():
         return "/" + path.replace(":", "").replace("\\", "/")
 
     # PATH
+    platform_name = get_platform_name()
+    platform_subdir = 'x64' if platform_name == 'x64' else ''
     scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    exes_path = os.path.join(scpt_path, os.pardir, "Release")
+    exes_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Release")
     exes_path = os.path.abspath(exes_path)
     if os.path.exists(exes_path) and os.path.isdir(exes_path):
         lines.append("export PATH=%s:$PATH" % cygwinify(exes_path))
     else:
-        exes_path = os.path.join(scpt_path, os.pardir, "Debug")
+        exes_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Debug")
         exes_path = os.path.abspath(exes_path)
         assert os.path.exists(exes_path) and os.path.isdir(exes_path)
         lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
 
     # LIB and LIBPATH
-    libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs", "x86")
+    libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs", platform_name)
     libs_path = os.path.abspath(libs_path)
     if not os.path.exists(libs_path):
         os.makedirs(libs_path)
@@ -107,7 +112,7 @@ def set_env_vars():
     lines.append("export LIB=\"%s\":\"%s\":$LIB" % (randolib_path, libs_path))
     lines.append("export LIBPATH=\"%s\":\"%s\":$LIBPATH" % (randolib_path, libs_path))
 
-    outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin.sh"))
+    outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin-%s.sh" % platform_name))
     with open(outpath, "w") as fh:
         fh.write("\n".join(lines))
     os.chmod(outpath, 0o755)
@@ -138,7 +143,8 @@ if __name__ == '__main__':
 
     # make sure the output directory exists
     scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs', 'x86')
+    platform_name = get_platform_name()
+    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs', platform_name)
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
         print 'Created output directory %s...' % out_path
