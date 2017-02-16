@@ -61,13 +61,12 @@ def get_exe_path(exe_name='TrapLib.exe'):
 
 
 def get_path_to_link_exe():
-    assert os.environ['VCINSTALLDIR'] is not None, "Error, %VCINSTALLDIR% is " \
-        + "not set (run vsvars32.bat or equivalent)."
-    base_path = os.environ['VCINSTALLDIR']
-    link_path = os.path.join(base_path, "bin", "amd64_x86", "link.exe")
-    assert os.path.exists(link_path) and os.path.isfile(link_path), \
-        "Invalid path to link.exe: {}".format(link_path)
-    return link_path
+    for base_path in os.environ['PATH'].split(os.pathsep):
+        link_path = os.path.join(base_path, "link.exe")
+        if os.path.exists(link_path) and os.path.isfile(link_path):
+            return link_path
+
+    assert False, "Could not find link.exe"
 
 def set_env_vars():
     """Note: only tested on Windows 8.1 64-bit with VS 2013."""
