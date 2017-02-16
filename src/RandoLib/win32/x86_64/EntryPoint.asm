@@ -45,6 +45,11 @@ entry_loop:
     dd 0
 
 do_rando:
+    push r11
+    push r10
+    push r9
+    push r8
+    push rdx
 	push rcx
     mov eax, dword ptr [__TRaP_DllCharacteristics]
     push rax
@@ -55,10 +60,15 @@ do_rando:
 	; Push pointer to ModuleInfo structure as single parameter
     mov rcx, rsp
     ; We need to reserve at least 32 bytes on the stack for the parameters
-    sub rsp, 40
+    sub rsp, 32
 	call _TRaP_RandoMain
-    add rsp, 40+24
+    add rsp, 32+24
     pop rcx
+    pop rdx
+    pop r8
+    pop r9
+    pop r10
+    pop r11
 
     jmp entry_loop
 __TRaP_RandoEntry endp
