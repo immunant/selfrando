@@ -101,8 +101,9 @@ def set_env_vars():
         os.makedirs(libs_path)
     else:
         assert os.path.isdir(libs_path)
-    lines.append("export LIB=\"%s\":$LIB" % libs_path)
-    lines.append("export LIBPATH=\"%s\":$LIBPATH" % libs_path)
+    randolib_path = os.path.join(exes_path, "RandoLib.lib")
+    lines.append("export LIB=\"%s\":\"%s\":$LIB" % (randolib_path, libs_path))
+    lines.append("export LIBPATH=\"%s\":\"%s\":$LIBPATH" % (randolib_path, libs_path))
 
     outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin.sh"))
     with open(outpath, "w") as fh:
