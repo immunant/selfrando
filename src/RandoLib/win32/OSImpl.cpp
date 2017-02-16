@@ -83,7 +83,6 @@ LPVOID(WINAPI *APIImpl::kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
 BOOL(WINAPI *APIImpl::kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
 HANDLE(WINAPI *APIImpl::kernel32_GetProcessHeap)();
 void(WINAPI *APIImpl::kernel32_OutputDebugStringA)(LPCSTR);
-HMODULE(WINAPI *APIImpl::kernel32_GetModuleHandleA)(LPCSTR);
 bool(WINAPI *APIImpl::kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
 bool(WINAPI *APIImpl::kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
 
@@ -135,7 +134,6 @@ RANDO_SECTION void API::Init() {
     GetLibFunction(&kernel32_HeapAlloc, kernel32, "HeapAlloc");
     GetLibFunction(&kernel32_HeapFree, kernel32, "HeapFree");
     GetLibFunction(&kernel32_OutputDebugStringA, kernel32, "OutputDebugStringA");
-    GetLibFunction(&kernel32_GetModuleHandleA, kernel32, "GetModuleHandleA");
     GetLibFunction(&kernel32_QueryPerformanceFrequency, kernel32, "QueryPerformanceFrequency");
     GetLibFunction(&kernel32_QueryPerformanceCounter, kernel32, "QueryPerformanceCounter");
     // TODO: file functions from ReadTrapFile (maybe???)
@@ -243,7 +241,8 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
     RANDO_ASSERT(info != nullptr);
     if ((info->dll_characteristics & IMAGE_FILE_DLL) == 0) {
         // We can't trust info->module, so get the module from the OS
-        m_handle = APIImpl::kernel32_GetModuleHandleA(nullptr);
+        PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
+        m_handle = peb->Reserved3[1];
     } else {
         m_handle = info->module;
     }

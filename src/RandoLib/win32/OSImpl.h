@@ -374,7 +374,6 @@ protected:
     static BOOL(WINAPI *kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
     static HANDLE(WINAPI *kernel32_GetProcessHeap)();
     static void(WINAPI *kernel32_OutputDebugStringA)(LPCSTR);
-    static HMODULE(WINAPI *kernel32_GetModuleHandleA)(LPCSTR);
     static bool(WINAPI *kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
     static bool(WINAPI *kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
 
