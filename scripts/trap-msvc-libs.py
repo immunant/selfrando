@@ -43,7 +43,8 @@ def get_platform_name():
     for key, value in os.environ.iteritems():
         if key.lower() == 'platform':
             return value.lower()
-    assert False, "Unknown platform to build for"
+    # vcvars32.bat does not set 'Platform', but all the others do
+    return "x86"
 
 def get_files_in_dir(base_path='..', exclude_debug=False):
     files = []
