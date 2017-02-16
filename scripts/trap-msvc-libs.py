@@ -40,7 +40,10 @@ import shutil
 from subprocess import call
 
 def get_platform_name():
-    return os.environ['PLATFORM'].lower()
+    for key, value in os.environ.iteritems():
+        if key.lower() == 'platform':
+            return value.lower()
+    assert False, "Unknown platform to build for"
 
 def get_files_in_dir(base_path='..', exclude_debug=False):
     files = []
