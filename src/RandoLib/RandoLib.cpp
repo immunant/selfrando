@@ -307,6 +307,7 @@ void ExecSectionProcessor::CoverGaps() {
     IterateFunctionGaps([this, &num_gaps] (os::BytePointer gap_start, os::BytePointer gap_end) {
         RANDO_ASSERT(gap_start < gap_end);
         num_gaps++;
+        os::API::DebugPrintf<10>("Found gap:%p-%p\n", gap_start, gap_end);
     });
     if (num_gaps == 0)
         return;
