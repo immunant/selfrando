@@ -89,8 +89,8 @@ public:
             TAKE_TIME(t3);
             SortFunctions();
             // TODO: add GetTime()
-            CoverGaps();
             RemoveEmptyFunctions();
+            CoverGaps();
             TAKE_TIME(t4);
             ShuffleFunctions();
             TAKE_TIME(t5);
@@ -279,6 +279,18 @@ void ExecSectionProcessor::SortFunctions() {
     }
 }
 
+void ExecSectionProcessor::RemoveEmptyFunctions() {
+    size_t cnt = 0;
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        if (m_functions[i].size == 0)
+            continue;
+        if (cnt < i)
+            m_functions[cnt] = m_functions[i];
+        cnt++;
+    }
+    m_functions.num_funcs = cnt;
+}
+
 template<typename GapPredicate>
 RANDO_ALWAYS_INLINE
 void ExecSectionProcessor::IterateFunctionGaps(GapPredicate pred) {
@@ -326,18 +338,6 @@ void ExecSectionProcessor::CoverGaps() {
     RANDO_ASSERT(gap_idx == m_functions.num_funcs);
     // We need to re-sort the functions after adding the gaps at the end
     os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
-}
-
-void ExecSectionProcessor::RemoveEmptyFunctions() {
-    size_t cnt = 0;
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
-        if (m_functions[i].size == 0)
-            continue;
-        if (cnt < i)
-            m_functions[cnt] = m_functions[i];
-        cnt++;
-    }
-    m_functions.num_funcs = cnt;
 }
 
 void ExecSectionProcessor::ShuffleFunctions() {
