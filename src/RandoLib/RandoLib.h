@@ -76,13 +76,14 @@ struct RANDO_SECTION Function {
 
     // Tiebreaker rank for functions with the same undiv_addr
     int sort_rank() const {
-        // Skipped functions and non-TRaP functions should
-        // come before regular TRaP ones
-        if (!from_trap)
+        // TRaP functions should come before their padding and gaps
+        if (from_trap)
             return 1;
-        if (skip_copy)
-            return 1;
-        return 2;
+        if (is_padding)
+            return 2;
+        if (is_gap)
+            return 3;
+        return 4;
     }
 };
 
