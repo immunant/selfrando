@@ -41,8 +41,13 @@ struct RANDO_SECTION Function {
     size_t size;
     size_t undiv_alignment;
     size_t alignment_padding;
-    bool skip_copy;
-    bool from_trap;
+
+    // Boolean flags
+    bool skip_copy  : 1;
+    bool from_trap  : 1;
+    bool is_padding : 1;
+    bool is_gap     : 1;
+    bool has_size   : 1;
 
     ptrdiff_t div_delta() const {
         return skip_copy ? 0 : (div_start - undiv_start);
@@ -97,6 +102,22 @@ struct RANDO_SECTION FunctionList {
         if (functions != nullptr)
             os::API::MemFree(functions);
         functions = nullptr;
+    }
+
+    void extend(size_t num_extra) {
+        if (num_extra == 0)
+            return;
+        if (functions == nullptr) {
+            num_funcs = num_extra;
+            allocate();
+            return;
+        }
+
+        Function *old_funcs = functions;
+        num_funcs += num_extra;
+        functions = reinterpret_cast<Function*>(os::API::MemAlloc(num_funcs * sizeof(Function), true));
+        os::API::MemCpy(functions, old_funcs, (num_funcs - num_extra) * sizeof(Function));
+        os::API::MemFree(old_funcs);
     }
 
     Function &operator[](size_t idx) {

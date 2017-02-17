@@ -89,6 +89,7 @@ public:
             TAKE_TIME(t3);
             SortFunctions();
             // TODO: add GetTime()
+            CoverGaps();
             RemoveEmptyFunctions();
             TAKE_TIME(t4);
             ShuffleFunctions();
@@ -157,16 +158,19 @@ private:
     os::BytePointer m_exec_copy;
     size_t m_exec_code_size;
 
-    bool m_func_at_start;
     FunctionList m_functions;
     size_t *m_shuffled_order;
 
     template<typename FunctionPredicate>
     void IterateTrapFunctions(FunctionPredicate);
 
+    template<typename GapPredicate>
+    void IterateFunctionGaps(GapPredicate);
+
     void CountFunctions();
     void BuildFunctions();
     void SortFunctions();
+    void CoverGaps();
     void RemoveEmptyFunctions();
     void ShuffleFunctions();
     void LayoutCode();
@@ -178,10 +182,6 @@ private:
     static void AdjustRelocation(os::Module::Relocation &reloc,
                                  void *callback_arg);
 
-    // Whether to put a pseudo-function at offset 0 in the section (at its start)
-    bool needs_start_function() {
-        return !m_func_at_start && m_in_place;
-    }
 };
 
 template<typename FunctionPredicate>
@@ -192,8 +192,6 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
         if (m_exec_section.contains_addr(entry_addr)) {
             for (auto sym : trap_entry.symbols()) {
                 auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
-                if (m_module.address_from_trap(sym.address) == m_exec_section.start())
-                    m_func_at_start = true;
 #if RANDOLIB_IS_ARM
                 if ((uint32_t) start_addr & 1 == 1) {
                     // This is a thumb function that actually starts one byte earlier
@@ -211,6 +209,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 }
                 if (m_trap_info.header()->has_symbol_size()) {
                     RANDO_ASSERT(sym.size > 0);
+                    new_func.has_size = true;
                     new_func.size = sym.size;
                 }
                 pred(new_func);
@@ -219,40 +218,20 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 Function new_func = {};
                 // Add the padding as skip_copy
                 new_func.skip_copy = true;
-                new_func.from_trap = false;
+                new_func.is_padding = true;
                 new_func.undiv_start =
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
                 new_func.undiv_alignment = 1;
-                pred(new_func);
-
-                // Add what comes after the padding (if anything is left)
-                new_func = {};
-                new_func.skip_copy = false;
-                new_func.from_trap = false;
-                new_func.undiv_start =
-                    m_module.address_from_trap(trap_entry.padding_address()).to_ptr() +
-                    trap_entry.padding_size();
-                new_func.undiv_alignment = 1;
+                new_func.has_size = true;
+                new_func.size = trap_entry.padding_size();
                 pred(new_func);
             }
         }
-    }
-    // If no TRaP function starts at the beginning of the section, we add our own pseudo-function
-    // spanning from the beginning of the section to the first proper TRaP function
-    if (needs_start_function()) {
-        RANDO_ASSERT(!m_trap_info.header()->has_symbol_size());
-        Function new_func = {};
-        new_func.undiv_start = m_exec_section.start().to_ptr();
-        new_func.skip_copy = false;
-        new_func.from_trap = true; // FIXME: false instead???
-        new_func.undiv_alignment = os::API::kTextAlignment;
-        pred(new_func);
     }
 }
 
 void ExecSectionProcessor::CountFunctions() {
     m_functions.num_funcs = 0;
-    m_func_at_start = false;
     IterateTrapFunctions([this] (const Function &new_func) {
         m_functions.num_funcs++;
         return true;
@@ -290,13 +269,61 @@ void ExecSectionProcessor::SortFunctions() {
     // FIXME: use our own qsort function, or force use of NTDLL!qsort
     if (m_trap_info.header()->needs_sort())
         os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
-    if (!m_trap_info.header()->has_symbol_size()) {
-        auto exec_end = m_exec_section.end().to_ptr();
-        for (size_t i = 0; i < m_functions.num_funcs; i++) {
-            auto next_start = (i == (m_functions.num_funcs - 1)) ? exec_end : m_functions[i + 1].undiv_start;
-            m_functions[i].size = next_start - m_functions[i].undiv_start;
-        }
+    // Build sizes for functions
+    auto exec_end = m_exec_section.end().to_ptr();
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        if (m_functions[i].has_size)
+            continue;
+        auto next_start = (i == (m_functions.num_funcs - 1)) ? exec_end : m_functions[i + 1].undiv_start;
+        m_functions[i].size = next_start - m_functions[i].undiv_start;
     }
+}
+
+template<typename GapPredicate>
+RANDO_ALWAYS_INLINE
+void ExecSectionProcessor::IterateFunctionGaps(GapPredicate pred) {
+    auto last_addr = m_exec_section.start().to_ptr();
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        if (m_functions[i].is_gap)
+            return; // We're currently adding gaps, and we reached the first one
+        RANDO_ASSERT(m_functions[i].undiv_start >= last_addr);
+        if (m_functions[i].undiv_start > last_addr)
+            pred(last_addr, m_functions[i].undiv_start);
+        last_addr = m_functions[i].undiv_end();
+    }
+    auto exec_end = m_exec_section.end().to_ptr();
+    RANDO_ASSERT(exec_end >= last_addr);
+    if (exec_end > last_addr)
+        pred(last_addr, exec_end);
+}
+
+void ExecSectionProcessor::CoverGaps() {
+    // We only care about gaps in in-place mode, we can ignore them otherwise
+    // FIXME: maybe we do???
+    if (!m_in_place)
+        return;
+
+    size_t num_gaps = 0;
+    IterateFunctionGaps([this, &num_gaps] (os::BytePointer gap_start, os::BytePointer gap_end) {
+        RANDO_ASSERT(gap_start < gap_end);
+        num_gaps++;
+    });
+    if (num_gaps == 0)
+        return;
+
+    m_functions.extend(num_gaps);
+    size_t gap_idx = m_functions.num_funcs - num_gaps;
+    IterateFunctionGaps([this, &gap_idx] (os::BytePointer gap_start, os::BytePointer gap_end) {
+        m_functions[gap_idx].undiv_start = gap_start;
+        m_functions[gap_idx].size = gap_end - gap_start;
+        m_functions[gap_idx].undiv_alignment = 1;
+        m_functions[gap_idx].is_gap = true;
+        m_functions[gap_idx].has_size = true;
+        gap_idx++;
+    });
+    RANDO_ASSERT(gap_idx == m_functions.num_funcs);
+    // We need to re-sort the functions after adding the gaps at the end
+    os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
 }
 
 void ExecSectionProcessor::RemoveEmptyFunctions() {
