@@ -75,8 +75,8 @@ static void patch_entry(MemReadFn file_to_mem_ptr, IMAGE_DOS_HEADER *dos_hdr, WO
         DWORD *sec_ptr = reinterpret_cast<DWORD*>(file_to_mem_ptr(entry_sec->PointerToRawData));
         if (*sec_ptr == 0) {
             sec_ptr[0] = nt_hdr->OptionalHeader.AddressOfEntryPoint;
-            sec_ptr[1] = nt_hdr->OptionalHeader.DllCharacteristics;
-            // Set the new entry point to just after where we store the old one and DllCharacteristics
+            sec_ptr[1] = nt_hdr->FileHeader.Characteristics;
+            // Set the new entry point to just after where we store the old one and Characteristics
             nt_hdr->OptionalHeader.AddressOfEntryPoint = entry_sec->VirtualAddress + 2 * sizeof(*sec_ptr);
         }
     }

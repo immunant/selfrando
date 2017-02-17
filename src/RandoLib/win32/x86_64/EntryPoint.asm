@@ -36,7 +36,7 @@ rndentry segment byte read execute alias(".rndentr")
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
 ; We store it in a separate section to make it easier to patch on-disk, and also to un-map from memory
 __TRaP_OriginalEntry dd 0
-__TRaP_DllCharacteristics dd 0
+__TRaP_FileHeaderCharacteristics dd 0
 
 ; New program entry point, that AddressOfEntryPoint will point to
 __TRaP_RandoEntry proc
@@ -51,7 +51,7 @@ do_rando:
     push r8
     push rdx
 	push rcx
-    mov eax, dword ptr [__TRaP_DllCharacteristics]
+    mov eax, dword ptr [__TRaP_FileHeaderCharacteristics]
     push rax
 	lea rax, entry_loop
 	push rax

@@ -237,7 +237,7 @@ RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms)
 
 RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_name(name) {
     RANDO_ASSERT(info != nullptr);
-    if ((info->dll_characteristics & IMAGE_FILE_DLL) == 0) {
+    if ((info->file_header_characteristics & IMAGE_FILE_DLL) == 0) {
         // We can't trust info->module, so get the module from the OS
         PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
         m_handle = peb->Reserved3[1];
