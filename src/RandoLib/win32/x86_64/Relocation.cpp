@@ -112,6 +112,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
         auto &func = functions->functions[i];
         if (func.from_trap)
             continue;
+        RANDO_ASSERT(func.is_gap); // Functions should either be from TRaP info or gaps
 
         auto div_ptr = func.div_start;
         while (div_ptr < func.div_end() &&
