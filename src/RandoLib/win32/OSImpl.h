@@ -288,7 +288,7 @@ private:
 class RANDO_SECTION APIImpl {
 public:
     // Debugging functions and settings
-    static const int kDebugLevel = 10;
+    static const int kDebugLevel = 1;
     static const bool kEnableAsserts = true;
 
     static void DebugPrintfImpl(const char *fmt, ...);
