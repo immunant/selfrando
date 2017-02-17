@@ -411,7 +411,7 @@ public:
             auto curr_delta = ReadULEB128(&tmp_trap_ptr);
             uintptr_t alignment = 1;
             if (m_header->has_symbol_p2align())
-                alignment = 1 << ReadULEB128(&tmp_trap_ptr);
+                alignment = static_cast<uintptr_t>(1) << ReadULEB128(&tmp_trap_ptr);
             if (m_header->has_symbol_size()) {
                 auto size = ReadULEB128(&tmp_trap_ptr);
                 return TrapSymbol(m_address + curr_delta, alignment, size);
