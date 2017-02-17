@@ -113,8 +113,8 @@ def set_env_vars():
     randolib_file_path = os.path.join(randolib_path, "RandoLib.lib")
     assert os.path.exists(randolib_file_path) and os.path.isfile(randolib_file_path), \
            "Invalid RandoLib.lib location: %s" % randolib_path
-    lines.append("export LIB=\"%s\":\"%s\":$LIB" % (randolib_path, libs_path))
-    lines.append("export LIBPATH=\"%s\":\"%s\":$LIBPATH" % (randolib_path, libs_path))
+    lines.append("export LIB=\"%s\"\\;\"%s\"\\;$LIB" % (randolib_path, libs_path))
+    lines.append("export LIBPATH=\"%s\"\\;\"%s\"\\;$LIBPATH" % (randolib_path, libs_path))
 
     outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin-%s.sh" % platform_name))
     with open(outpath, "w") as fh:
