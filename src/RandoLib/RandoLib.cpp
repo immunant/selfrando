@@ -275,6 +275,7 @@ void ExecSectionProcessor::SortFunctions() {
         if (m_functions[i].has_size)
             continue;
         auto next_start = (i == (m_functions.num_funcs - 1)) ? exec_end : m_functions[i + 1].undiv_start;
+        m_functions[i].has_size = true;
         m_functions[i].size = next_start - m_functions[i].undiv_start;
     }
 }
@@ -282,6 +283,7 @@ void ExecSectionProcessor::SortFunctions() {
 void ExecSectionProcessor::RemoveEmptyFunctions() {
     size_t cnt = 0;
     for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        RANDO_ASSERT(m_functions[i].has_size);
         if (m_functions[i].size == 0)
             continue;
         if (cnt < i)
