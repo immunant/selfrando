@@ -115,9 +115,10 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
         RANDO_ASSERT(func.is_gap); // Functions should either be from TRaP info or gaps
 
         auto div_ptr = func.div_start;
+        auto undiv_ptr = func.undiv_start;
         while (div_ptr < func.div_end() &&
                (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
-            div_ptr++;
+            div_ptr++, undiv_ptr++;
         // Look for PC-relative indirect branches
         // FIXME: we do this to find the 6-byte import trampolines
         // inserted by the linker; they're not in TRaP info, so
@@ -127,10 +128,11 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                div_ptr[0] == 0xFF && div_ptr[1] == 0x25) {
             os::API::DebugPrintf<10>("Found import trampoline @%p\n", div_ptr);
             os::Module::Relocation reloc(*this,
-                                         address_from_ptr(div_ptr + 2),
+                                         address_from_ptr(undiv_ptr + 2),
                                          IMAGE_REL_AMD64_REL32);
             (*callback)(reloc, callback_arg);
             div_ptr += 6;
+            undiv_ptr += 6;
         }
     }
 }
