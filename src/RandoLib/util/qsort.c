@@ -29,10 +29,12 @@
  * SUCH DAMAGE.
  */
 
+#include <stddef.h>
+
 #if RANDOLIB_IS_POSIX
 #include <sys/cdefs.h>
-#endif
 #include <sys/types.h>
+#endif
 
 typedef int		 cmp_t(const void *, const void *);
 static inline char	*med3(char *, char *, char *, cmp_t *);
