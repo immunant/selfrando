@@ -435,33 +435,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
         }
         API::MemProtect(fixup_addr.to_ptr(), kPageSize, block_old_perms);
     }
-#if 1
-    // Fix up exception handler table
-    // TODO: only do this on 32-bit binaries
-    // FIXME: this seems to fix the Firefox SAFESEH-related crashes, but only partially
-    // It is possible that the Windows loader makes a copy of this table at startup,
-    // before we get to apply these relocations
-    if (IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG < m_nt_hdr->OptionalHeader.NumberOfRvaAndSizes) {
-        auto &load_config_hdr = m_nt_hdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG];
-        if (load_config_hdr.Size > 0) {
-            auto image_base = RVA2Address(0).to_ptr<uintptr_t>();
-            auto *load_config = RVA2Address(load_config_hdr.VirtualAddress).to_ptr<IMAGE_LOAD_CONFIG_DIRECTORY*>();
-            auto *seh_table = reinterpret_cast<BytePointer*>(load_config->SEHandlerTable);
-            if (seh_table != nullptr && load_config->SEHandlerCount > 0) {
-                auto table_size = load_config->SEHandlerCount * sizeof(BytePointer);
-                auto old_table_perms = API::MemProtect(seh_table, table_size, PagePermissions::RW);
-                for (size_t i = 0; i < load_config->SEHandlerCount; i++) {
-                    seh_table[i] += image_base;
-                    Relocation seh_reloc(*this, address_from_ptr(&seh_table[i]),
-                                         Relocation::get_pointer_reloc_type());
-                    (*callback)(seh_reloc, callback_arg);
-                    seh_table[i] -= image_base;
-                }
-                API::MemProtect(seh_table, table_size, old_table_perms);
-            }
-        }
-    }
-#endif
+    fixup_target_relocations(functions, callback, callback_arg);
 }
 
 }

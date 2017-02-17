@@ -7,6 +7,7 @@
 */
 
 #include <OS.h>
+#include <RandoLib.h>
 #include <TrapInfo.h>
 
 os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
@@ -102,4 +103,33 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                  IMAGE_REL_AMD64_REL32);
     (*callback)(reloc, callback_arg);
     *export_ptr += 5;
+}
+
+void os::Module::fixup_target_relocations(FunctionList *functions,
+                                          Relocation::Callback callback,
+                                          void *callback_arg) const {
+    for (size_t i = 0; i < functions->num_funcs; i++) {
+        auto &func = functions->functions[i];
+        if (func.from_trap)
+            continue;
+
+        auto div_ptr = func.div_start;
+        while (div_ptr < func.div_end() &&
+               (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
+            div_ptr++;
+        // Look for PC-relative indirect branches
+        // FIXME: we do this to find the 6-byte import trampolines
+        // inserted by the linker; they're not in TRaP info, so
+        // we need to scan for them manually.
+        // WARNING!!!: we may get false positives
+        while (div_ptr < func.div_end() &&
+               div_ptr[0] == 0xFF && div_ptr[1] == 0x25) {
+            os::API::DebugPrintf<10>("Found import trampoline @%p\n", div_ptr);
+            os::Module::Relocation reloc(*this,
+                                         address_from_ptr(div_ptr + 2),
+                                         IMAGE_REL_AMD64_REL32);
+            (*callback)(reloc, callback_arg);
+            div_ptr += 6;
+        }
+    }
 }

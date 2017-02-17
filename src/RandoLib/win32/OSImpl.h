@@ -281,12 +281,14 @@ private:
     };
 
     RANDO_SECTION void MarkRandomized(RandoState);
+
+    void fixup_target_relocations(FunctionList*, Relocation::Callback, void*) const;
 };
 
 class RANDO_SECTION APIImpl {
 public:
     // Debugging functions and settings
-    static const int kDebugLevel = 1;
+    static const int kDebugLevel = 10;
     static const bool kEnableAsserts = true;
 
     static void DebugPrintfImpl(const char *fmt, ...);
