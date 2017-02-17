@@ -364,17 +364,23 @@ bool COFFObject::createTRaPInfo() {
         // The first symbol might not start at the beginning of the section, so encode its offset
         // FIXME: could we encode this inside the relocation itself???
         new_sec.addULEB128(first_sym_it->first);
-#if RANDOLIB_TRAP_ALL_SYMBOLS
         // Encode all symbols that point to this section, in increasing order of offset
         auto sec_ofs = first_sym_it->first;
+#if RANDOLIB_TRAP_ALL_SYMBOLS
         auto it = first_sym_it;
         for (++it; it != sym_info.second.end(); ++it) {
             auto new_ofs = it->first;
             assert(new_ofs > sec_ofs && "Symbol offsets not strictly increasing");
-            new_sec.addULEB128(new_ofs - sec_ofs);
+            if (header()->Machine == IMAGE_FILE_MACHINE_AMD64)
+                new_sec.addULEB128(new_ofs - sec_ofs); // Size of the previous symbol
+            new_sec.addULEB128(new_ofs - sec_ofs); // Offset to the current symbol
             sec_ofs = new_ofs;
         }
 #endif
+        if (header()->Machine == IMAGE_FILE_MACHINE_AMD64) {
+            new_sec.addULEB128(sec.dataSize() - sec_ofs); // Size of the last symbol
+            new_sec.addULEB128(0);
+        }
         new_sec.addULEB128(0);
 
         // Add section-relative relocations
