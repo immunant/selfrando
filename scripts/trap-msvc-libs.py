@@ -89,30 +89,37 @@ def set_env_vars():
         return "/" + path.replace(":", "").replace("\\", "/")
 
     # PATH
-    platform_name = get_platform_name()
-    platform_subdir = 'x64' if platform_name == 'x64' else ''
     scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    exes_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Release")
+    exes_path = os.path.join(scpt_path, os.pardir, "Release")
     exes_path = os.path.abspath(exes_path)
     if os.path.exists(exes_path) and os.path.isdir(exes_path):
         lines.append("export PATH=%s:$PATH" % cygwinify(exes_path))
     else:
-        exes_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Debug")
+        exes_path = os.path.join(scpt_path, os.pardir, "Debug")
         exes_path = os.path.abspath(exes_path)
         assert os.path.exists(exes_path) and os.path.isdir(exes_path)
         lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
 
     # LIB and LIBPATH
+    platform_name = get_platform_name()
     libs_path = os.path.join(scpt_path, os.pardir, "TrappedMSVCLibs", platform_name)
     libs_path = os.path.abspath(libs_path)
     if not os.path.exists(libs_path):
         os.makedirs(libs_path)
     else:
         assert os.path.isdir(libs_path)
-    randolib_path = exes_path
+
+    platform_subdir = 'x64' if platform_name == 'x64' else ''
+    randolib_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Release")
+    randolib_path = os.path.abspath(randolib_path)
     randolib_file_path = os.path.join(randolib_path, "RandoLib.lib")
-    assert os.path.exists(randolib_file_path) and os.path.isfile(randolib_file_path), \
-           "Invalid RandoLib.lib location: %s" % randolib_path
+    if not os.path.exists(randolib_file_path) or not os.path.isfile(randolib_file_path):
+        randolib_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Debug")
+        randolib_path = os.path.abspath(randolib_path)
+        randolib_file_path = os.path.join(randolib_path, "RandoLib.lib")
+        assert os.path.exists(randolib_file_path) and os.path.isfile(randolib_file_path), \
+               "Invalid RandoLib.lib location: %s" % randolib_path
+
     lines.append("export LIB=\"%s\"\\;\"%s\"\\;$LIB" % (randolib_path, libs_path))
     lines.append("export LIBPATH=\"%s\"\\;\"%s\"\\;$LIBPATH" % (randolib_path, libs_path))
 
