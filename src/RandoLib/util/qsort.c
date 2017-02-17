@@ -29,7 +29,9 @@
  * SUCH DAMAGE.
  */
 
+#if RANDOLIB_IS_POSIX
 #include <sys/cdefs.h>
+#endif
 #include <sys/types.h>
 
 typedef int		 cmp_t(const void *, const void *);

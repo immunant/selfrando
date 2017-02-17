@@ -39,6 +39,11 @@ struct TrapReloc;
 struct FunctionList;
 struct Function;
 
+extern "C" {
+void _TRaP_qsort(void *, size_t, size_t,
+                 int(*)(const void *, const void *));
+}
+
 namespace os {
 
 // Since at some point we're remapping all of .text as non-executable,
@@ -304,7 +309,7 @@ public:
     // C library functions
     static inline void QuickSort(void* base, size_t num, size_t size,
                                  int(__cdecl *cmp)(const void*, const void*)) {
-        ntdll_qsort(base, num, size, cmp);
+        _TRaP_qsort(base, num, size, cmp);
     }
 
     static inline void MemCpy(void *dst, const void *src, size_t size) {
@@ -361,7 +366,6 @@ protected:
     static LONGLONG(WINAPI *ntdll_allmul)(LONGLONG, LONGLONG);
     static LONGLONG(WINAPI *ntdll_alldiv)(LONGLONG, LONGLONG);
     // ntdll functions that implement the C runtime are cdecl, not WINAPI
-    static void(*ntdll_qsort)(void*, size_t, size_t, int(__cdecl*)(const void*, const void*));
     static int(*ntdll_vsprintf_s)(const char*, ...);
     static int(*ntdll_memcmp)(const void*, const void*, size_t);
     static int(*ntdll_memcpy)(void*, const void*, size_t);

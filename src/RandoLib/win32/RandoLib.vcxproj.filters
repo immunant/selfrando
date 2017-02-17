@@ -59,6 +59,9 @@
     <ClCompile Include="x86_64\Relocation.cpp">
       <Filter>Source Files\64-bit Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\util\qsort.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\util\fnv.h">

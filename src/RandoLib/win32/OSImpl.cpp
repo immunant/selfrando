@@ -68,7 +68,6 @@ ULONG(WINAPI *APIImpl::ntdll_RtlRandomEx)(PULONG);
 LONGLONG(WINAPI *APIImpl::ntdll_allmul)(LONGLONG, LONGLONG);
 LONGLONG(WINAPI *APIImpl::ntdll_alldiv)(LONGLONG, LONGLONG);
 // ntdll functions that implement the C runtime are cdecl, not WINAPI
-void(*APIImpl::ntdll_qsort)(void*, size_t, size_t, int(__cdecl*)(const void*, const void*));
 int(*APIImpl::ntdll_vsprintf_s)(const char*, ...);
 int(*APIImpl::ntdll_memcmp)(const void*, const void*, size_t);
 int(*APIImpl::ntdll_memcpy)(void*, const void*, size_t);
@@ -119,7 +118,6 @@ RANDO_SECTION void API::Init() {
     ntdll = LoadLibrary(TEXT("ntdll"));
     kernel32 = LoadLibrary(TEXT("kernel32"));
     GetLibFunction(&ntdll_RtlRandomEx, ntdll, "RtlRandomEx");
-    GetLibFunction(&ntdll_qsort, ntdll, "qsort");
     GetLibFunction(&ntdll_vsprintf_s, ntdll, "vsprintf_s");
     GetLibFunction(&ntdll_memcmp, ntdll, "memcmp");
     GetLibFunction(&ntdll_memcpy, ntdll, "memcpy");
