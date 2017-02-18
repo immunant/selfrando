@@ -340,6 +340,16 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         textrap_size = m_textrap_section->Misc.VirtualSize;
     }
 
+    // Re-map all read-only sections as writable
+    PagePermissions *old_sec_perms =
+        reinterpret_cast<PagePermissions*>(alloca(m_nt_hdr->FileHeader.NumberOfSections *
+                                                  sizeof(PagePermissions)));
+    for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++)
+        if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_WRITE) == 0) {
+            Module::Section section(*this, &m_sections[i]);
+            old_sec_perms[i] = section.MemProtect(PagePermissions::RWX);
+        }
+
     // Go through all executable sections and match them against .txtrp
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++) {
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0) {
@@ -355,14 +365,17 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             auto xptramp_section = export_section();
             // FIXME: moved the page mapping from ExecSectionProcessor here
             // Still haven't decided if here is better
-            auto old_perms = exec_section.MemProtect(PagePermissions::RWX);
-            auto old_xptramp_perms = xptramp_section.MemProtect(PagePermissions::RWX);
             (*callback)(*this, exec_section, trap_info, self_rando, callback_arg);
-            exec_section.MemProtect(old_perms);
-            xptramp_section.MemProtect(old_xptramp_perms);
             // FIXME: call FlushInstructionCache???
         }
     }
+    // Restore page permissions on all read-only sections
+    for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++)
+        if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_WRITE) == 0) {
+            Module::Section section(*this, &m_sections[i]);
+            section.MemProtect(old_sec_perms[i]);
+        }
+        
     MarkRandomized(RandoState::RANDOMIZED);
     if (release_textrap)
         API::MemFree(textrap_data);
@@ -402,9 +415,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
 
     // Patch the entry loop jump
     // FIXME: this is x86-specific
-    auto entry_old_perms = API::MemProtect(m_info->entry_loop, 5, PagePermissions::RW);
     *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
-    API::MemProtect(m_info->entry_loop, 5, entry_old_perms);
 
     // Fix up relocations
     RANDO_ASSERT(m_reloc_section != nullptr);
@@ -415,8 +426,6 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
         auto fixup_block = reinterpret_cast<IMAGE_BASE_RELOCATION*>(block_ptr);
         auto fixup_addr = RVA2Address(fixup_block->VirtualAddress);
         block_ptr += fixup_block->SizeOfBlock;
-        // Pages not inside the current section may be read-only, so un-protect them here
-        auto block_old_perms = API::MemProtect(fixup_addr.to_ptr(), kPageSize, PagePermissions::RWX);
         // FIXME: .rndtext contains some of these relocations, so we have to map everything RWX; alternatives???
         for (auto reloc_ptr = reinterpret_cast<WORD*>(fixup_block + 1);
                   reloc_ptr < reinterpret_cast<WORD*>(block_ptr); reloc_ptr++) {
@@ -431,7 +440,6 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
             Relocation reloc(*this, RVA2Address(reloc_rva), reloc_arch_type);
             (*callback)(reloc, callback_arg);
         }
-        API::MemProtect(fixup_addr.to_ptr(), kPageSize, block_old_perms);
     }
     fixup_target_relocations(functions, callback, callback_arg);
 }
