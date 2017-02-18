@@ -116,17 +116,23 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
 
         auto div_ptr = func.div_start;
         auto undiv_ptr = func.undiv_start;
-        while (div_ptr < func.div_end() &&
-               (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
-            div_ptr++, undiv_ptr++;
         // Look for PC-relative indirect branches
         // FIXME: we do this to find the 6-byte import trampolines
         // inserted by the linker; they're not in TRaP info, so
         // we need to scan for them manually.
         // WARNING!!!: we may get false positives
-        while (div_ptr < func.div_end() &&
-               div_ptr[0] == 0xFF && div_ptr[1] == 0x25) {
-            os::API::DebugPrintf<10>("Found import trampoline @%p\n", div_ptr);
+        for (;;) {
+            while (div_ptr < func.div_end() &&
+                (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
+                div_ptr++, undiv_ptr++;
+
+            if (div_ptr + 6 > func.div_end())
+                break;
+            if (div_ptr[0] != 0xFF || div_ptr[1] != 0x25)
+                break;
+
+            os::API::DebugPrintf<10>("Found import trampoline @%p/%p\n",
+                                     undiv_ptr, div_ptr);
             os::Module::Relocation reloc(*this,
                                          address_from_ptr(undiv_ptr + 2),
                                          IMAGE_REL_AMD64_REL32);
