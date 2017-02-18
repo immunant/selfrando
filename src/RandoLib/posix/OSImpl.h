@@ -16,6 +16,23 @@
 #include <time.h>
 
 #include <link.h>
+
+// FIXME: gcc doesn't support assigning an entire class to a section
+// so we'll either have to solve this using linker scripts
+// or include RandoLib as an external shared library
+#define RANDO_SECTION
+
+#if RANDOLIB_IS_SHARED
+#define RANDO_PUBLIC  __attribute__((visibility("default")))
+#else
+#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
+#endif
+
+#define RANDO_ALWAYS_INLINE __attribute__((always_inline))
+
+#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void _TRaP_RandoMain(os::Module::Handle asm_module)
+
+#ifdef __cplusplus
 #include <utility>
 
 class TrapInfo;
@@ -45,21 +62,6 @@ namespace os {
 extern "C" {
 #include "ModuleInfo.h"
 }
-
-// FIXME: gcc doesn't support assigning an entire class to a section
-// so we'll either have to solve this using linker scripts
-// or include RandoLib as an external shared library
-#define RANDO_SECTION
-
-#if RANDOLIB_IS_SHARED
-#define RANDO_PUBLIC  __attribute__((visibility("default")))
-#else
-#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
-#endif
-
-#define RANDO_ALWAYS_INLINE __attribute__((always_inline))
-
-#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void _TRaP_RandoMain(os::Module::Handle asm_module)
 
 typedef time_t Time;
 
@@ -408,5 +410,6 @@ protected:
                                     : (os::API::DebugPrintf<0>(__FILE__ ":" RANDO_ASSERT_STRM(__LINE__) " assertion failed: " #cond ), __builtin_trap()))
 
 }
+#endif // __cplusplus
 
 #endif // __RANDOLIB_OSLINUX_H

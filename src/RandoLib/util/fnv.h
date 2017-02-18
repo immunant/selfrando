@@ -79,6 +79,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <OS.h>
+
 #define FNV_VERSION "5.0.2"	/* @(#) FNV Version */
 
 
@@ -220,15 +222,8 @@ struct fnv1a_64_test_vector {
 /*
  * external functions
  */
-#ifndef RANDO_SECTION
-#if RANDOLIB_IS_WIN32
-#define RANDO_SECTION   __declspec(code_seg(".rndtext"))
-#else
-#define RANDO_SECTION
-#endif
-#endif
 
-/* hash_32.c */
+ /* hash_32.c */
 extern RANDO_SECTION Fnv32_t fnv_32_buf(void *buf, size_t len, Fnv32_t hashval);
 extern RANDO_SECTION Fnv32_t fnv_32_str(char *buf, Fnv32_t hashval);
 

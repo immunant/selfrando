@@ -36,11 +36,13 @@
 #include <sys/types.h>
 #endif
 
-typedef int		 cmp_t(const void *, const void *);
-static inline char	*med3(char *, char *, char *, cmp_t *);
-static inline void	 swapfunc(char *, char *, int, int);
+#include <OS.h>
 
-#define min(a, b)	(a) < (b) ? a : b
+typedef int		 cmp_t(const void *, const void *);
+static inline RANDO_SECTION char	*med3(char *, char *, char *, cmp_t *);
+static inline RANDO_SECTION void	 swapfunc(char *, char *, int, int);
+
+#define _TRaP_min(a, b)	    (a) < (b) ? a : b
 
 /*
  * Qsort routine from Bentley & McIlroy's "Engineering a Sort Function".
@@ -59,7 +61,7 @@ static inline void	 swapfunc(char *, char *, int, int);
 #define SWAPINIT(a, es) swaptype = ((char *)a - (char *)0) % sizeof(long) || \
 	es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
-static inline void
+static inline RANDO_SECTION void
 swapfunc(a, b, n, swaptype)
 	char *a, *b;
 	int n, swaptype;
@@ -82,7 +84,7 @@ swapfunc(a, b, n, swaptype)
 
 #define	CMP(x, y) (cmp((x), (y)))
 
-static inline char *
+static inline RANDO_SECTION char *
 med3(char *a, char *b, char *c, cmp_t *cmp)
 {
 	return CMP(a, b) < 0 ?
@@ -90,7 +92,7 @@ med3(char *a, char *b, char *c, cmp_t *cmp)
               :(CMP(b, c) > 0 ? b : (CMP(a, c) < 0 ? a : c ));
 }
 
-static inline size_t
+static inline RANDO_SECTION size_t
 num_elements(size_t span, size_t es) {
 #if RANDOLIB_IS_ARM
     // We don't always have hardware division on ARM
@@ -111,7 +113,7 @@ num_elements(size_t span, size_t es) {
 #endif
 }
 
-void
+RANDO_SECTION void
 _TRaP_qsort(void *a, size_t n, size_t es, cmp_t *cmp)
 {
 	char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
@@ -179,9 +181,9 @@ loop:	SWAPINIT(a, es);
 	}
 
 	pn = (char *)a + n * es;
-	r = min(pa - (char *)a, pb - pa);
+	r = _TRaP_min(pa - (char *)a, pb - pa);
 	vecswap(a, pb - r, r);
-	r = min(pd - pc, pn - (pd + es));
+	r = _TRaP_min(pd - pc, pn - (pd + es));
 	vecswap(pb, pn - r, r);
 	if ((r = pb - pa) > es)
 		_TRaP_qsort(a, num_elements(r, es), es, cmp);

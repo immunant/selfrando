@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
 namespace os {
 
 static const size_t kPageShift = 12;
@@ -42,6 +43,7 @@ enum class AddressSpace : uint8_t {
 };
 
 }
+#endif // __cplusplus
 
 #if defined(WIN32)
 #include "win32/OSImpl.h"
@@ -51,6 +53,7 @@ enum class AddressSpace : uint8_t {
 #error "Unrecognized OS"
 #endif
 
+#ifdef __cplusplus
 namespace os {
 
 class RANDO_SECTION API : public APIImpl {
@@ -92,5 +95,6 @@ public:
 };
 
 }
+#endif  // __cplusplus
 
 #endif // __RANDOLIB_OS_H
