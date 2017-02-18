@@ -336,8 +336,13 @@ public:
 
     static inline LONGLONG TimeDeltaMicroSec(const Time &from, const Time &to) {
         LONGLONG res = to.QuadPart - from.QuadPart;
+#if RANDOLIB_IS_X86
         res = ntdll_allmul(res, 1000000);
         res = ntdll_alldiv(res, timer_freq.QuadPart);
+#else
+        res *= 1000000LL;
+        res /= timer_freq.QuadPart;
+#endif
         return res;
     }
 

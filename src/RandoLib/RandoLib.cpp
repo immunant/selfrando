@@ -55,6 +55,25 @@ Function *FunctionList::FindFunction(os::BytePointer addr) {
     return &functions[lo];
 }
 
+#if RANDOLIB_MEASURE_TIME
+class RANDO_SECTION FunctionCallTimer {
+public:
+    FunctionCallTimer() : m_start_time(os::API::GetTime()) { }
+
+    void print_duration(const char *call_name) {
+        auto end_time = os::API::GetTime();
+        auto duration = os::API::TimeDeltaMicroSec(m_start_time, end_time);
+        os::API::DebugPrintf<1>("Step %s time:%lldus\n", call_name, duration);
+    }
+
+private:
+    os::Time m_start_time;
+};
+#define TIME_FUNCTION_CALL(func, ...)    do { FunctionCallTimer tk; func(__VA_ARGS__); tk.print_duration( #func );  } while (0)
+#else
+#define TIME_FUNCTION_CALL(func, ...)    do { func(__VA_ARGS__);  } while (0)
+#endif
+
 class RANDO_SECTION ExecSectionProcessor {
 public:
     ExecSectionProcessor(const os::Module &mod,
@@ -73,61 +92,20 @@ public:
         for (auto trap_entry : m_trap_info)
             trap_entry.dump();
 
-        // FIXME: in non-profiling runs, GetTime shouldn't cost any CPU cycles
-#if RANDOLIB_MEASURE_TIME
-        os::Time t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
-#define TAKE_TIME(var)  ((var) = os::API::GetTime())
-#else
-#define TAKE_TIME(var)
-#endif
-        TAKE_TIME(t1);
-        CountFunctions();
-        TAKE_TIME(t2);
-        BuildFunctions();
+        TIME_FUNCTION_CALL(CountFunctions);
+        TIME_FUNCTION_CALL(BuildFunctions);
         // Optimization: if only one function, skip shuffling
         if (m_functions.num_funcs > 1) {
-            TAKE_TIME(t3);
-            SortFunctions();
-            // TODO: add GetTime()
-            RemoveEmptyFunctions();
-            CoverGaps();
-            TAKE_TIME(t4);
-            ShuffleFunctions();
-            TAKE_TIME(t5);
-            LayoutCode();
-            TAKE_TIME(t6);
-            ShuffleCode();
-        } else {
-            TAKE_TIME(t3);
-            TAKE_TIME(t4);
-            TAKE_TIME(t5);
-            TAKE_TIME(t6);
+            TIME_FUNCTION_CALL(SortFunctions);
+            TIME_FUNCTION_CALL(RemoveEmptyFunctions);
+            TIME_FUNCTION_CALL(CoverGaps);
+            TIME_FUNCTION_CALL(ShuffleFunctions);
+            TIME_FUNCTION_CALL(LayoutCode);
+            TIME_FUNCTION_CALL(ShuffleCode);
         }
-        TAKE_TIME(t7);
-        FixupRelocations();
-        TAKE_TIME(t8);
-        ProcessTrapRelocations();
-        TAKE_TIME(t9);
-        FixupExports();
-        TAKE_TIME(t10);
-#if RANDOLIB_MEASURE_TIME
-        //#define PRINT_TIME(func, from, to)  DebugPrintf<1>("Module@%p time " #func ":%lldus\n", m_module, os::API::TimeDeltaMicroSec((from), (to)))
-#define PRINT_TIME(func, from, to)  ((void*) os::API::TimeDeltaMicroSec((from), (to)))
-#else
-#define PRINT_TIME(func, from, to)
-#endif
-        PRINT_TIME(CountFunctions,   t1, t2);
-        PRINT_TIME(BuildFunctions,   t2, t3);
-        PRINT_TIME(SortFunctions,    t3, t4);
-        PRINT_TIME(ShuffleFunctions, t4, t5);
-        PRINT_TIME(LayoutCode,       t5, t6);
-        PRINT_TIME(ShuffleCode,      t6, t7);
-        PRINT_TIME(FixupRelocations, t7, t8);
-        PRINT_TIME(ProcessTrapRelocations, t8, t9);
-        PRINT_TIME(FixupExports,     t9, t10);
-        PRINT_TIME(Total,            t1, t10);
-#undef PRINT_TIME
-#undef TAKE_TIME
+        TIME_FUNCTION_CALL(FixupRelocations);
+        TIME_FUNCTION_CALL(ProcessTrapRelocations);
+        TIME_FUNCTION_CALL(FixupExports);
 
 #if RANDOLIB_WRITE_LAYOUTS
         m_module.write_layout_file(&m_functions, m_shuffled_order);
