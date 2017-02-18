@@ -45,9 +45,9 @@ enum class AddressSpace : uint8_t {
 }
 #endif // __cplusplus
 
-#if defined(WIN32)
+#if RANDOLIB_IS_WIN32
 #include "win32/OSImpl.h"
-#elif defined(linux) || defined(__linux__) || defined(LINUX)
+#elif RANDOLIB_IS_POSIX
 #include "posix/OSImpl.h"
 #else
 #error "Unrecognized OS"
