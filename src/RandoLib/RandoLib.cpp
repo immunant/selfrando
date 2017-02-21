@@ -306,7 +306,7 @@ void ExecSectionProcessor::CoverGaps() {
     if (num_gaps == 0)
         return;
 
-    os::API::DebugPrintf<1>("Trap gaps: %d\n", num_gaps);
+    os::API::DebugPrintf<2>("Trap gaps: %d\n", num_gaps);
     m_functions.extend(num_gaps);
     size_t gap_idx = m_functions.num_funcs - num_gaps;
     IterateFunctionGaps([this, &gap_idx] (os::BytePointer gap_start, os::BytePointer gap_end) {
