@@ -196,6 +196,18 @@ public:
         return Address(*this, addr, AddressSpace::TRAP);
     }
 
+    template<typename T>
+    inline RANDO_SECTION void relocate_rva(T *rva,
+                                           Relocation::Callback callback,
+                                           void *callback_arg) const {
+        *rva += reinterpret_cast<ptrdiff_t>(m_handle);
+        Relocation rva_reloc(*this, address_from_ptr(rva),
+                             Relocation::get_pointer_reloc_type());
+        (*callback)(rva_reloc, callback_arg);
+        *rva -= reinterpret_cast<ptrdiff_t>(m_handle);
+    }
+
+
     class RANDO_SECTION Section {
     public:
         // No default construction (sections should always have a module)
