@@ -309,7 +309,18 @@ private:
 
     RANDO_SECTION void MarkRandomized(RandoState);
 
+    void arch_init();
+
     void fixup_target_relocations(FunctionList*, Relocation::Callback, void*) const;
+
+private:
+    // Architecture-specific fields
+#if RANDOLIB_IS_X86
+#elif RANDOLIB_IS_X86_64
+    ptrdiff_t seh_C_specific_handler_rva;
+    ptrdiff_t seh_GSHandlerCheck_rva;
+    ptrdiff_t seh_GSHandlerCheck_SEH_rva;
+#endif
 };
 
 class RANDO_SECTION APIImpl {

@@ -255,6 +255,7 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
         if (API::MemCmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
             m_export_section = &m_sections[i];
     }
+    arch_init();
     API::DebugPrintf<1>("Module@%p sections .txtrp@%p .reloc@%p .xptramp@%p\n",
                         m_handle, m_textrap_section, m_reloc_section, m_export_section);
 }

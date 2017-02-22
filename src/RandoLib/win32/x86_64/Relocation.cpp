@@ -105,6 +105,33 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     *export_ptr += 5;
 }
 
+extern "C" {
+// FIXME: because we add them in here, these get pulled into every binary
+// We should find a way to only pull them in when needed
+EXCEPTION_DISPOSITION __GSHandlerCheck(EXCEPTION_RECORD*, void*, CONTEXT*, DISPATCHER_CONTEXT*);
+EXCEPTION_DISPOSITION __GSHandlerCheck_SEH(EXCEPTION_RECORD*, void*, CONTEXT*, DISPATCHER_CONTEXT*);
+}
+
+void os::Module::arch_init() {
+    seh_C_specific_handler_rva  = reinterpret_cast<uintptr_t>(__C_specific_handler) -
+                                  reinterpret_cast<uintptr_t>(m_handle);
+    seh_GSHandlerCheck_rva      = reinterpret_cast<uintptr_t>(__GSHandlerCheck) -
+                                  reinterpret_cast<uintptr_t>(m_handle);
+    seh_GSHandlerCheck_SEH_rva  = reinterpret_cast<uintptr_t>(__GSHandlerCheck_SEH) -
+                                  reinterpret_cast<uintptr_t>(m_handle);
+}
+
+// We have to define our own, since Windows doesn't have it
+struct UNWIND_INFO {
+    uint8_t version : 3;
+    uint8_t flags : 5;
+    uint8_t prolog_size;
+    uint8_t num_codes;
+    uint8_t frame_reg : 4;
+    uint8_t frame_offset : 4;
+    uint16_t codes[1];
+};
+
 void os::Module::fixup_target_relocations(FunctionList *functions,
                                           Relocation::Callback callback,
                                           void *callback_arg) const {
@@ -139,6 +166,83 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
             (*callback)(reloc, callback_arg);
             div_ptr += 6;
             undiv_ptr += 6;
+        }
+    }
+    // Update the exception handling metadata
+    if (IMAGE_DIRECTORY_ENTRY_EXCEPTION < m_nt_hdr->OptionalHeader.NumberOfRvaAndSizes) {
+        auto &exception_dir = m_nt_hdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION];
+        if (exception_dir.VirtualAddress != 0 && exception_dir.Size > 0) {
+            auto pdata_start = RVA2Address(exception_dir.VirtualAddress).to_ptr<RUNTIME_FUNCTION*>();
+            auto pdata_end = RVA2Address(exception_dir.VirtualAddress + exception_dir.Size).to_ptr<RUNTIME_FUNCTION*>();
+            os::API::DebugPrintf<2>("Found .pdata:%p-%p\n", pdata_start, pdata_end);
+            for (auto *ptr = pdata_start; ptr < pdata_end; ptr++) {
+                relocate_rva(&ptr->BeginAddress, callback, callback_arg, false);
+                relocate_rva(&ptr->EndAddress, callback, callback_arg, true);
+                if (ptr->UnwindInfoAddress & 1)
+                    continue;
+
+                auto unwind_info = RVA2Address(ptr->UnwindInfoAddress).to_ptr<UNWIND_INFO*>();
+                if (unwind_info->version != 1) {
+                    os::API::DebugPrintf<1>("Unknown UNWIND_INFO version:%d\n",
+                                            static_cast<int32_t>(unwind_info->version));
+                    continue;
+                }
+
+                auto end_of_codes = &unwind_info->codes[unwind_info->num_codes + (unwind_info->num_codes & 1)];
+                if (unwind_info->flags & UNW_FLAG_CHAININFO) {
+                    // We have a chained RUNTIME_FUNCTION
+                    auto *chain = reinterpret_cast<RUNTIME_FUNCTION*>(end_of_codes);
+                    relocate_rva(&chain->BeginAddress, callback, callback_arg, false);
+                    relocate_rva(&chain->EndAddress, callback, callback_arg, true);
+                } else if (unwind_info->flags & (UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER)) {
+                    auto handler_rva_ptr = reinterpret_cast<DWORD*>(end_of_codes);
+                    auto lsda_ptr = reinterpret_cast<os::BytePointer>(handler_rva_ptr + 1);
+                    if (*handler_rva_ptr == seh_GSHandlerCheck_rva ||
+                        *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
+                        // If we ever need to relocate GS cookie data, do it here
+                        // For now, we don't need to do anything
+                    }
+                    if (*handler_rva_ptr == seh_C_specific_handler_rva ||
+                        *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
+                        auto *scope_table = reinterpret_cast<SCOPE_TABLE_AMD64*>(lsda_ptr);
+                        os::API::DebugPrintf<2>("Scope table:%p[%d]\n",
+                                                scope_table, scope_table->Count);
+                        for (size_t i = 0; i < scope_table->Count; i++) {
+                            auto &scope_record = scope_table->ScopeRecord[i];
+                            relocate_rva(&scope_record.BeginAddress, callback, callback_arg, false);
+                            relocate_rva(&scope_record.EndAddress, callback, callback_arg, true);
+                            // HandlerAddress can have the special values 0 or 1, which
+                            // we should ignore
+                            if (scope_record.HandlerAddress > 1)
+                                relocate_rva(&scope_record.HandlerAddress, callback, callback_arg, false);
+                            if (scope_record.JumpTarget != 0)
+                                relocate_rva(&scope_record.JumpTarget, callback, callback_arg, false);
+                        }
+                        // Re-sort the contents of pdata
+                        os::API::QuickSort(reinterpret_cast<void*>(&scope_table->ScopeRecord[0]),
+                                           scope_table->Count,
+                                           sizeof(SCOPE_TABLE_AMD64::ScopeRecord[0]),
+                                           [] (const void *pa, const void *pb) {
+                            auto *fa = reinterpret_cast<const DWORD*>(pa);
+                            auto *fb = reinterpret_cast<const DWORD*>(pb);
+                            return (fa[0] < fb[0]) ? -1 : 1;
+                        });
+                    }
+                    // TODO: also handle C++ exceptions handled by the following:
+                    //   __CxxFrameHandler3
+                    //   __GSHandlerCheck_EH
+                    relocate_rva(handler_rva_ptr, callback, callback_arg, false);
+                }
+            }
+            // Re-sort the contents of pdata
+            os::API::QuickSort(reinterpret_cast<void*>(pdata_start),
+                               pdata_end - pdata_start,
+                               sizeof(RUNTIME_FUNCTION),
+                               [] (const void *pa, const void *pb) {
+                auto *fa = reinterpret_cast<const RUNTIME_FUNCTION*>(pa);
+                auto *fb = reinterpret_cast<const RUNTIME_FUNCTION*>(pb);
+                return (fa->BeginAddress < fb->BeginAddress) ? -1 : 1;
+            });
         }
     }
 }

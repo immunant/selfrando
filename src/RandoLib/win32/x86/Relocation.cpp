@@ -75,6 +75,9 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     *export_ptr += 5;
 }
 
+void os::Module::arch_init() {
+}
+
 void os::Module::fixup_target_relocations(FunctionList *functions,
                                           Relocation::Callback callback,
                                           void *callback_arg) const {
