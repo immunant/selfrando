@@ -42,6 +42,16 @@
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
 
+#define RANDO_ASSERT(cond)      \
+    do {                        \
+        if (!os::API::kEnableAsserts)\
+            break;              \
+        if (cond)               \
+            break;              \
+        os::API::SystemMessage("RandoLib assertion error: '%s' at %s:%d\n", #cond, __FILE__, __LINE__); \
+        __debugbreak();         \
+    } while (0)
+
 #ifdef __cplusplus
 class TrapInfo;
 struct TrapReloc;
@@ -212,10 +222,11 @@ public:
         (*callback)(rva_reloc, callback_arg);
         if (subtract_one)
             full_addr++;
-        // FIXME: check for overflow
-        *rva = static_cast<T>(full_addr - reinterpret_cast<uintptr_t>(m_handle));
-    }
 
+        auto new_rva = full_addr - reinterpret_cast<uintptr_t>(m_handle);
+        RANDO_ASSERT(static_cast<T>(new_rva) == new_rva);
+        *rva = static_cast<T>(new_rva);
+    }
 
     class RANDO_SECTION Section {
     public:
@@ -431,16 +442,6 @@ protected:
 
     friend class Module;
 };
-
-#define RANDO_ASSERT(cond)      \
-    do {                        \
-        if (!os::API::kEnableAsserts)\
-            break;              \
-        if (cond)               \
-            break;              \
-        os::API::SystemMessage("RandoLib assertion error: '%s' at %s:%d\n", #cond, __FILE__, __LINE__); \
-        __debugbreak();         \
-    } while (0)
 
 }
 #endif // __cplusplus
