@@ -50,7 +50,7 @@ static std::vector<TargetElf_Rela> build_relas(const Elf_RelocBuffer &relocs) {
     for (auto &reloc : relocs) {
         uint64_t rela_info = ELF64_R_INFO(reloc.symbol.get_final_index(), reloc.type);
         assert(reloc.offset >= 0 && "Casting negative value to unsigned int");
-        relas.push_back({ (TargetElf_Addr)reloc.offset, rela_info, reloc.addend });
+        relas.push_back({ static_cast<TargetElf_Addr>(reloc.offset), rela_info, reloc.addend });
     }
     return relas;
 }

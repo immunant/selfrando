@@ -19,8 +19,8 @@ void Debug::PrintfImpl(const char *fmt, ...) {
     int len = vsnprintf(tmp, 255, fmt, args);
     va_end(args);
     // FIXME: find better printing output
-    if(write(2, tmp, len) == -1) 
-        perror("write");
+    ssize_t retcode = write(STDERR_FILENO, tmp, len);
+    assert(retcode != -1 && "Write to stderr failed");
 }
 
 void Error::printf(const char *fmt, ...) {
