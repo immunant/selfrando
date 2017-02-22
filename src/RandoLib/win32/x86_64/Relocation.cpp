@@ -115,8 +115,11 @@ EXCEPTION_DISPOSITION __GSHandlerCheck_SEH(EXCEPTION_RECORD*, void*, CONTEXT*, D
 void os::Module::arch_init() {
     seh_C_specific_handler_rva  = reinterpret_cast<uintptr_t>(__C_specific_handler) -
                                   reinterpret_cast<uintptr_t>(m_handle);
+#if 0
+    // For now, we don't care about this one
     seh_GSHandlerCheck_rva      = reinterpret_cast<uintptr_t>(__GSHandlerCheck) -
                                   reinterpret_cast<uintptr_t>(m_handle);
+#endif
     seh_GSHandlerCheck_SEH_rva  = reinterpret_cast<uintptr_t>(__GSHandlerCheck_SEH) -
                                   reinterpret_cast<uintptr_t>(m_handle);
 }
@@ -197,11 +200,13 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                 } else if (unwind_info->flags & (UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER)) {
                     auto handler_rva_ptr = reinterpret_cast<DWORD*>(end_of_codes);
                     auto lsda_ptr = reinterpret_cast<os::BytePointer>(handler_rva_ptr + 1);
+#if 0
                     if (*handler_rva_ptr == seh_GSHandlerCheck_rva ||
                         *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
                         // If we ever need to relocate GS cookie data, do it here
                         // For now, we don't need to do anything
                     }
+#endif
                     if (*handler_rva_ptr == seh_C_specific_handler_rva ||
                         *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
                         auto *scope_table = reinterpret_cast<SCOPE_TABLE_AMD64*>(lsda_ptr);
