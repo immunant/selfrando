@@ -199,12 +199,21 @@ public:
     template<typename T>
     inline RANDO_SECTION void relocate_rva(T *rva,
                                            Relocation::Callback callback,
-                                           void *callback_arg) const {
-        *rva += reinterpret_cast<ptrdiff_t>(m_handle);
-        Relocation rva_reloc(*this, address_from_ptr(rva),
+                                           void *callback_arg,
+                                           bool subtract_one) const {
+        auto full_addr = reinterpret_cast<uintptr_t>(m_handle) + *rva;
+        // If we're relocating an RVA that points to one byte past the end
+        // of something (like a function), subtract one byte so we land inside
+        // the object we're relocating
+        if (subtract_one)
+            full_addr--;
+        Relocation rva_reloc(*this, address_from_ptr(&full_addr),
                              Relocation::get_pointer_reloc_type());
         (*callback)(rva_reloc, callback_arg);
-        *rva -= reinterpret_cast<ptrdiff_t>(m_handle);
+        if (subtract_one)
+            full_addr++;
+        // FIXME: check for overflow
+        *rva = static_cast<T>(full_addr - reinterpret_cast<uintptr_t>(m_handle));
     }
 
 

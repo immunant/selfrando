@@ -407,15 +407,13 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
     // Fix up the entry point
     RANDO_ASSERT(m_info->entry_loop != nullptr);
     RANDO_ASSERT(m_info->entry_loop[0] == 0xE9);
-    BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
-    Relocation entry_reloc(*this, address_from_ptr(&new_entry),
-                           Relocation::get_pointer_reloc_type());
-    (*callback)(entry_reloc, callback_arg);
-    API::DebugPrintf<1>("New program entry:%p\n", new_entry);
 
     // Patch the entry loop jump
     // FIXME: this is x86-specific
+    relocate_rva(&m_info->original_entry_rva, callback, callback_arg, false);
+    BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
     *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
+    API::DebugPrintf<1>("New program entry:%p\n", new_entry);
 
     // Fix up relocations
     RANDO_ASSERT(m_reloc_section != nullptr);

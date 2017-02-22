@@ -90,7 +90,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
             if (seh_table != nullptr && load_config->SEHandlerCount > 0) {
                 auto table_size = load_config->SEHandlerCount * sizeof(BytePointer);
                 for (size_t i = 0; i < load_config->SEHandlerCount; i++)
-                    relocate_rva(&seh_table[i], callback, callback_arg);
+                    relocate_rva(&seh_table[i], callback, callback_arg, false);
             }
         }
     }
