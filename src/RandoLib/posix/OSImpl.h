@@ -28,7 +28,7 @@
 #define RANDO_PUBLIC  __attribute__((visibility("hidden")))
 #endif
 
-#define RANDO_ALWAYS_INLINE __attribute__((always_inline))
+#define RANDO_ALWAYS_INLINE __attribute__((always_inline)) inline
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void _TRaP_RandoMain(os::Module::Handle asm_module)
 

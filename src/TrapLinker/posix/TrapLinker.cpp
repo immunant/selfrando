@@ -658,7 +658,8 @@ void LinkerScript::rewrite(const std::map<std::string, std::string>& rewritten_f
     fseek(m_file, 0, SEEK_SET);
     fwrite(out_buffer.data(), 1, out_buffer.size(), m_file);
     fflush(m_file);
-    ftruncate(fileno(m_file), out_buffer.size());
+    if(ftruncate(fileno(m_file), out_buffer.size()) == -1)
+        perror("ftruncate");
 }
 
 bool ArgParser::parse() {

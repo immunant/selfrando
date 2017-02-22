@@ -19,7 +19,8 @@ void Debug::PrintfImpl(const char *fmt, ...) {
     int len = vsnprintf(tmp, 255, fmt, args);
     va_end(args);
     // FIXME: find better printing output
-    write(2, tmp, len);
+    if(write(2, tmp, len) == -1) 
+        perror("write");
 }
 
 void Error::printf(const char *fmt, ...) {
@@ -29,6 +30,7 @@ void Error::printf(const char *fmt, ...) {
     int len = vsnprintf(tmp, 255, fmt, args);
     va_end(args);
     // FIXME: find better printing output
-    write(2, tmp, len);
+    if(write(2, tmp, len) == -1)
+        perror("write");
     assert(false);
 }
