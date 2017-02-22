@@ -43,7 +43,8 @@
 
 ObjectType parse_object_type(int fd) {
     char magic[7];
-    read(fd, magic, 7);
+    if(read(fd, magic, 7) == -1)
+        perror("read");
     lseek(fd, 0, SEEK_SET);
     if (strncmp(magic, "\x7f" "ELF", 4) == 0
         || strncmp(magic, "!<arch>", 7) == 0) {

@@ -61,12 +61,13 @@ std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_ta
 std::pair<int, std::string> Filesystem::copy_to_temp_file(int source, std::string filename_tag) {
     size_t BUFSIZE = 4096;
     char buf[BUFSIZE];
-    size_t size;
+    ssize_t size;
 
     auto temp_file = create_temp_file(filename_tag);
 
     while ((size = read(source, buf, BUFSIZE)) > 0) {
-        write(temp_file.first, buf, size);
+        if(write(temp_file.first, buf, size) == -1)
+            perror("write");
     }
     lseek(temp_file.first, 0, SEEK_SET);
 
