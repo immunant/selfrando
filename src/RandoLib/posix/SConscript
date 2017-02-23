@@ -46,8 +46,8 @@ lib_env.Object('trapfooter_page', ['TrapFooterPage.S'])
 lib_env.Append(CCFLAGS = '-fPIC')
 
 # Don't export anything from the library
-lib_env.Append(CCFLAGS = ['-fvisibility=hidden',
-                          '-fvisibility-inlines-hidden'])
+lib_env.Append(CCFLAGS='-fvisibility=hidden')
+lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
 
 if target == 'x86':
     # TODO: it would be nice to have a "is 32 bit" variable
