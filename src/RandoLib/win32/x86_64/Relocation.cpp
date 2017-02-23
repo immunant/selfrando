@@ -296,11 +296,13 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                         }
                         if (func_info->unwind_map_rva != 0) {
                             auto *unwind_map = RVA2Address(func_info->unwind_map_rva).to_ptr<UnwindMapEntry*>();
+                            os::API::DebugPrintf<2>("Unwind map:%p[%d]\n", unwind_map, func_info->num_states);
                             for (size_t i = 0; i < func_info->num_states; i++)
                                 relocate_rva(&unwind_map[i].handler_rva, callback, callback_arg, false);
                         }
                         if (func_info->try_block_map_rva != 0) {
                             auto *try_block_map = RVA2Address(func_info->try_block_map_rva).to_ptr<TryBlock*>();
+                            os::API::DebugPrintf<2>("Try blocks:%p[%d]\n", try_block_map, func_info->num_try_blocks);
                             for (size_t i = 0; i < func_info->num_try_blocks; i++) {
                                 auto &try_block = try_block_map[i];
                                 if (try_block.catches_rva != 0) {
@@ -314,6 +316,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                         }
                         if (func_info->ip_state_map_rva != 0) {
                             auto *ip_state_map = RVA2Address(func_info->ip_state_map_rva).to_ptr<IpStateMapEntry*>();
+                            os::API::DebugPrintf<2>("ip_state_map:%p[%d]\n", ip_state_map, func_info->num_ip_state_map_entries);
                             for (size_t i = 0; i < func_info->num_ip_state_map_entries; i++)
                                 relocate_rva(&ip_state_map[i].ip_rva, callback, callback_arg, false);
                             // The ip_state_map needs to be sorted
