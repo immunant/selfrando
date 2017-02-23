@@ -108,12 +108,16 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
 extern "C" {
 // FIXME: because we add them in here, these get pulled into every binary
 // We should find a way to only pull them in when needed
+EXCEPTION_DISPOSITION __CxxFrameHandler3(EXCEPTION_RECORD*, void*, CONTEXT*, DISPATCHER_CONTEXT*);
 EXCEPTION_DISPOSITION __GSHandlerCheck(EXCEPTION_RECORD*, void*, CONTEXT*, DISPATCHER_CONTEXT*);
 EXCEPTION_DISPOSITION __GSHandlerCheck_SEH(EXCEPTION_RECORD*, void*, CONTEXT*, DISPATCHER_CONTEXT*);
+EXCEPTION_DISPOSITION __GSHandlerCheck_EH(EXCEPTION_RECORD*, void*, CONTEXT*, DISPATCHER_CONTEXT*);
 }
 
 void os::Module::arch_init() {
     seh_C_specific_handler_rva  = reinterpret_cast<uintptr_t>(__C_specific_handler) -
+                                  reinterpret_cast<uintptr_t>(m_handle);
+    seh_CxxFrameHandler3_rva    = reinterpret_cast<uintptr_t>(__CxxFrameHandler3) -
                                   reinterpret_cast<uintptr_t>(m_handle);
 #if 0
     // For now, we don't care about this one
@@ -121,6 +125,8 @@ void os::Module::arch_init() {
                                   reinterpret_cast<uintptr_t>(m_handle);
 #endif
     seh_GSHandlerCheck_SEH_rva  = reinterpret_cast<uintptr_t>(__GSHandlerCheck_SEH) -
+                                  reinterpret_cast<uintptr_t>(m_handle);
+    seh_GSHandlerCheck_EH_rva   = reinterpret_cast<uintptr_t>(__GSHandlerCheck_EH) -
                                   reinterpret_cast<uintptr_t>(m_handle);
 }
 
@@ -134,6 +140,50 @@ struct UNWIND_INFO {
     uint8_t frame_offset : 4;
     uint16_t codes[1];
 };
+
+#define FUNC_INFO_MAGIC_MIN     0x19930520
+#define FUNC_INFO_MAGIC_MAX     0x19930522
+
+struct FuncInfo {
+    uint32_t magic;
+    uint32_t num_states;
+    uint32_t unwind_map_rva;
+    uint32_t num_try_blocks;
+    uint32_t try_block_map_rva;
+    uint32_t num_ip_state_map_entries;
+    uint32_t ip_state_map_rva;
+};
+
+struct UnwindMapEntry {
+    int32_t state;
+    uint32_t handler_rva;
+};
+
+struct CatchBlock {
+    uint32_t flags;
+    uint32_t type_rva;
+    int32_t object;
+    uint32_t handler_rva;
+};
+
+struct TryBlock {
+    int32_t try_low;
+    int32_t try_high;
+    int32_t catch_level;
+    int32_t num_catches;
+    uint32_t catches_rva;
+};
+
+struct IpStateMapEntry {
+    uint32_t ip_rva;
+    int32_t state;
+};
+
+static RANDO_SECTION int compare_first_dword(const void *pa, const void *pb) {
+    auto *fa = reinterpret_cast<const DWORD*>(pa);
+    auto *fb = reinterpret_cast<const DWORD*>(pb);
+    return (fa[0] < fb[0]) ? -1 : 1;
+}
 
 void os::Module::fixup_target_relocations(FunctionList *functions,
                                           Relocation::Callback callback,
@@ -203,7 +253,9 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                     relocate_rva(&chain->EndAddress, callback, callback_arg, true);
                 } else if (unwind_info->flags & (UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER)) {
                     auto handler_rva_ptr = reinterpret_cast<DWORD*>(end_of_codes);
+                    auto handler_rva = *handler_rva_ptr;
                     auto lsda_ptr = reinterpret_cast<os::BytePointer>(handler_rva_ptr + 1);
+                    relocate_rva(handler_rva_ptr, callback, callback_arg, false);
 #if 0
                     if (*handler_rva_ptr == seh_GSHandlerCheck_rva ||
                         *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
@@ -211,8 +263,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                         // For now, we don't need to do anything
                     }
 #endif
-                    if (*handler_rva_ptr == seh_C_specific_handler_rva ||
-                        *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
+                    if (handler_rva == seh_C_specific_handler_rva ||
+                        handler_rva == seh_GSHandlerCheck_SEH_rva) {
                         auto *scope_table = reinterpret_cast<SCOPE_TABLE_AMD64*>(lsda_ptr);
                         os::API::DebugPrintf<2>("Scope table:%p[%d]\n",
                                                 scope_table, scope_table->Count);
@@ -228,30 +280,56 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                                 relocate_rva(&scope_record.JumpTarget, callback, callback_arg, false);
                         }
                         // Re-sort the contents of pdata
-                        os::API::QuickSort(reinterpret_cast<void*>(&scope_table->ScopeRecord[0]),
+                        os::API::QuickSort(&scope_table->ScopeRecord[0],
                                            scope_table->Count,
                                            sizeof(SCOPE_TABLE_AMD64::ScopeRecord[0]),
-                                           [] (const void *pa, const void *pb) {
-                            auto *fa = reinterpret_cast<const DWORD*>(pa);
-                            auto *fb = reinterpret_cast<const DWORD*>(pb);
-                            return (fa[0] < fb[0]) ? -1 : 1;
-                        });
+                                           compare_first_dword);
                     }
-                    // TODO: also handle C++ exceptions handled by the following:
-                    //   __CxxFrameHandler3
-                    //   __GSHandlerCheck_EH
-                    relocate_rva(handler_rva_ptr, callback, callback_arg, false);
+                    if (handler_rva == seh_CxxFrameHandler3_rva ||
+                        handler_rva == seh_GSHandlerCheck_EH_rva) {
+                        auto func_info_rva = *reinterpret_cast<uint32_t*>(lsda_ptr);
+                        auto *func_info = RVA2Address(func_info_rva).to_ptr<FuncInfo*>();
+                        if (func_info->magic < FUNC_INFO_MAGIC_MIN ||
+                            func_info->magic > FUNC_INFO_MAGIC_MAX) {
+                            os::API::DebugPrintf<1>("Unknown FuncInfo magic:%d\n", func_info->magic);
+                            continue;
+                        }
+                        if (func_info->unwind_map_rva != 0) {
+                            auto *unwind_map = RVA2Address(func_info->unwind_map_rva).to_ptr<UnwindMapEntry*>();
+                            for (size_t i = 0; i < func_info->num_states; i++)
+                                relocate_rva(&unwind_map[i].handler_rva, callback, callback_arg, false);
+                        }
+                        if (func_info->try_block_map_rva != 0) {
+                            auto *try_block_map = RVA2Address(func_info->try_block_map_rva).to_ptr<TryBlock*>();
+                            for (size_t i = 0; i < func_info->num_try_blocks; i++) {
+                                auto &try_block = try_block_map[i];
+                                if (try_block.catches_rva != 0) {
+                                    auto *catches = RVA2Address(try_block.catches_rva).to_ptr<CatchBlock*>();
+                                    for (size_t j = 0; j < try_block.num_catches; j++) {
+                                        relocate_rva(&catches[j].handler_rva, callback, callback_arg, false);
+                                        // TODO: do we need to follow type_rva???
+                                    }
+                                }
+                            }
+                        }
+                        if (func_info->ip_state_map_rva != 0) {
+                            auto *ip_state_map = RVA2Address(func_info->ip_state_map_rva).to_ptr<IpStateMapEntry*>();
+                            for (size_t i = 0; i < func_info->num_ip_state_map_entries; i++)
+                                relocate_rva(&ip_state_map[i].ip_rva, callback, callback_arg, false);
+                            // The ip_state_map needs to be sorted
+                            os::API::QuickSort(ip_state_map,
+                                               func_info->num_ip_state_map_entries,
+                                               sizeof(IpStateMapEntry),
+                                               compare_first_dword);
+                        }
+                    }
                 }
             }
             // Re-sort the contents of pdata
-            os::API::QuickSort(reinterpret_cast<void*>(pdata_start),
+            os::API::QuickSort(pdata_start,
                                pdata_end - pdata_start,
                                sizeof(RUNTIME_FUNCTION),
-                               [] (const void *pa, const void *pb) {
-                auto *fa = reinterpret_cast<const RUNTIME_FUNCTION*>(pa);
-                auto *fb = reinterpret_cast<const RUNTIME_FUNCTION*>(pb);
-                return (fa->BeginAddress < fb->BeginAddress) ? -1 : 1;
-            });
+                               compare_first_dword);
         }
     }
 }

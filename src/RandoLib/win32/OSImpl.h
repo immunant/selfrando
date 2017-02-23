@@ -329,11 +329,13 @@ private:
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64
     ptrdiff_t seh_C_specific_handler_rva;
+    ptrdiff_t seh_CxxFrameHandler3_rva;
 #if 0
     // For now, we don't care about this handler
     ptrdiff_t seh_GSHandlerCheck_rva;
 #endif
     ptrdiff_t seh_GSHandlerCheck_SEH_rva;
+    ptrdiff_t seh_GSHandlerCheck_EH_rva;
 #endif
 };
 
