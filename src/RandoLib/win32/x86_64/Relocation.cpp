@@ -178,6 +178,10 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
             auto pdata_start = RVA2Address(exception_dir.VirtualAddress).to_ptr<RUNTIME_FUNCTION*>();
             auto pdata_end = RVA2Address(exception_dir.VirtualAddress + exception_dir.Size).to_ptr<RUNTIME_FUNCTION*>();
             os::API::DebugPrintf<2>("Found .pdata:%p-%p\n", pdata_start, pdata_end);
+            // FIXME: .obj files have ADDR32NB relocations for all the function pointers we care about
+            // Instead of parsing all these structures manually, we could add those ADDR32NB relocations
+            // to TRaP info and handle them in get/set_target_ptr above. However, that would mean
+            // we would have to add TRaP records for all .pdata/.xdata/other EH-related sections
             for (auto *ptr = pdata_start; ptr < pdata_end; ptr++) {
                 relocate_rva(&ptr->BeginAddress, callback, callback_arg, false);
                 relocate_rva(&ptr->EndAddress, callback, callback_arg, true);
