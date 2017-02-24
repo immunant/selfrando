@@ -23,6 +23,8 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     switch (m_type) {
     case IMAGE_REL_AMD64_ADDR64:
         return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
+    case IMAGE_REL_AMD64_ADDR32NB:
+        return reinterpret_cast<os::BytePointer>(m_module.m_handle) + *reinterpret_cast<uint32_t*>(at_ptr);
     case IMAGE_REL_AMD64_REL32:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
@@ -47,6 +49,9 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     switch (m_type) {
     case IMAGE_REL_AMD64_ADDR64:
         *reinterpret_cast<uint64_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        break;
+    case IMAGE_REL_AMD64_ADDR32NB:
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - reinterpret_cast<os::BytePointer>(m_module.m_handle));
         break;
     case IMAGE_REL_AMD64_REL32:
         // FIXME: check for overflow here???
