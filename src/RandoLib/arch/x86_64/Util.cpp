@@ -9,6 +9,10 @@
 
 #include <OS.h>
 
+bool os::APIImpl::Is1ByteNOP(os::BytePointer at) {
+    return at[0] == 0x90 || at[0] == 0xCC;
+}
+
 void os::APIImpl::InsertNOPs(os::BytePointer at, size_t count) {
     switch(count) {
     case 1:

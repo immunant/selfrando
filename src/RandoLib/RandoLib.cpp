@@ -99,6 +99,8 @@ public:
             TIME_FUNCTION_CALL(SortFunctions);
             TIME_FUNCTION_CALL(RemoveEmptyFunctions);
             TIME_FUNCTION_CALL(CoverGaps);
+            TIME_FUNCTION_CALL(TrimGaps);
+            TIME_FUNCTION_CALL(RemoveEmptyFunctions);
             TIME_FUNCTION_CALL(ShuffleFunctions);
             TIME_FUNCTION_CALL(LayoutCode);
             TIME_FUNCTION_CALL(ShuffleCode);
@@ -148,8 +150,9 @@ private:
     void CountFunctions();
     void BuildFunctions();
     void SortFunctions();
-    void CoverGaps();
     void RemoveEmptyFunctions();
+    void CoverGaps();
+    void TrimGaps();
     void ShuffleFunctions();
     void LayoutCode();
     void ShuffleCode();
@@ -320,6 +323,18 @@ void ExecSectionProcessor::CoverGaps() {
     RANDO_ASSERT(gap_idx == m_functions.num_funcs);
     // We need to re-sort the functions after adding the gaps at the end
     os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
+}
+
+void ExecSectionProcessor::TrimGaps() {
+    // Trim all NOPs (0x90 and 0xCCs) at the beginning of gap functions
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        if (!m_functions[i].is_gap)
+            continue;
+        while (m_functions[i].size > 0 && os::API::Is1ByteNOP(m_functions[i].undiv_start)) {
+            m_functions[i].undiv_start++;
+            m_functions[i].size--;
+        }
+    }
 }
 
 void ExecSectionProcessor::ShuffleFunctions() {

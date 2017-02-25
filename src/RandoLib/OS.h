@@ -72,6 +72,7 @@ public:
     using APIImpl::DebugPrintf;
 
     // Architecture-specific functions/constants
+    using APIImpl::Is1ByteNOP;
     using APIImpl::InsertNOPs;
 
     // Align function addresses to multiples of this values

@@ -405,7 +405,8 @@ public:
     static const int kTextAlignment = 1;
     static const int kPageAlignment = 4096;
     static const bool kPreserveFunctionOffset = true;
-
+    
+    static bool Is1ByteNOP(BytePointer);
     static void InsertNOPs(BytePointer, size_t);
 
 protected:
