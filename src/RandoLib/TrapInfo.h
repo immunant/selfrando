@@ -395,12 +395,12 @@ public:
         Iterator &operator++() {
             auto delta = ReadULEB128(&m_trap_ptr);
             m_address += delta;
-            if (m_header->has_symbol_p2align())
-                ReadULEB128(&m_trap_ptr);
             if (m_header->has_symbol_size()) {
                 auto size = ReadULEB128(&m_trap_ptr);
                 m_address += size;
             }
+            if (m_header->has_symbol_p2align())
+                ReadULEB128(&m_trap_ptr);
             return *this;
         }
 
@@ -409,14 +409,17 @@ public:
             // so this turns into a simple read from m_address
             auto tmp_trap_ptr = m_trap_ptr;
             auto curr_delta = ReadULEB128(&tmp_trap_ptr);
+            uintptr_t size = 0;
             uintptr_t alignment = 1;
+            if (m_header->has_symbol_size())
+                size = ReadULEB128(&tmp_trap_ptr);
             if (m_header->has_symbol_p2align())
                 alignment = static_cast<uintptr_t>(1) << ReadULEB128(&tmp_trap_ptr);
             if (m_header->has_symbol_size()) {
-                auto size = ReadULEB128(&tmp_trap_ptr);
                 return TrapSymbol(m_address + curr_delta, alignment, size);
+            } else {
+                return TrapSymbol(m_address + curr_delta, alignment);
             }
-            return TrapSymbol(m_address + curr_delta, alignment);
         }
 
         bool operator==(const Iterator &it) const {
@@ -477,9 +480,9 @@ public:
         // and we set m_address to the section address
         auto first_sym_ofs = ReadULEB128(&trap_ptr);
         m_address -= first_sym_ofs;
-        if (header->has_symbol_p2align())
-            ReadULEB128(&trap_ptr);
         if (header->has_symbol_size())
+            ReadULEB128(&trap_ptr);
+        if (header->has_symbol_p2align())
             ReadULEB128(&trap_ptr);
         SkipTrapSymbolVector(&trap_ptr, header);
         m_symbol_end = trap_ptr - header->elements_in_symbol();
@@ -613,9 +616,9 @@ public:
                 m_trap_next += m_header->pc_relative_addresses()
                                ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
                 ReadULEB128(&m_trap_next);
-                if (m_header->has_symbol_p2align())
-                    ReadULEB128(&m_trap_next);
                 if (m_header->has_symbol_size())
+                    ReadULEB128(&m_trap_next);
+                if (m_header->has_symbol_p2align())
                     ReadULEB128(&m_trap_next);
                 SkipTrapSymbolVector(&m_trap_next, m_header);
                 if (m_header->has_record_relocs())
