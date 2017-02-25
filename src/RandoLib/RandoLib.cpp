@@ -52,7 +52,7 @@ Function *FunctionList::FindFunction(os::BytePointer addr) {
             hi = mid;
         }
     }
-    return &functions[lo];
+    return functions[lo].undiv_contains(addr) ? &functions[lo] : nullptr;
 }
 
 #if RANDOLIB_MEASURE_TIME
@@ -492,7 +492,7 @@ void ExecSectionProcessor::ShuffleCode() {
                     for (auto ref : trap_entry.data_refs()) {
                         auto ref_addr = m_module.address_from_trap(ref).to_ptr();
                         auto ref_func = m_functions.FindFunction(ref_addr);
-                        if (ref_func->undiv_contains(ref_addr))
+                        if (ref_func != nullptr && ref_func->undiv_contains(ref_addr))
                             PatchInTrampoline(ref_addr, ref_addr + ref_func->div_delta());
                     }
                 }
@@ -512,7 +512,7 @@ void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
     // Update the "at" address if it falls inside a diversified function
     if (esp->m_exec_section.contains_addr(reloc.get_source_address())) {
         auto func_at = esp->m_functions.FindFunction(at_ptr);
-        at_ptr = func_at->post_div_address(at_ptr);
+        at_ptr = func_at ? func_at->post_div_address(at_ptr) : at_ptr;
         at_exec = true;
         reloc.set_source_ptr(at_ptr);
     }
