@@ -361,6 +361,10 @@ bool COFFObject::createTRaPInfo() {
         }
         new_sec.addRelocation(IMAGE_RELOCATION{ 0, first_sym_it->second, sym_rel_type });
 
+        // Compute the symbol padding (if needed)
+        size_t sec_p2align = ((sec_hdr->Characteristics & IMAGE_SCN_ALIGN_MASK) / IMAGE_SCN_ALIGN_1BYTES) - 1;
+        size_t new_p2align = sec_p2align;
+
         // The first symbol might not start at the beginning of the section, so encode its offset
         // FIXME: could we encode this inside the relocation itself???
         new_sec.addULEB128(first_sym_it->first);
@@ -371,14 +375,19 @@ bool COFFObject::createTRaPInfo() {
         for (++it; it != sym_info.second.end(); ++it) {
             auto new_ofs = it->first;
             assert(new_ofs > sec_ofs && "Symbol offsets not strictly increasing");
-            if (header()->Machine == IMAGE_FILE_MACHINE_AMD64)
+            if (header()->Machine == IMAGE_FILE_MACHINE_AMD64) {
                 new_sec.addULEB128(new_ofs - sec_ofs); // Size of the previous symbol
+                new_sec.addULEB128(new_p2align);
+                new_p2align = 0; // FIXME: set to sec_p2align instead???
+            }
             new_sec.addULEB128(new_ofs - sec_ofs); // Offset to the current symbol
             sec_ofs = new_ofs;
         }
 #endif
         if (header()->Machine == IMAGE_FILE_MACHINE_AMD64) {
             new_sec.addULEB128(sec.dataSize() - sec_ofs); // Size of the last symbol
+            new_sec.addULEB128(new_p2align);              // Alignment of the last symbol (log2)
+            new_sec.addULEB128(0);
             new_sec.addULEB128(0);
         }
         new_sec.addULEB128(0);
