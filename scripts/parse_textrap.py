@@ -57,6 +57,9 @@ if platform.system() == 'Windows':
     trap_data_len = min(trap_sec.SizeOfRawData, trap_sec.Misc_VirtualSize)
     #print repr(trap_sec.get_data())
     
+    if infile.FILE_HEADER.Machine == pefile.MACHINE_TYPE['IMAGE_FILE_MACHINE_AMD64']:
+        word_size = 64
+
     reloc_has_extra_symbol = lambda reloc_type : False
     reloc_has_extra_addend = lambda reloc_type : False
 
