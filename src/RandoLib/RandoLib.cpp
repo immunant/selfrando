@@ -271,7 +271,7 @@ void ExecSectionProcessor::RemoveEmptyFunctions() {
             m_functions[cnt] = m_functions[i];
         cnt++;
     }
-    os::API::DebugPrintf<1>("Removed %d empty functions\n",
+    os::API::DebugPrintf<2>("Removed %d empty functions\n",
                             m_functions.num_funcs - cnt);
     m_functions.num_funcs = cnt;
 }
