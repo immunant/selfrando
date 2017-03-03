@@ -386,8 +386,10 @@ bool COFFObject::createTRaPInfo() {
             assert(new_ofs > sec_ofs && "Symbol offsets not strictly increasing");
             if (header()->Machine == IMAGE_FILE_MACHINE_AMD64) {
                 new_sec.addULEB128(new_ofs - sec_ofs); // Size of the previous symbol
+#if RANDOLIB_ALIGN_FUNCTIONS
                 new_sec.addULEB128(new_p2align);
                 new_p2align = 0; // FIXME: set to sec_p2align instead???
+#endif
             }
             new_sec.addULEB128(new_ofs - sec_ofs); // Offset to the current symbol
             sec_ofs = new_ofs;
@@ -395,8 +397,10 @@ bool COFFObject::createTRaPInfo() {
 #endif
         if (header()->Machine == IMAGE_FILE_MACHINE_AMD64) {
             new_sec.addULEB128(sec.dataSize() - sec_ofs); // Size of the last symbol
+#if RANDOLIB_ALIGN_FUNCTIONS
             new_sec.addULEB128(new_p2align);              // Alignment of the last symbol (log2)
             new_sec.addULEB128(0);
+#endif
             new_sec.addULEB128(0);
         }
         new_sec.addULEB128(0);

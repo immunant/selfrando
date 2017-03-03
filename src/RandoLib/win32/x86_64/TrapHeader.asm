@@ -34,6 +34,10 @@ trapheader segment readonly byte read discard alias(".txtrp$a")
 
 __TRaP_Header:
 db 01h			 ; Header version 1
+IF RANDOLIB_ALIGN_FUNCTIONS
 db 15h, 01h, 00h ; Flags = 0x000115
+ELSE
+db 15h, 00h, 00h ; Flags = 0x000015
+ENDIF
 
 end
