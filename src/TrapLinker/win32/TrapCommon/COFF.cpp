@@ -323,11 +323,15 @@ bool COFFObject::createTRaPInfo() {
     WORD sym_rel_type = (header()->Machine == IMAGE_FILE_MACHINE_I386) ? IMAGE_REL_I386_DIR32NB : IMAGE_REL_AMD64_ADDR32NB;
     WORD rel32_rel_type = (header()->Machine == IMAGE_FILE_MACHINE_I386) ? IMAGE_REL_I386_REL32 : IMAGE_REL_AMD64_REL32;
     for (auto &sym : symbols()) {
-        if (!ISFCN(sym.header()->Type))
-            continue;
         auto sec_idx = sym.header()->SectionNumber;
         if (sec_idx <= 0 || sec_idx > IMAGE_SYM_SECTION_MAX)
             continue;
+        if ((sections()[sec_idx - 1].header()->Characteristics & IMAGE_SCN_MEM_EXECUTE) == 0)
+            continue;
+#if RANDOLIB_TRAP_ALL_SYMBOLS
+        if (!ISFCN(sym.header()->Type))
+            continue;
+#endif
         func_sym_info[sec_idx][sym.header()->Value] = sym.index();
     }
     for (auto &sym_info : func_sym_info) {
