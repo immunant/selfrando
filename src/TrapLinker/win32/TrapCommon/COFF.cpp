@@ -326,7 +326,12 @@ bool COFFObject::createTRaPInfo() {
         auto sec_idx = sym.header()->SectionNumber;
         if (sec_idx <= 0 || sec_idx > IMAGE_SYM_SECTION_MAX)
             continue;
-        if ((sections()[sec_idx - 1].header()->Characteristics & IMAGE_SCN_MEM_EXECUTE) == 0)
+        auto &sec = sections()[sec_idx - 1];
+        if ((sec.header()->Characteristics & IMAGE_SCN_MEM_EXECUTE) == 0)
+            continue;
+        if (sec.dataSize() == 0)
+            continue;
+        if (sym.header()->Value >= sec.dataSize())
             continue;
 #if RANDOLIB_TRAP_ALL_SYMBOLS
         if (!ISFCN(sym.header()->Type))
