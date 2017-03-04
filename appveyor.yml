@@ -2,15 +2,16 @@ version: 1.0.{build}
 
 before_build:
 - ps: >-
-   If ($env:Platform -Match "Win32") {
+   If ($env:PLATFORM -Match "Win32") {
         $env:VCVARS_PLATFORM="x86"
         $env:SR_PLATFORM_PREFIX=""
    } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:SR_PLATFORM_PREFIX="x64"
    }
-#- cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
-- cmd: call "%VS140COMNTOOLS%\vsvars32.bat"
+- cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
+- cmd: echo %PLATFORM%
+- cmd: echo %VCVARS_PLATFORM%
 - cmd: "SET PATH=C:\\Python27;%PATH%"
 
 build:
@@ -35,7 +36,7 @@ configuration:
 
 platform:
 - Win32 # 32-bit
-#- x64 # 64-bit
+- x64 # 64-bit
 
 test_script:
 - cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
