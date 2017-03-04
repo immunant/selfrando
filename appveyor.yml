@@ -9,7 +9,8 @@ before_build:
         $env:VCVARS_PLATFORM="amd64"
         $env:SR_PLATFORM_PREFIX="x64"
    }
-- cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
+#- cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
+- cmd: call "%VS140COMNTOOLS%\vsvars32.bat"
 - cmd: "SET PATH=C:\\Python27;%PATH%"
 
 build:
@@ -34,7 +35,7 @@ configuration:
 
 platform:
 - Win32 # 32-bit
-- x64 # 64-bit
+#- x64 # 64-bit
 
 test_script:
 - cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
