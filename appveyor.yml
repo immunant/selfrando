@@ -28,7 +28,7 @@ configuration:
 #- x64 # 64-bit
 
 test_script:
-  - ps: $env:SR_PLATFORM_PREFIX=""
+- ps: $env:SR_PLATFORM_PREFIX=""
 # - ps: >-
 #    If ($env:PLATFORM -Match "Win32") {
 #         $env:VCVARS_PLATFORM="x86"
