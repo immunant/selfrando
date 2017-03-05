@@ -24,13 +24,13 @@ configuration:
 - Release
 
 platform:
-- Win32 # 32-bit
+- x86 # 32-bit
 #- x64 # 64-bit
 
 test_script:
 # - ps: $env:SR_PLATFORM_PREFIX=""
 - ps: >-
-   If ($env:PLATFORM -Match "Win32") {
+   If ($env:PLATFORM -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:SR_PLATFORM_PREFIX=""
    } Else {
