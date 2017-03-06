@@ -34,7 +34,6 @@
 #include "stdafx.h"
 
 #pragma comment(lib, "shlwapi")
-#pragma comment(lib, "rpcrt4")
 
 static _TCHAR kRandoLib[] = TEXT("RandoLib.lib");
 static _TCHAR kLibOption[] = TEXT("lib");
@@ -124,27 +123,12 @@ static void ProcessInputFile(const _TCHAR *file) {
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
-    // FIXME: this outputs the temporaries in the current directory (for now)
-    // Ideally, it would instead use $TMP as the location; however, this doesn't
-    // work currently if $TMP contains spaces (which it usually does)
-#if 0
-    _TCHAR tmp;
-    auto temp_path_len = GetTempPath(1, &tmp);
-    TString temp_path(temp_path_len, TCHAR('X'));
-    GetTempPath(temp_path_len, const_cast<_TCHAR*>(temp_path.data()));
-#endif
-
-    UUID uuid;
-    _TINT *uuid_str; // RPC_WSTR is unsigned short*, so equivalent to _TINT*
-    UuidCreate(&uuid);
-    UuidToString(&uuid, &uuid_str);
-    TString uuid_lib_file(reinterpret_cast<_TCHAR*>(uuid_str));
+    auto uuid_lib_file = CreateTempFile();
     TString uuid_exp_file = uuid_lib_file;
     TString uuid_exports_obj_file = uuid_lib_file;
     uuid_lib_file += TEXT(".lib");
     uuid_exp_file += TEXT(".exp");
     uuid_exports_obj_file += TEXT("_exports.obj");
-    RpcStringFree(&uuid_str);
 
     // Call link.exe -lib -def <rest of linker arguments> -out:<uuid_lib_file>
     auto linker_exe = LocateMSVCLinker();

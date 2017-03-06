@@ -31,6 +31,7 @@
 #include "stdafx.h"
 
 #pragma comment(lib, "shlwapi")
+#pragma comment(lib, "rpcrt4")
 
 static _TCHAR kLinkerPathVar[] = TEXT("MSVC_LINKER_PATH");
 static _TCHAR kLinkerName[] = TEXT("\\link.exe");
@@ -126,4 +127,29 @@ void PrintArgs(const std::vector<const _TCHAR*>& args) {
 	}
 
 	fwprintf(stderr, L"PrintArgs: %s\n", str.c_str());
+}
+
+TString CreateTempFile() {
+    // FIXME: this outputs the temporaries in the current directory (for now)
+    // Ideally, it would instead use $TMP as the location; however, this doesn't
+    // work currently if $TMP contains spaces (which it usually does)
+#if 0
+    _TCHAR tmp;
+    auto temp_path_len = GetTempPath(1, &tmp);
+    TString temp_path(temp_path_len, TCHAR('X'));
+    GetTempPath(temp_path_len, const_cast<_TCHAR*>(temp_path.data()));
+#endif
+
+#ifdef UNICODE
+    typedef RPC_WSTR RPC_TSTR;
+#else
+    typedef RPC_CSTR RPC_TSTR;
+#endif
+    UUID uuid;
+    RPC_TSTR uuid_str;
+    UuidCreate(&uuid);
+    UuidToString(&uuid, &uuid_str);
+    TString temp_file_name(reinterpret_cast<_TCHAR*>(uuid_str));
+    RpcStringFree(&uuid_str);
+    return temp_file_name;
 }
