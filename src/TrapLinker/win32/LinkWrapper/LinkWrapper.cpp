@@ -134,10 +134,10 @@ static void ProcessInputFile(const _TCHAR *file) {
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
-    auto uuid_lib_file = TempFile::Create(nullptr, false);
-    TString uuid_exp_file = uuid_lib_file;
-    uuid_lib_file += TEXT(".lib");
-    uuid_exp_file += TEXT(".exp");
+    auto uuid_lib_file = TempFile::Create(TEXT(".lib"), true);
+    auto uuid_exp_file = uuid_lib_file;
+    uuid_exp_file.replace(uuid_exp_file.length() - 4, 4, TEXT(".exp"));
+    TempFile::AutoDeleteFile(uuid_exp_file);
 
     // Call link.exe -lib -def <rest of linker arguments> -out:<uuid_lib_file>
     auto linker_exe = LocateMSVCLinker();
@@ -158,10 +158,6 @@ static TString EmitExports(const std::vector<TString> &escaped_args) {
 		perror("LinkWrapper:EmitExports");
 		exit(errnum);
 	}
-
-    // Mark the temporaries for auto-deletion
-    TempFile::AutoDeleteFile(uuid_lib_file);
-    TempFile::AutoDeleteFile(uuid_exp_file);
 
     // Convert the exports file to the trampoline object file
     auto exports_obj_file = TempFile::Create(TEXT(".obj"), true);
