@@ -28,7 +28,7 @@ before_build:
 #   verbosity: normal
 
 build_script:
-- cmd: "msbuild %BUILD_PATH%\self-rando-windows.sln /p:Configuration=%CONFIGURATION% /verbosity:minimal  /p:Platform=%MSBUILD_PLATFORM%" /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+- msbuild %BUILD_PATH%\self-rando-windows.sln /p:Configuration=%CONFIGURATION% /verbosity:minimal /p:Platform=%MSBUILD_PLATFORM% /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
 - cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
