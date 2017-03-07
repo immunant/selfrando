@@ -32,11 +32,9 @@ test_script:
    If ($env:PLATFORM -Match "Win32") {
         $env:VCVARS_PLATFORM="x86"
         $env:SR_PLATFORM=""
-        # $env:MSBUILD_PLATFORM="Win32"
    } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:SR_PLATFORM="x64"
-        # $env:MSBUILD_PLATFORM="x64"
    }
 - cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
 - cmd: "SET PATH=C:\\Python27;%PATH%"
