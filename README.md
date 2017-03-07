@@ -1,3 +1,4 @@
+[![Travis build status](https://travis-ci.org/immunant/selfrando.svg?branch=fix_papercuts)](https://travis-ci.org/immunant/selfrando) [![Appveyor build status](https://ci.appveyor.com/api/projects/status/wox374j8qrmg7dte/branch/master?svg=true)](https://ci.appveyor.com/project/thedataking/selfrando/branch/master)
 
 # Immunant `selfrando`
 
