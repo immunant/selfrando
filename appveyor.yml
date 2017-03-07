@@ -1,12 +1,20 @@
 version: 1.0.{build}
 
 before_build:
-
+- ps: >-
+   If ($env:PLATFORM -Match "Win32") {
+        $env:VCVARS_PLATFORM="x86"
+        $env:SR_PLATFORM=""
+   } Else {
+        $env:VCVARS_PLATFORM="amd64"
+        $env:SR_PLATFORM="x64"
+   }
+- cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
 
 build:
   project: self-rando-windows.sln
   parallel: true
-  verbosity: minimal
+  verbosity: normal
 
 notifications:
 - provider: Slack
@@ -28,17 +36,8 @@ platform:
 - x64 # 64-bit
 
 test_script:
-- ps: >-
-   If ($env:PLATFORM -Match "Win32") {
-        $env:VCVARS_PLATFORM="x86"
-        $env:SR_PLATFORM=""
-   } Else {
-        $env:VCVARS_PLATFORM="amd64"
-        $env:SR_PLATFORM="x64"
-   }
-- cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
 - cmd: "SET PATH=C:\\Python27;%PATH%"
 - cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
 - cmd: "rmdir /q /s %APPVEYOR_BUILD_FOLDER%\\src\\TrapLinker\\win32\\SimpleRandoTest\\%SR_PLATFORM%\\%CONFIGURATION%"
-- cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:minimal /target:SimpleRandoTest /p:Platform=%PLATFORM%"
+- cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:normal /target:SimpleRandoTest /p:Platform=%PLATFORM%"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
