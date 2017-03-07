@@ -1,4 +1,3 @@
-[![Build Status](https://travis-ci.org/immunant/selfrando.svg?branch=fix_papercuts)](https://travis-ci.org/immunant/selfrando)
 
 # Immunant `selfrando`
 
@@ -19,7 +18,7 @@ Software written in C and C++ is exposed to exploitation of memory corruption. C
 See `linux-build-instructions.md` in the `Docs` directory.
 
 ## License
-The Linux-compatible version of `selfrando` is offered under the Affero General Public License version 1. 
+The Linux-compatible version of `selfrando` is offered under the Affero General Public License version 1.
 
 Visit http://immunant.com if you are interested in a commercial license for `selfrando` for Windows, Android, and Linux.
 
@@ -27,7 +26,7 @@ Visit http://immunant.com if you are interested in a commercial license for `sel
 Please sign our [contributor license agreement](http://immunant.com/page/contribute) before submitting any patches or pull requests.
 
 ## Acknowledgements
-Researchers from University of California, Irvine, Technische Universität Darmstadt (Germany), and the Tor Project contributed to the development of selfrando. 
+Researchers from University of California, Irvine, Technische Universität Darmstadt (Germany), and the Tor Project contributed to the development of selfrando.
 
 This work is based upon work partially supported by the Defense Advanced Research Projects Agency (DARPA) under contracts FA8750-15-C-0124,  FA8750-15-C-0085, and FA8750-10-C-0237 and by the National Science Foundation under award number IIP-1520552.
 
