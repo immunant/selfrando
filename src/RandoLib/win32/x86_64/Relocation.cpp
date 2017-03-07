@@ -210,20 +210,71 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
             while (div_ptr < func.div_end() &&
                 (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
                 div_ptr++, undiv_ptr++;
-
-            if (div_ptr + 6 > func.div_end())
-                break;
-            if (div_ptr[0] != 0xFF || div_ptr[1] != 0x25)
-                break;
-
-            os::API::DebugPrintf<10>("Found import trampoline @%p/%p\n",
-                                     undiv_ptr, div_ptr);
-            os::Module::Relocation reloc(*this,
-                                         address_from_ptr(undiv_ptr + 2),
-                                         IMAGE_REL_AMD64_REL32);
-            (*callback)(reloc, callback_arg);
-            div_ptr += 6;
-            undiv_ptr += 6;
+            if (div_ptr + 6 <= func.div_end() &&
+                div_ptr[0] == 0xFF || div_ptr[1] == 0x25) {
+                os::API::DebugPrintf<10>("Found import trampoline @%p/%p\n",
+                                         undiv_ptr, div_ptr);
+                os::Module::Relocation reloc(*this,
+                                             address_from_ptr(undiv_ptr + 2),
+                                             IMAGE_REL_AMD64_REL32);
+                (*callback)(reloc, callback_arg);
+                div_ptr += 6;
+                undiv_ptr += 6;
+                continue;
+            }
+            if (div_ptr + 12 <= func.div_end() &&
+                div_ptr[0] == 0x48 && div_ptr[1] == 0x8D &&
+                div_ptr[2] == 0x05 && div_ptr[7] == 0xE9) {
+                // Delay-loading trampoline with contents:
+                //   48 8D 05 nn nn nn nn   LEA RAX, [nnnnnnnn]
+                //   E9 nn nn nn nn         JMP __tailMerge_NNN_dll
+                os::API::DebugPrintf<10>("Found delay-loading import trampoline @%p/%p\n",
+                                         undiv_ptr, div_ptr);
+                os::Module::Relocation reloc1(*this,
+                                              address_from_ptr(undiv_ptr + 3),
+                                              IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc2(*this,
+                                              address_from_ptr(undiv_ptr + 8),
+                                              IMAGE_REL_AMD64_REL32);
+                (*callback)(reloc1, callback_arg);
+                (*callback)(reloc2, callback_arg);
+                div_ptr += 12;
+                undiv_ptr += 12;
+                continue;
+            }
+            if (div_ptr + 121 <= func.div_end() &&
+                div_ptr[0] == 0x48 && div_ptr[1] == 0x89 &&
+                div_ptr[2] == 0x4C && div_ptr[3] == 0x24 &&
+                div_ptr[51] == 0x48 && div_ptr[52] == 0x8D &&
+                div_ptr[53] == 0x0D && div_ptr[58] == 0xE8 &&
+                div_ptr[117] == 0xEB && div_ptr[118] == 0x00 &&
+                div_ptr[119] == 0xFF && div_ptr[120] == 0xE0) {
+                // __tailMerge_NNN_dll import trampoline with contents:
+                //   48 89 4C 24 08         MOV [RSP+8], RCX
+                //   ...
+                //   48 8D 0D nn nn nn nn   LEA RCX, [nnnnnnnn]
+                //   E8 nn nn nn nn         CALL __delayLoadHelper2
+                //   ...
+                //   EB 00                  JMP next
+                //   next:
+                //   FF E0                  JMP RAX
+                //
+                // FIXME: figure out why the EB 00 jump is there
+                os::API::DebugPrintf<10>("Found __tailMerge import trampoline @%p/%p\n",
+                                         undiv_ptr, div_ptr);
+                os::Module::Relocation reloc1(*this,
+                                              address_from_ptr(undiv_ptr + 54),
+                                              IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc2(*this,
+                                              address_from_ptr(undiv_ptr + 59),
+                                              IMAGE_REL_AMD64_REL32);
+                (*callback)(reloc1, callback_arg);
+                (*callback)(reloc2, callback_arg);
+                div_ptr += 121;
+                undiv_ptr += 121;
+                continue;
+            }
+            break;
         }
     }
     // Update the exception handling metadata
