@@ -164,7 +164,7 @@ static TString EmitExports(const std::vector<TString> &escaped_args) {
     TempFile::AutoDeleteFile(uuid_exp_file);
 
     // Convert the exports file to the trampoline object file
-    auto exports_obj_file = TempFile::Create(TEXT("_exports.obj"), true);
+    auto exports_obj_file = TempFile::Create(TEXT(".obj"), true);
     bool converted = ConvertExports(uuid_exp_file.data(), exports_obj_file.data());
     return converted ? exports_obj_file : TString();
 }
