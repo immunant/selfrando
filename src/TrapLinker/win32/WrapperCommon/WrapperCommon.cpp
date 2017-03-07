@@ -135,7 +135,12 @@ void PrintArgs(const std::vector<const _TCHAR*>& args) {
 	fwprintf(stderr, L"PrintArgs: %s\n", str.c_str());
 }
 
-TString CreateTempFile() {
+TempFile *TempFile::GetInstance() {
+    static TempFile instance;
+    return &instance;
+}
+
+TString TempFile::Create(const _TCHAR *extension, bool auto_delete) {
     // FIXME: this outputs the temporaries in the current directory (for now)
     // Ideally, it would instead use $TMP as the location; however, this doesn't
     // work currently if $TMP contains spaces (which it usually does)
@@ -157,5 +162,10 @@ TString CreateTempFile() {
     UuidToString(&uuid, &uuid_str);
     TString temp_file_name(reinterpret_cast<_TCHAR*>(uuid_str));
     RpcStringFree(&uuid_str);
+
+    if (extension)
+        temp_file_name.append(extension);
+    if (auto_delete)
+        GetInstance()->m_temp_files.push_back(temp_file_name);
     return temp_file_name;
 }

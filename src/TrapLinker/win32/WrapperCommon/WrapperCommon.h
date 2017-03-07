@@ -36,9 +36,32 @@
 
 typedef std::basic_string<_TCHAR> TString;
 
+class TempFile {
+public:
+    static TString Create(const _TCHAR *extension, bool auto_delete);
+
+    static void AutoDeleteFile(const TString &file) {
+        GetInstance()->m_temp_files.push_back(file);
+    }
+
+private:
+    // We want a singleton here whose destructor gets automatically called
+    // on program exit, so it deletes all registered auto-delete files
+    TempFile() {}
+    
+    ~TempFile() {
+        for (auto &temp_file : m_temp_files)
+            DeleteFile(temp_file.c_str());
+    }
+
+    static TempFile *GetInstance();
+
+private:
+    std::vector<TString> m_temp_files;
+};
+
 extern TString QuoteSpaces(const _TCHAR *arg);
 extern TString StripQuotes(const TString &str);
 extern TString LocateRandoFile(const _TCHAR *file, bool quote);
 extern TString LocateMSVCLinker(); 
 extern void PrintArgs(const std::vector<const _TCHAR*>& args);
-extern TString CreateTempFile();

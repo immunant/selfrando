@@ -134,7 +134,7 @@ static void ProcessInputFile(const _TCHAR *file) {
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
-    auto uuid_lib_file = CreateTempFile();
+    auto uuid_lib_file = TempFile::Create(nullptr, false);
     TString uuid_exp_file = uuid_lib_file;
     TString uuid_exports_obj_file = uuid_lib_file;
     uuid_lib_file += TEXT(".lib");
@@ -161,11 +161,13 @@ static TString EmitExports(const std::vector<TString> &escaped_args) {
 		exit(errnum);
 	}
 
+    // Mark the temporaries for auto-deletion
+    TempFile::AutoDeleteFile(uuid_lib_file);
+    TempFile::AutoDeleteFile(uuid_exp_file);
+    TempFile::AutoDeleteFile(uuid_exports_obj_file);
+
     // Convert the exports file to the trampoline object file
     bool converted = ConvertExports(uuid_exp_file.data(), uuid_exports_obj_file.data());
-    // Delete the .lib and .exp temporaries
-    DeleteFile(uuid_lib_file.data());
-    DeleteFile(uuid_exp_file.data());
     return converted ? uuid_exports_obj_file : TString();
 }
 
@@ -265,7 +267,5 @@ int _tmain(int argc, _TCHAR* argv[])
     if (!lib_mode)
         CallPatchEntry();
 
-    if (!exports_file.empty())
-       DeleteFile(exports_file.data());
 	return errnum;
 }
