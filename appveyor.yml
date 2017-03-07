@@ -37,6 +37,8 @@ test_script:
 - cmd: "rmdir /q /s %APPVEYOR_BUILD_FOLDER%\\src\\TrapLinker\\win32\\SimpleRandoTest\\%SR_PLATFORM%\\%CONFIGURATION%"
 - cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:normal /target:SimpleRandoTest /p:Platform=%MSBUILD_PLATFORM%"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
+- cmd: dumpbin /section:.txtrp  "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
+
 
 notifications:
 - provider: Slack
