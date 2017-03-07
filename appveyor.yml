@@ -24,23 +24,23 @@ configuration:
 - Release
 
 platform:
-- x86 # 32-bit
+- Win32 # 32-bit
 - x64 # 64-bit
 
 test_script:
 - ps: >-
-   If ($env:PLATFORM -Match "x86") {
+   If ($env:PLATFORM -Match "Win32") {
         $env:VCVARS_PLATFORM="x86"
         $env:SR_PLATFORM=""
-        $env:MSBUILD_PLATFORM="Win32"
+        # $env:MSBUILD_PLATFORM="Win32"
    } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:SR_PLATFORM="x64"
-        $env:MSBUILD_PLATFORM="x64"
+        # $env:MSBUILD_PLATFORM="x64"
    }
 - cmd: call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
 - cmd: "SET PATH=C:\\Python27;%PATH%"
 - cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\trap-msvc-libs.py"
 - cmd: "rmdir /q /s %APPVEYOR_BUILD_FOLDER%\\src\\TrapLinker\\win32\\SimpleRandoTest\\%SR_PLATFORM%\\%CONFIGURATION%"
-- cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:minimal /target:SimpleRandoTest /p:Platform=%MSBUILD_PLATFORM%"
+- cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:minimal /target:SimpleRandoTest /p:Platform=%PLATFORM%"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
