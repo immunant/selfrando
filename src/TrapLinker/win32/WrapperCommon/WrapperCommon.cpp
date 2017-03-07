@@ -77,6 +77,12 @@ TString QuoteSpaces(const _TCHAR *arg) {
 	return res;
 }
 
+TString StripQuotes(const TString &str) {
+    if (str[0] == _T('\"') && str[str.length() - 1] == _T('\"'))
+        return str.substr(1, str.length() - 2);
+    return str;
+}
+
 TString LocateRandoFile(const _TCHAR *file, bool quote) {
     _TCHAR *wrapper_path;
     _get_tpgmptr(&wrapper_path);

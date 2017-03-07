@@ -37,6 +37,7 @@
 typedef std::basic_string<_TCHAR> TString;
 
 extern TString QuoteSpaces(const _TCHAR *arg);
+extern TString StripQuotes(const TString &str);
 extern TString LocateRandoFile(const _TCHAR *file, bool quote);
 extern TString LocateMSVCLinker(); 
 extern void PrintArgs(const std::vector<const _TCHAR*>& args);

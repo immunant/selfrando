@@ -37,6 +37,7 @@
 
 static _TCHAR kRandoLib[] = TEXT("RandoLib.lib");
 static _TCHAR kLibOption[] = TEXT("lib");
+static _TCHAR kOutOption[] = TEXT("out:");
 
 static _TCHAR kLinkerExtraArg1[] = TEXT("/INCLUDE:__TRaP_RandoEntry");
 static _TCHAR kLinkerExtraArg2[] = TEXT("/INCLUDE:__TRaP_Header");
@@ -47,14 +48,20 @@ static void ProcessCommands(const _TCHAR *file);
 static void ProcessInputFile(const _TCHAR *file);
 
 bool lib_mode = false;
+TString first_object_name;
+TString out_argument;
 
 static void ProcessArg(const _TCHAR *arg) {
-    if (arg[0] == '@') {
+    if (arg[0] == _T('@')) {
         ProcessCommands(arg + 1);
-    } else if (arg[0] == '/' || arg[0] == '-') {
+    } else if (arg[0] == _T('/') || arg[0] == _T('-')) {
         const _TCHAR *opt = arg + 1;
         if (_tcsicmp(opt, kLibOption) == 0) {
             lib_mode = true;
+            return;
+        }
+        if (_tcsnicmp(opt, kOutOption, _tcslen(kOutOption)) == 0) {
+            out_argument.assign(opt + _tcslen(kOutOption));
             return;
         }
     } else {
@@ -120,6 +127,10 @@ static void ProcessInputFile(const _TCHAR *file) {
     if (!coff_file.createTRaPInfo())
         return;
     coff_file.writeToFile(file);
+
+    // Mark this input file if it's the first
+    if (first_object_name.empty())
+        first_object_name = TString(file);
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
@@ -156,6 +167,60 @@ static TString EmitExports(const std::vector<TString> &escaped_args) {
     DeleteFile(uuid_lib_file.data());
     DeleteFile(uuid_exp_file.data());
     return converted ? uuid_exports_obj_file : TString();
+}
+
+template<size_t N>
+static inline bool StripSuffix(TString &str, const _TCHAR (&suffix)[N]) {
+    if (N >= str.length())
+        return false;
+
+    auto str_suffix = str.substr(str.length() - N + 1, N - 1).c_str();
+    if (_tcsicmp(str_suffix, suffix) == 0) {
+        str = str.substr(0, str.length() - N + 1);
+        return true;
+    }
+    return false;
+}
+
+static TString FindOutputFile() {
+    TString candidate;
+    if (!out_argument.empty()) {
+        candidate = StripQuotes(out_argument);
+    } else if (!first_object_name.empty()) {
+        candidate = first_object_name;
+        if (!StripSuffix(candidate, TEXT(".obj")))
+            StripSuffix(candidate, TEXT(".o"));
+    } else {
+        return TString();
+    }
+    if (PathFileExists(candidate.c_str()))
+        return candidate;
+
+    // FIXME: we should figure out from the linker's command line
+    // whether the output file is an .exe or .dll
+    TString exe_file = candidate + TEXT(".exe");
+    if (PathFileExists(exe_file.c_str()))
+        return exe_file;
+
+    TString dll_file = candidate + TEXT(".dll");
+    if (PathFileExists(dll_file.c_str()))
+        return dll_file;
+
+    return TString();
+}
+
+static void CallPatchEntry() {
+    auto output_file = FindOutputFile();
+    if (!output_file.empty()) {
+        // FIXME: requires PatchEntry.exe in path
+        auto errnum = _tspawnlp(_P_WAIT, TEXT("PatchEntry"),
+                               TEXT("PatchEntry"), output_file.c_str(), NULL);
+        if (errnum) {
+            perror("LinkWrapper:PatchEntry");
+            fprintf(stderr, "PatchEntry return value:%d\n", errnum);
+            exit(errnum);
+        }
+    }
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -197,6 +262,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		perror("LinkWrapper:_tmain");
 		exit(errnum);
 	}
+    if (!lib_mode)
+        CallPatchEntry();
 
     if (!exports_file.empty())
        DeleteFile(exports_file.data());
