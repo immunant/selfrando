@@ -52,6 +52,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Firefox extension", "Firefo
 		Tools\Firefox\extension\bootstrap.js = Tools\Firefox\extension\bootstrap.js
 		Tools\Firefox\extension\chrome.manifest = Tools\Firefox\extension\chrome.manifest
 		Tools\Firefox\extension\install.rdf = Tools\Firefox\extension\install.rdf
+		Tools\Firefox\extension\selfrando.js = Tools\Firefox\extension\selfrando.js
 		Tools\Firefox\extension\selfrando.xul = Tools\Firefox\extension\selfrando.xul
 	EndProjectSection
 EndProject

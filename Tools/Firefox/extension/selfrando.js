@@ -1,0 +1,1 @@
+alert('Selfrando extension alert!');
