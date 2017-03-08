@@ -12,6 +12,7 @@ Scripts/set-buildvars-cygwin-x64.sh
 *.suo
 *.user
 *.sln.docstates
+.vs/*/v15
 
 # Build results
 
