@@ -134,12 +134,14 @@ def set_env_vars():
     cygwin_lines.append("export LIBPATH=\"%s\"\\;\"%s\";$LIBPATH" %
         (randolib_path, libs_path))
 
-    cygwin_outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin-%s.sh" % platform_name))
+    cygwin_outpath = "set-buildvars-cygwin-%s.sh" % platform_name
+    cygwin_outpath = os.path.abspath(os.path.join(scpt_path, cygwin_outpath))
     with open(cygwin_outpath, "w") as fh:
         fh.write("\n".join(cygwin_lines))
     os.chmod(cygwin_outpath, 0o755)
 
-    pshell_outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars.ps1"))
+    pshell_outpath = "set-buildvars-%s.ps1" % platform_name
+    pshell_outpath = os.path.abspath(os.path.join(scpt_path, pshell_outpath))
     with open(pshell_outpath, "w") as fh:
         fh.write("\n".join(pshell_lines))
 
@@ -200,6 +202,6 @@ if __name__ == '__main__':
         os.makedirs(out_path)
         print 'Created output directory %s...' % out_path
 
-    # trap_msvc_libs(input_libs)
+    trap_msvc_libs(input_libs)
 
     set_env_vars()
