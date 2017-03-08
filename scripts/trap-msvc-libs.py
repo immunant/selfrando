@@ -76,14 +76,16 @@ def get_path_to_link_exe():
     assert False, "Could not find link.exe"
 
 def set_env_vars():
-    """Note: only tested on Windows 8.1 64-bit with VS 2013."""
-    lines = ["#!/bin/sh","# set env. variables"]
+    cygwin_lines = ["#!/bin/sh","# set env. variables"]
+    pshell_lines = []
 
     # MSVC_LINKER
     link_exe = get_path_to_link_exe()
+    pshell_lines.append("$env:MSVC_LINKER_PATH=\"{}\"".format(link_exe))
 
     link_exe = link_exe.replace("\\", "/") # convert to posix syntax
-    lines.append("export MSVC_LINKER_PATH=\"%s\"" % os.path.dirname(link_exe))
+    cygwin_lines.append("export MSVC_LINKER_PATH=\"%s\"" %
+        os.path.dirname(link_exe))
 
     def cygwinify(path):
         return "/" + path.replace(":", "").replace("\\", "/")
@@ -93,12 +95,14 @@ def set_env_vars():
     exes_path = os.path.join(scpt_path, os.pardir, "Release")
     exes_path = os.path.abspath(exes_path)
     if os.path.exists(exes_path) and os.path.isdir(exes_path):
-        lines.append("export PATH=%s:$PATH" % cygwinify(exes_path))
+        pshell_lines.append("$env:PATH=\"{}\";$env:PATH".format(exes_path))
+        cygwin_lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
     else:
         exes_path = os.path.join(scpt_path, os.pardir, "Debug")
         exes_path = os.path.abspath(exes_path)
         assert os.path.exists(exes_path) and os.path.isdir(exes_path)
-        lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
+        pshell_lines.append("$env:PATH=\"{}\";$env:PATH".format(exes_path))
+        cygwin_lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
 
     # LIB and LIBPATH
     platform_name = get_platform_name()
@@ -120,15 +124,28 @@ def set_env_vars():
         assert os.path.exists(randolib_file_path) and os.path.isfile(randolib_file_path), \
                "Invalid RandoLib.lib location: %s" % randolib_path
 
-    lines.append("export LIB=\"%s\"\\;\"%s\"\\;$LIB" % (randolib_path, libs_path))
-    lines.append("export LIBPATH=\"%s\"\\;\"%s\"\\;$LIBPATH" % (randolib_path, libs_path))
+    pshell_lines.append("$env:LIB=\"{}\";\"{}\";$env:LIB".
+        format(randolib_path, libs_path))
+    cygwin_lines.append("export LIB=\"%s\"\\;\"%s\"\\;$LIB" %
+        (randolib_path, libs_path))
 
-    outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin-%s.sh" % platform_name))
-    with open(outpath, "w") as fh:
-        fh.write("\n".join(lines))
-    os.chmod(outpath, 0o755)
-    print "Set build environment variables by sourcing %s" % os.path.basename(outpath)
+    pshell_lines.append("$env:LIBPATH=\"{}\";\"{}\";$env:LIBPATH".
+        format(randolib_path, libs_path))
+    cygwin_lines.append("export LIBPATH=\"%s\"\\;\"%s\";$LIBPATH" %
+        (randolib_path, libs_path))
 
+    cygwin_outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars-cygwin-%s.sh" % platform_name))
+    with open(cygwin_outpath, "w") as fh:
+        fh.write("\n".join(cygwin_lines))
+    os.chmod(cygwin_outpath, 0o755)
+
+    pshell_outpath = os.path.abspath(os.path.join(scpt_path, "set-buildvars.ps1"))
+    with open(pshell_outpath, "w") as fh:
+        fh.write("\n".join(pshell_lines))
+
+    print "To set build environment variables:"
+    print " # . {}".format(os.path.basename(cygwin_outpath))
+    print " > . .\{}".format(os.path.basename(pshell_outpath))
 
 def get_libs_from_env():
     libs = []
@@ -146,21 +163,10 @@ def get_libs_from_env():
     return libs
 
 
-if __name__ == '__main__':
-
-    # locate the files we need
-    trap_lib_exe = get_exe_path()
-    input_libs = get_libs_from_env()
-
-    # make sure the output directory exists
-    scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    platform_name = get_platform_name()
-    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs', platform_name)
-    if not os.path.isdir(out_path):
-        os.makedirs(out_path)
-        print 'Created output directory %s...' % out_path
-
-    # invoke traplib.exe on each of the libraries we found
+def trap_msvc_libs(input_libs):
+    """
+    invoke traplib.exe on each of the specified libraries
+    """
     processed = set()
     print 'Added TRaP info to: ',
     for lib in input_libs:
@@ -179,5 +185,21 @@ if __name__ == '__main__':
             and not os.path.exists(pdb_copy):
             shutil.copy2(pdb, out_path)
     print ""
+
+if __name__ == '__main__':
+
+    # locate the files we need
+    trap_lib_exe = get_exe_path()
+    input_libs = get_libs_from_env()
+
+    # make sure the output directory exists
+    scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
+    platform_name = get_platform_name()
+    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs', platform_name)
+    if not os.path.isdir(out_path):
+        os.makedirs(out_path)
+        print 'Created output directory %s...' % out_path
+
+    # trap_msvc_libs(input_libs)
 
     set_env_vars()
