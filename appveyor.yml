@@ -45,6 +45,6 @@ notifications:
   auth_token:
     secure: WuzJD0mLtM12sadwBu33d9wz20w10vIXbfYO2omvQwED4YTqk+DImfrBbYl1lewuiKXMs5ma7BV9d4qCzznZJw==
   channel: '#selfrando'
-  on_build_success: true
+  on_build_success: false
   on_build_failure: true
   on_build_status_changed: true
