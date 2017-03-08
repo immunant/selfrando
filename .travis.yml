@@ -7,6 +7,8 @@ dist: trusty
 notifications:
   slack:
     secure: MeZbfg+9/m3S8hFhVSYk7T+Pcy/L9GqOJAlb73ouK+s57C6k1a2M2lLuPsY9gPiNtlr4ocjwI59paa5aNwmqFTjDaPMkibzrsED0C8/E6WT39rst3sdJGNYslClrBkI/KKD1Ru7Cw3k70+N6+2m+Awo9TeFQUswyZOnvrf34az33fvTNbXsK4C/W1PMbHbK4MLdA4HA802Dfu54KMbldAZ6MHlWyOcB91cYHX4uvCsbVV2Kbrg6b96Ok4suKrg+CxxwAXSnKsHUX0Y/CTzpZ7DdsIE9T9d/Nl2QcPc0pIIuZrPfZPNuh6lS1Sk8uQdx03jl3IWJiDlMwggq14+sUzk07Yso7Olc+HllApCMqMkEQpkYa0cDqAF2A5yzALh7lD0T3xWM1LIm22fpI4VDo3OPMGRBHs7qYunaQTVt5znYvbrmgqxwu+h753Kh5DE9J78wK9llT/L0/1wBraA35Z+xmqVO5d+9A+J5cpbw6oPNxhluQNF54Oke/m05A3ChTumDb37LNUk8OgsjEpV9CUmgrXvMLaoBUUDO3F6rm+WpGZxm368YUsZsOxld3Qlu3Ev6PO9mte7m74W/HM6BmqfX+0gr2viJCvxTv+288O2LMh5VuSsMxdeF8TXnOlkUyX/7GpedL7IrnU7pjGtrNtkXOiP/cfAl85QW8+7ZDVDY=
+    on_success: never
+    on_failure: always
   email: false
 addons:
   apt:
@@ -24,8 +26,8 @@ addons:
     - libssl-dev
     - libpcre3-dev
     - libreadline-dev
-before_install: 
-install: 
+before_install:
+install:
 script:
 - sh scripts/build_libelf.sh $PWD/libelf
 - scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
