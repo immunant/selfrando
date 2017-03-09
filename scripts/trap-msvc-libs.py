@@ -76,32 +76,60 @@ def get_path_to_link_exe():
     assert False, "Could not find link.exe"
 
 def set_env_vars():
-    cygwin_lines = ["#!/bin/sh","# set env. variables"]
-    pshell_lines = []
+    cygwin_lines = ["#!/bin/sh","# set env. variables"] # posix shell script
+    pshell_lines = [] # powershell script
+    batchs_lines = ['@echo off'] # batch file for cmd.exe
+
+    def cygwinify(path):
+        return "/" + path.replace(":", "").replace("\\", "/")
+
+    def set_env_var_ps(name, values, update=False):
+        assert len(values)
+        assert " " not in name
+        # make sure we have a list even if it is a singleton
+        values = values if type(values) is list else [values]
+        stmt = "$env:{}=".format(name)
+        for value in values:
+            stmt += "\"" + str(value) + "\";"
+        if update:
+            stmt += "$env:" + name
+        return stmt
+
+    def set_env_var_bat(name, values, update=False):
+        assert len(values)
+        assert " " not in name
+        # make sure we have a list even if it is a singleton
+        values = values if type(values) is list else [values]
+        stmt = "SET {}=".format(name)
+        for value in values:
+            stmt += "\"" + str(value) + "\";"
+        if update:
+            stmt += "%" + name + "%"
+        return stmt
 
     # MSVC_LINKER
     link_exe = get_path_to_link_exe()
-    pshell_lines.append("$env:MSVC_LINKER_PATH=\"{}\"".format(link_exe))
+    pshell_lines.append(set_env_var_ps("MSVC_LINKER_PATH", link_exe))
+    batchs_lines.append(set_env_var_bat("MSVC_LINKER_PATH", link_exe))
 
     link_exe = link_exe.replace("\\", "/") # convert to posix syntax
     cygwin_lines.append("export MSVC_LINKER_PATH=\"%s\"" %
         os.path.dirname(link_exe))
-
-    def cygwinify(path):
-        return "/" + path.replace(":", "").replace("\\", "/")
 
     # PATH
     scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
     exes_path = os.path.join(scpt_path, os.pardir, "Release")
     exes_path = os.path.abspath(exes_path)
     if os.path.exists(exes_path) and os.path.isdir(exes_path):
-        pshell_lines.append("$env:PATH=\"{}\";$env:PATH".format(exes_path))
+        pshell_lines.append(set_env_var_ps("PATH", exes_path, True))
+        batchs_lines.append(set_env_var_bat("PATH", exes_path, True))
         cygwin_lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
     else:
         exes_path = os.path.join(scpt_path, os.pardir, "Debug")
         exes_path = os.path.abspath(exes_path)
         assert os.path.exists(exes_path) and os.path.isdir(exes_path)
-        pshell_lines.append("$env:PATH=\"{}\";$env:PATH".format(exes_path))
+        pshell_lines.append(set_env_var_ps("PATH", exes_path, True))
+        batchs_lines.append(set_env_var_bat("PATH", exes_path, True))
         cygwin_lines.append("export PATH=\"%s\":$PATH" % cygwinify(exes_path))
 
     # LIB and LIBPATH
@@ -124,16 +152,17 @@ def set_env_vars():
         assert os.path.exists(randolib_file_path) and os.path.isfile(randolib_file_path), \
                "Invalid RandoLib.lib location: %s" % randolib_path
 
-    pshell_lines.append("$env:LIB=\"{}\";\"{}\";$env:LIB".
-        format(randolib_path, libs_path))
+    pshell_lines.append(set_env_var_ps("LIB", [randolib_path, libs_path], True))
+    batchs_lines.append(set_env_var_bat("LIB", [randolib_path, libs_path], True))
     cygwin_lines.append("export LIB=\"%s\"\\;\"%s\"\\;$LIB" %
         (randolib_path, libs_path))
 
-    pshell_lines.append("$env:LIBPATH=\"{}\";\"{}\";$env:LIBPATH".
-        format(randolib_path, libs_path))
+    pshell_lines.append(set_env_var_ps("LIBPATH", [randolib_path, libs_path], True))
+    batchs_lines.append(set_env_var_bat("LIBPATH", [randolib_path, libs_path], True))
     cygwin_lines.append("export LIBPATH=\"%s\"\\;\"%s\";$LIBPATH" %
         (randolib_path, libs_path))
 
+    # Store the set-buildvar-* scripts
     cygwin_outpath = "set-buildvars-cygwin-%s.sh" % platform_name
     cygwin_outpath = os.path.abspath(os.path.join(scpt_path, cygwin_outpath))
     with open(cygwin_outpath, "w") as fh:
@@ -145,9 +174,16 @@ def set_env_vars():
     with open(pshell_outpath, "w") as fh:
         fh.write("\n".join(pshell_lines))
 
-    print "To set build environment variables:"
+    batchs_outpath = "set-buildvars-%s.bat" % platform_name
+    batchs_outpath = os.path.abspath(os.path.join(scpt_path, batchs_outpath))
+    with open(batchs_outpath, "w") as fh:
+        fh.write("\n".join(batchs_lines))
+
+    # print instructions
+    print "Setting build variables in posix shell/powershell/cmd.exe: "
     print " # . {}".format(os.path.basename(cygwin_outpath))
     print " > . .\{}".format(os.path.basename(pshell_outpath))
+    print " > {}".format(os.path.basename(batchs_outpath))
 
 def get_libs_from_env():
     libs = []
