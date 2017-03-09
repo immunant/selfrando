@@ -425,16 +425,16 @@ protected:
     static int(*ntdll_memcpy)(void*, const void*, size_t);
     static int(*ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
     static int(*ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
+    static LPVOID(WINAPI *ntdll_NtAllocateVirtualMemory)(HANDLE, PVOID*, ULONG, SIZE_T*, ULONG, ULONG);
+    static BOOL(WINAPI *ntdll_NtFreeVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG);
+    static BOOL(WINAPI *ntdll_NtProtectVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG, PULONG);
+    static LPVOID(WINAPI *ntdll_RtlAllocateHeap)(HANDLE, DWORD, SIZE_T);
+    static BOOL(WINAPI *ntdll_RtlFreeHeap)(HANDLE, DWORD, LPVOID);
 
     // kernel32 functions
     // FIXME: not clear if we need to import these using GetProcAddress
     // since every program import kernel32.dll by default
-    static LPVOID(WINAPI *kernel32_VirtualAlloc)(LPVOID, SIZE_T, DWORD, DWORD);
-    static BOOL(WINAPI *kernel32_VirtualFree)(LPVOID, SIZE_T, DWORD);
-    static BOOL(WINAPI *kernel32_VirtualProtect)(LPVOID, SIZE_T, DWORD, PDWORD);
-    static LPVOID(WINAPI *kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
-    static BOOL(WINAPI *kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
-    static HANDLE(WINAPI *kernel32_GetProcessHeap)();
+
     static void(WINAPI *kernel32_OutputDebugStringA)(LPCSTR);
     static bool(WINAPI *kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
     static bool(WINAPI *kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);

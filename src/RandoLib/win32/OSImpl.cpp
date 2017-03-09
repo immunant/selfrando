@@ -72,13 +72,13 @@ int(*APIImpl::ntdll_memcmp)(const void*, const void*, size_t);
 int(*APIImpl::ntdll_memcpy)(void*, const void*, size_t);
 int(*APIImpl::ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
 int(*APIImpl::ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
+LPVOID(WINAPI *APIImpl::ntdll_NtAllocateVirtualMemory)(HANDLE, PVOID*, ULONG, SIZE_T*, ULONG, ULONG);
+BOOL(WINAPI *APIImpl::ntdll_NtFreeVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG);
+BOOL(WINAPI *APIImpl::ntdll_NtProtectVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG, ULONG*);
+LPVOID(WINAPI *APIImpl::ntdll_RtlAllocateHeap)(HANDLE, DWORD, SIZE_T);
+BOOL(WINAPI *APIImpl::ntdll_RtlFreeHeap)(HANDLE, DWORD, LPVOID);
 
 // kernel32 functions
-LPVOID(WINAPI *APIImpl::kernel32_VirtualAlloc)(LPVOID, SIZE_T, DWORD, DWORD);
-BOOL(WINAPI *APIImpl::kernel32_VirtualFree)(LPVOID, SIZE_T, DWORD);
-BOOL(WINAPI *APIImpl::kernel32_VirtualProtect)(LPVOID, SIZE_T, DWORD, PDWORD);
-LPVOID(WINAPI *APIImpl::kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
-BOOL(WINAPI *APIImpl::kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
 void(WINAPI *APIImpl::kernel32_OutputDebugStringA)(LPCSTR);
 bool(WINAPI *APIImpl::kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
 bool(WINAPI *APIImpl::kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
@@ -123,11 +123,12 @@ RANDO_SECTION void API::Init() {
     GetLibFunction(&ntdll_wcsncat_s, ntdll, "wcsncat_s");
     GetLibFunction(&ntdll_allmul, ntdll, "_allmul");
     GetLibFunction(&ntdll_alldiv, ntdll, "_alldiv");
-    GetLibFunction(&kernel32_VirtualAlloc, kernel32, "VirtualAlloc");
-    GetLibFunction(&kernel32_VirtualFree, kernel32, "VirtualFree");
-    GetLibFunction(&kernel32_VirtualProtect, kernel32, "VirtualProtect");
-    GetLibFunction(&kernel32_HeapAlloc, kernel32, "HeapAlloc");
-    GetLibFunction(&kernel32_HeapFree, kernel32, "HeapFree");
+    GetLibFunction(&ntdll_NtAllocateVirtualMemory, ntdll, "NtAllocateVirtualMemory");
+    GetLibFunction(&ntdll_NtFreeVirtualMemory, ntdll, "NtFreeVirtualMemory");
+    GetLibFunction(&ntdll_NtProtectVirtualMemory, ntdll, "NtProtectVirtualMemory");
+    GetLibFunction(&ntdll_RtlAllocateHeap, ntdll, "RtlAllocateHeap");
+    GetLibFunction(&ntdll_RtlFreeHeap, ntdll, "RtlFreeHeap");
+
     GetLibFunction(&kernel32_OutputDebugStringA, kernel32, "OutputDebugStringA");
     GetLibFunction(&kernel32_QueryPerformanceFrequency, kernel32, "QueryPerformanceFrequency");
     GetLibFunction(&kernel32_QueryPerformanceCounter, kernel32, "QueryPerformanceCounter");
@@ -162,12 +163,12 @@ RANDO_SECTION void API::Finish() {
 RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
-    return kernel32_HeapAlloc(global_heap, flags, size);
+    return ntdll_RtlAllocateHeap(global_heap, flags, size);
 }
 
 RANDO_SECTION void API::MemFree(void *ptr) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
-    kernel32_HeapFree(global_heap, 0, ptr);
+    ntdll_RtlFreeHeap(global_heap, 0, ptr);
 }
 
 // WARNING!!!: should be in the same order as the PagePermissions entries
@@ -182,24 +183,29 @@ static const DWORD PermissionsTable[] = {
     PAGE_EXECUTE_READWRITE
 };
 
+static inline RANDO_SECTION HANDLE GetCurrentProcess() {
+    return reinterpret_cast<HANDLE>(-1);
+}
+
 RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, bool commit) {
     DWORD alloc_type = commit ? (MEM_RESERVE | MEM_COMMIT) : MEM_RESERVE;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    return kernel32_VirtualAlloc(addr, size, alloc_type, win_perms);
+    ntdll_NtAllocateVirtualMemory(os::GetCurrentProcess(), &addr, 0, &size, alloc_type, win_perms);
+    return addr;
 }
 
 RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
     if (commit) {
-        kernel32_VirtualFree(addr, 0, MEM_RELEASE);
+        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &size, MEM_RELEASE);
     } else {
-        kernel32_VirtualFree(addr, size, MEM_DECOMMIT);
+        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &size, MEM_DECOMMIT);
     }
 }
 
 RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermissions perms) {
-    DWORD old_win_perms = 0;
+    ULONG old_win_perms = 0;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    kernel32_VirtualProtect(addr, size, win_perms, &old_win_perms);
+    ntdll_NtProtectVirtualMemory(os::GetCurrentProcess(), &addr, &size, win_perms, &old_win_perms);
     switch (old_win_perms) {
     case PAGE_NOACCESS:
         return PagePermissions::NONE;
