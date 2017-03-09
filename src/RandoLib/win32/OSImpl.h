@@ -412,7 +412,6 @@ public:
 protected:
     // Other Windows globals
     static HMODULE ntdll, kernel32;
-    static HANDLE global_heap;
     static LARGE_INTEGER timer_freq;
     static ULONG rand_seed;
 

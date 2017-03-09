@@ -59,7 +59,6 @@ namespace os {
 
 // Other Windows globals
 HMODULE APIImpl::ntdll, APIImpl::kernel32;
-HANDLE APIImpl::global_heap;
 LARGE_INTEGER APIImpl::timer_freq;
 ULONG APIImpl::rand_seed;
 
@@ -80,7 +79,6 @@ BOOL(WINAPI *APIImpl::kernel32_VirtualFree)(LPVOID, SIZE_T, DWORD);
 BOOL(WINAPI *APIImpl::kernel32_VirtualProtect)(LPVOID, SIZE_T, DWORD, PDWORD);
 LPVOID(WINAPI *APIImpl::kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
 BOOL(WINAPI *APIImpl::kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
-HANDLE(WINAPI *APIImpl::kernel32_GetProcessHeap)();
 void(WINAPI *APIImpl::kernel32_OutputDebugStringA)(LPCSTR);
 bool(WINAPI *APIImpl::kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
 bool(WINAPI *APIImpl::kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
@@ -128,7 +126,6 @@ RANDO_SECTION void API::Init() {
     GetLibFunction(&kernel32_VirtualAlloc, kernel32, "VirtualAlloc");
     GetLibFunction(&kernel32_VirtualFree, kernel32, "VirtualFree");
     GetLibFunction(&kernel32_VirtualProtect, kernel32, "VirtualProtect");
-    GetLibFunction(&kernel32_GetProcessHeap, kernel32, "GetProcessHeap");
     GetLibFunction(&kernel32_HeapAlloc, kernel32, "HeapAlloc");
     GetLibFunction(&kernel32_HeapFree, kernel32, "HeapFree");
     GetLibFunction(&kernel32_OutputDebugStringA, kernel32, "OutputDebugStringA");
@@ -144,7 +141,6 @@ RANDO_SECTION void API::Init() {
 
     // TODO: make this optional (a compile-time option)
     // Initialize global constants and values
-    global_heap = kernel32_GetProcessHeap();
     kernel32_QueryPerformanceFrequency(&timer_freq);
 
     // Initialize the seed as a hash of the current TSC (should be random enough)
@@ -164,11 +160,13 @@ RANDO_SECTION void API::Finish() {
 
 
 RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
+    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
     return kernel32_HeapAlloc(global_heap, flags, size);
 }
 
 RANDO_SECTION void API::MemFree(void *ptr) {
+    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     kernel32_HeapFree(global_heap, 0, ptr);
 }
 
