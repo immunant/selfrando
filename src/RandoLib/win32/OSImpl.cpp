@@ -188,24 +188,27 @@ static inline RANDO_SECTION HANDLE GetCurrentProcess() {
 }
 
 RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, bool commit) {
+    SIZE_T wsize = size;
     DWORD alloc_type = commit ? (MEM_RESERVE | MEM_COMMIT) : MEM_RESERVE;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    ntdll_NtAllocateVirtualMemory(os::GetCurrentProcess(), &addr, 0, &size, alloc_type, win_perms);
+    ntdll_NtAllocateVirtualMemory(os::GetCurrentProcess(), &addr, 0, &wsize, alloc_type, win_perms);
     return addr;
 }
 
 RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
+    SIZE_T wsize = size;
     if (commit) {
-        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &size, MEM_RELEASE);
+        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &wsize, MEM_RELEASE);
     } else {
-        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &size, MEM_DECOMMIT);
+        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &wsize, MEM_DECOMMIT);
     }
 }
 
 RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermissions perms) {
+    SIZE_T wsize = size;
     ULONG old_win_perms = 0;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    ntdll_NtProtectVirtualMemory(os::GetCurrentProcess(), &addr, &size, win_perms, &old_win_perms);
+    ntdll_NtProtectVirtualMemory(os::GetCurrentProcess(), &addr, &wsize, win_perms, &old_win_perms);
     switch (old_win_perms) {
     case PAGE_NOACCESS:
         return PagePermissions::NONE;
