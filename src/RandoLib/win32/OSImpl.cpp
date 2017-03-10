@@ -90,9 +90,9 @@ RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
-    ntdll_vsprintf_s(tmp, 255, fmt, args);
+    RANDO_SYS_FUNCTION(ntdll, vsprintf_s, tmp, 255, fmt, args);
     va_end(args);
-    kernel32_OutputDebugStringA(tmp);
+    RANDO_SYS_FUNCTION(kernel32, OutputDebugStringA, tmp);
 }
 
 RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
@@ -102,9 +102,9 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
-    ntdll_vsprintf_s(tmp, 255, fmt, args);
+    RANDO_SYS_FUNCTION(ntdll, vsprintf_s, tmp, 255, fmt, args);
     va_end(args);
-    user32_MessageBoxA(NULL, tmp, "RandoLib", 0);
+    RANDO_SYS_FUNCTION(user32, MessageBoxA, NULL, tmp, "RandoLib", 0);
 }
 
 template<typename Func>
@@ -142,7 +142,7 @@ RANDO_SECTION void API::Init() {
 
     // TODO: make this optional (a compile-time option)
     // Initialize global constants and values
-    kernel32_QueryPerformanceFrequency(&timer_freq);
+    RANDO_SYS_FUNCTION(kernel32, QueryPerformanceFrequency, &timer_freq);
 
     // Initialize the seed as a hash of the current TSC (should be random enough)
     // FIXME: find a better way of computing the seed
@@ -163,12 +163,12 @@ RANDO_SECTION void API::Finish() {
 RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
-    return ntdll_RtlAllocateHeap(global_heap, flags, size);
+    return RANDO_SYS_FUNCTION(ntdll, RtlAllocateHeap, global_heap, flags, size);
 }
 
 RANDO_SECTION void API::MemFree(void *ptr) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
-    ntdll_RtlFreeHeap(global_heap, 0, ptr);
+    RANDO_SYS_FUNCTION(ntdll, RtlFreeHeap, global_heap, 0, ptr);
 }
 
 // WARNING!!!: should be in the same order as the PagePermissions entries
@@ -191,16 +191,19 @@ RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, 
     SIZE_T wsize = size;
     DWORD alloc_type = commit ? (MEM_RESERVE | MEM_COMMIT) : MEM_RESERVE;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    ntdll_NtAllocateVirtualMemory(os::GetCurrentProcess(), &addr, 0, &wsize, alloc_type, win_perms);
+    RANDO_SYS_FUNCTION(ntdll, NtAllocateVirtualMemory,
+                       os::GetCurrentProcess(), &addr, 0, &wsize, alloc_type, win_perms);
     return addr;
 }
 
 RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
     SIZE_T wsize = size;
     if (commit) {
-        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &wsize, MEM_RELEASE);
+        RANDO_SYS_FUNCTION(ntdll, NtFreeVirtualMemory,
+                           os::GetCurrentProcess(), &addr, &wsize, MEM_RELEASE);
     } else {
-        ntdll_NtFreeVirtualMemory(os::GetCurrentProcess(), &addr, &wsize, MEM_DECOMMIT);
+        RANDO_SYS_FUNCTION(ntdll, NtFreeVirtualMemory,
+                           os::GetCurrentProcess(), &addr, &wsize, MEM_DECOMMIT);
     }
 }
 
@@ -208,7 +211,8 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
     SIZE_T wsize = size;
     ULONG old_win_perms = 0;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    ntdll_NtProtectVirtualMemory(os::GetCurrentProcess(), &addr, &wsize, win_perms, &old_win_perms);
+    RANDO_SYS_FUNCTION(ntdll, NtProtectVirtualMemory,
+                       os::GetCurrentProcess(), &addr, &wsize, win_perms, &old_win_perms);
     switch (old_win_perms) {
     case PAGE_NOACCESS:
         return PagePermissions::NONE;
@@ -285,9 +289,9 @@ static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
         // FIXME: just use the current directory for now
         GetCurrentDirectoryW(kTmpMax, textrap_file_name);
     }
-    ntdll_wcscat_s(textrap_file_name, kTmpMax, L"\\");
-    ntdll_wcsncat_s(textrap_file_name, kTmpMax, module_name->Buffer, module_name->Length);
-    ntdll_wcscat_s(textrap_file_name, kTmpMax, L".textrap");
+    RANDO_SYS_FUNCTION(ntdll, wcscat_s(textrap_file_name, kTmpMax, L"\\");
+    RANDO_SYS_FUNCTION(ntdll, wcsncat_s(textrap_file_name, kTmpMax, module_name->Buffer, module_name->Length);
+    RANDO_SYS_FUNCTION(ntdll, wcscat_s(textrap_file_name, kTmpMax, L".textrap");
 
     auto textrap_file = CreateFileW(textrap_file_name, GENERIC_READ, FILE_SHARE_READ,
         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);

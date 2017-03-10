@@ -42,6 +42,8 @@
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
 
+#define RANDO_SYS_FUNCTION(library, function, ...)  (library##_##function)(__VA_ARGS__)
+
 #define RANDO_ASSERT(cond)      \
     do {                        \
         if (!os::API::kEnableAsserts)\
@@ -362,31 +364,31 @@ public:
     }
 
     static inline void MemCpy(void *dst, const void *src, size_t size) {
-        ntdll_memcpy(dst, src, size);
+        RANDO_SYS_FUNCTION(ntdll, memcpy, dst, src, size);
     }
 
     static inline int MemCmp(const void *a, const void *b, size_t size) {
-        return ntdll_memcmp(a, b, size);
+        return RANDO_SYS_FUNCTION(ntdll, memcmp, a, b, size);
     }
 
     static inline ULONG GetRandom(ULONG max) {
         // TODO: do we need the seed???
-        auto res = ntdll_RtlRandomEx(&rand_seed);
+        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed);
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
     }
 
     static inline Time GetTime() {
         LARGE_INTEGER res;
-        kernel32_QueryPerformanceCounter(&res);
+        RANDO_SYS_FUNCTION(kernel32, QueryPerformanceCounter, &res);
         return res;
     }
 
     static inline LONGLONG TimeDeltaMicroSec(const Time &from, const Time &to) {
         LONGLONG res = to.QuadPart - from.QuadPart;
 #if RANDOLIB_IS_X86
-        res = ntdll_allmul(res, 1000000);
-        res = ntdll_alldiv(res, timer_freq.QuadPart);
+        res = RANDO_SYS_FUNCTION(ntdll, allmul, res, 1000000);
+        res = RANDO_SYS_FUNCTION(ntdll, alldiv, res, timer_freq.QuadPart);
 #else
         res *= 1000000LL;
         res /= timer_freq.QuadPart;
