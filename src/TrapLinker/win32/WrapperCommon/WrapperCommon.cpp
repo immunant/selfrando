@@ -129,7 +129,7 @@ void PrintArgs(const std::vector<const _TCHAR*>& args) {
 		if (arg == NULL)
 			break;
 		str.append(arg);
-		str.append(TEXT("\r\n"));
+		str.append(TEXT("\n"));
 	}
 
 	fwprintf(stderr, L"PrintArgs: %s\n", str.c_str());
