@@ -33,6 +33,8 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#include <OS.h>
+
 #define __set_errno_internal(errno)
 
 /*
@@ -41,7 +43,7 @@
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
-long
+RANDO_SECTION long
 _TRaP_libc_strtol(const char *nptr, char **endptr, int base)
 {
 	const char *s;
