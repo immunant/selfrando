@@ -95,7 +95,7 @@ static void ProcessCommands(const _TCHAR *file) {
         auto comment_pos = word.find(TCHAR(';'));
         assert(comment_pos == -1 && "Found comment in command file");
 		if (!word.empty()) {
-			// fwprintf(stderr, L"ProcessArg: %s\n", word.data());
+            // fwprintf(stderr, L"ProcessArg: %s\n", word.data());
             ProcessArg(word.data());
 		}
 	}
@@ -255,7 +255,7 @@ int _tmain(int argc, _TCHAR* argv[])
     }
     linker_args.push_back(NULL);
     // fwprintf(stderr, L"Lib_mode: %s\n", lib_mode ? L"true" : L"false");
-	// PrintArgs(linker_args);
+    // PrintArgs(linker_args);
     auto errnum = _tspawnvp(_P_WAIT, linker_exe.data(), linker_args.data());
 	if (errnum) {
 		perror("LinkWrapper:_tmain");
