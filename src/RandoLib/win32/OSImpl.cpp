@@ -71,7 +71,11 @@ size_t APIImpl::env_buf_size;
 #undef SYS_FUNCTION
 
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
+#ifdef RANDOLIB_DEBUG_LEVEL
 int API::debug_level = RANDOLIB_DEBUG_LEVEL;
+#else
+int API::debug_level = 0;
+#endif
 #endif
 
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
