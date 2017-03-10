@@ -417,32 +417,9 @@ protected:
     static LARGE_INTEGER timer_freq;
     static ULONG rand_seed;
 
-    // ntdll functions
-    static ULONG(WINAPI *ntdll_RtlRandomEx)(PULONG);
-    static LONGLONG(WINAPI *ntdll_allmul)(LONGLONG, LONGLONG);
-    static LONGLONG(WINAPI *ntdll_alldiv)(LONGLONG, LONGLONG);
-    // ntdll functions that implement the C runtime are cdecl, not WINAPI
-    static int(*ntdll_memcmp)(const void*, const void*, size_t);
-    static int(*ntdll_memcpy)(void*, const void*, size_t);
-    static int(*ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
-    static int(*ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
-    static LPVOID(WINAPI *ntdll_NtAllocateVirtualMemory)(HANDLE, PVOID*, ULONG, SIZE_T*, ULONG, ULONG);
-    static BOOL(WINAPI *ntdll_NtFreeVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG);
-    static BOOL(WINAPI *ntdll_NtProtectVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG, PULONG);
-    static LPVOID(WINAPI *ntdll_RtlAllocateHeap)(HANDLE, DWORD, SIZE_T);
-    static BOOL(WINAPI *ntdll_RtlFreeHeap)(HANDLE, DWORD, LPVOID);
-
-    // kernel32 functions
-    // FIXME: not clear if we need to import these using GetProcAddress
-    // since every program import kernel32.dll by default
-
-    static void(WINAPI *kernel32_OutputDebugStringA)(LPCSTR);
-    static bool(WINAPI *kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
-    static bool(WINAPI *kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
-
-    // Other functions
-    static int(WINAPI *user32_MessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
-
+#define SYS_FUNCTION(library, name, API, result_type, ...)   static result_type (API *library##_##name)(__VA_ARGS__);
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
     friend class Module;
 };
 

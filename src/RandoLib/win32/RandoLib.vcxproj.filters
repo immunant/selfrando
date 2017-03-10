@@ -88,5 +88,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\SConscript" />
+    <None Include="SysFunctions.inc">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

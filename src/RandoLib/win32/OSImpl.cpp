@@ -64,28 +64,9 @@ HMODULE APIImpl::ntdll, APIImpl::kernel32;
 LARGE_INTEGER APIImpl::timer_freq;
 ULONG APIImpl::rand_seed;
 
-// ntdll functions
-ULONG(WINAPI *APIImpl::ntdll_RtlRandomEx)(PULONG);
-LONGLONG(WINAPI *APIImpl::ntdll_allmul)(LONGLONG, LONGLONG);
-LONGLONG(WINAPI *APIImpl::ntdll_alldiv)(LONGLONG, LONGLONG);
-// ntdll functions that implement the C runtime are cdecl, not WINAPI
-int(*APIImpl::ntdll_memcmp)(const void*, const void*, size_t);
-int(*APIImpl::ntdll_memcpy)(void*, const void*, size_t);
-int(*APIImpl::ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
-int(*APIImpl::ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
-LPVOID(WINAPI *APIImpl::ntdll_NtAllocateVirtualMemory)(HANDLE, PVOID*, ULONG, SIZE_T*, ULONG, ULONG);
-BOOL(WINAPI *APIImpl::ntdll_NtFreeVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG);
-BOOL(WINAPI *APIImpl::ntdll_NtProtectVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG, ULONG*);
-LPVOID(WINAPI *APIImpl::ntdll_RtlAllocateHeap)(HANDLE, DWORD, SIZE_T);
-BOOL(WINAPI *APIImpl::ntdll_RtlFreeHeap)(HANDLE, DWORD, LPVOID);
-
-// kernel32 functions
-void(WINAPI *APIImpl::kernel32_OutputDebugStringA)(LPCSTR);
-bool(WINAPI *APIImpl::kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
-bool(WINAPI *APIImpl::kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
-
-// Other functions
-int(WINAPI *APIImpl::user32_MessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
+#define SYS_FUNCTION(library, name, API, result_type, ...)   result_type (API *APIImpl::library##_##name)(__VA_ARGS__);
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
 
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
     char tmp[256];
@@ -108,37 +89,24 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     RANDO_SYS_FUNCTION(user32, MessageBoxA, NULL, tmp, "RandoLib", 0);
 }
 
-template<typename Func>
-static void RANDO_SECTION GetLibFunction(Func *func, HMODULE lib, const char *name) {
-    *func = reinterpret_cast<Func>(GetProcAddress(lib, name));
-}
-
 RANDO_SECTION void API::Init() {
     ntdll = LoadLibrary(TEXT("ntdll"));
     kernel32 = LoadLibrary(TEXT("kernel32"));
-    GetLibFunction(&ntdll_RtlRandomEx, ntdll, "RtlRandomEx");
-    GetLibFunction(&ntdll_memcmp, ntdll, "memcmp");
-    GetLibFunction(&ntdll_memcpy, ntdll, "memcpy");
-    GetLibFunction(&ntdll_wcscat_s, ntdll, "wcscat_s");
-    GetLibFunction(&ntdll_wcsncat_s, ntdll, "wcsncat_s");
-    GetLibFunction(&ntdll_allmul, ntdll, "_allmul");
-    GetLibFunction(&ntdll_alldiv, ntdll, "_alldiv");
-    GetLibFunction(&ntdll_NtAllocateVirtualMemory, ntdll, "NtAllocateVirtualMemory");
-    GetLibFunction(&ntdll_NtFreeVirtualMemory, ntdll, "NtFreeVirtualMemory");
-    GetLibFunction(&ntdll_NtProtectVirtualMemory, ntdll, "NtProtectVirtualMemory");
-    GetLibFunction(&ntdll_RtlAllocateHeap, ntdll, "RtlAllocateHeap");
-    GetLibFunction(&ntdll_RtlFreeHeap, ntdll, "RtlFreeHeap");
+    HMODULE user32 = kEnableAsserts ? LoadLibrary(TEXT("user32")) : nullptr;
 
-    GetLibFunction(&kernel32_OutputDebugStringA, kernel32, "OutputDebugStringA");
-    GetLibFunction(&kernel32_QueryPerformanceFrequency, kernel32, "QueryPerformanceFrequency");
-    GetLibFunction(&kernel32_QueryPerformanceCounter, kernel32, "QueryPerformanceCounter");
-    // TODO: file functions from ReadTrapFile (maybe???)
-
-    if (kEnableAsserts) {
-        auto user32 = LoadLibrary(TEXT("user32"));
-        GetLibFunction(&user32_MessageBoxA, user32, "MessageBoxA");
-        FreeLibrary(user32);
+#define SYS_FUNCTION(library, name, API, result_type, ...)  \
+    if (library != nullptr) {                               \
+        auto func_addr = GetProcAddress(library, #name);    \
+        library##_##name = reinterpret_cast<decltype(library##_##name)>(func_addr); \
+    } else {                                                \
+        library##_##name = nullptr;                         \
     }
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
+
+    // FIXME: should we keep this around until API::Finish???
+    if (user32 != nullptr)
+        FreeLibrary(user32);
 
     // TODO: make this optional (a compile-time option)
     // Initialize global constants and values
