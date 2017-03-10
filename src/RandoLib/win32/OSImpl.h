@@ -42,6 +42,8 @@
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
 
+#define RANDO_SYS_FUNCTION(library, function, ...)  (library##_##function)(__VA_ARGS__)
+
 #define RANDO_ASSERT(cond)      \
     do {                        \
         if (!os::API::kEnableAsserts)\
@@ -362,31 +364,31 @@ public:
     }
 
     static inline void MemCpy(void *dst, const void *src, size_t size) {
-        ntdll_memcpy(dst, src, size);
+        RANDO_SYS_FUNCTION(ntdll, memcpy, dst, src, size);
     }
 
     static inline int MemCmp(const void *a, const void *b, size_t size) {
-        return ntdll_memcmp(a, b, size);
+        return RANDO_SYS_FUNCTION(ntdll, memcmp, a, b, size);
     }
 
     static inline ULONG GetRandom(ULONG max) {
         // TODO: do we need the seed???
-        auto res = ntdll_RtlRandomEx(&rand_seed);
+        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed);
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
     }
 
     static inline Time GetTime() {
         LARGE_INTEGER res;
-        kernel32_QueryPerformanceCounter(&res);
+        RANDO_SYS_FUNCTION(kernel32, QueryPerformanceCounter, &res);
         return res;
     }
 
     static inline LONGLONG TimeDeltaMicroSec(const Time &from, const Time &to) {
         LONGLONG res = to.QuadPart - from.QuadPart;
 #if RANDOLIB_IS_X86
-        res = ntdll_allmul(res, 1000000);
-        res = ntdll_alldiv(res, timer_freq.QuadPart);
+        res = RANDO_SYS_FUNCTION(ntdll, allmul, res, 1000000);
+        res = RANDO_SYS_FUNCTION(ntdll, alldiv, res, timer_freq.QuadPart);
 #else
         res *= 1000000LL;
         res /= timer_freq.QuadPart;
@@ -412,7 +414,6 @@ public:
 protected:
     // Other Windows globals
     static HMODULE ntdll, kernel32;
-    static HANDLE global_heap;
     static LARGE_INTEGER timer_freq;
     static ULONG rand_seed;
 
@@ -421,21 +422,20 @@ protected:
     static LONGLONG(WINAPI *ntdll_allmul)(LONGLONG, LONGLONG);
     static LONGLONG(WINAPI *ntdll_alldiv)(LONGLONG, LONGLONG);
     // ntdll functions that implement the C runtime are cdecl, not WINAPI
-    static int(*ntdll_vsprintf_s)(const char*, ...);
     static int(*ntdll_memcmp)(const void*, const void*, size_t);
     static int(*ntdll_memcpy)(void*, const void*, size_t);
     static int(*ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
     static int(*ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
+    static LPVOID(WINAPI *ntdll_NtAllocateVirtualMemory)(HANDLE, PVOID*, ULONG, SIZE_T*, ULONG, ULONG);
+    static BOOL(WINAPI *ntdll_NtFreeVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG);
+    static BOOL(WINAPI *ntdll_NtProtectVirtualMemory)(HANDLE, PVOID*, SIZE_T*, ULONG, PULONG);
+    static LPVOID(WINAPI *ntdll_RtlAllocateHeap)(HANDLE, DWORD, SIZE_T);
+    static BOOL(WINAPI *ntdll_RtlFreeHeap)(HANDLE, DWORD, LPVOID);
 
     // kernel32 functions
     // FIXME: not clear if we need to import these using GetProcAddress
     // since every program import kernel32.dll by default
-    static LPVOID(WINAPI *kernel32_VirtualAlloc)(LPVOID, SIZE_T, DWORD, DWORD);
-    static BOOL(WINAPI *kernel32_VirtualFree)(LPVOID, SIZE_T, DWORD);
-    static BOOL(WINAPI *kernel32_VirtualProtect)(LPVOID, SIZE_T, DWORD, PDWORD);
-    static LPVOID(WINAPI *kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
-    static BOOL(WINAPI *kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
-    static HANDLE(WINAPI *kernel32_GetProcessHeap)();
+
     static void(WINAPI *kernel32_OutputDebugStringA)(LPCSTR);
     static bool(WINAPI *kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
     static bool(WINAPI *kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);

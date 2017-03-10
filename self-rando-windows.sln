@@ -47,6 +47,15 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleRandoTest", "src\Trap
 		{7E9FAACF-72A1-455F-9C03-6E3DEE5004FE} = {7E9FAACF-72A1-455F-9C03-6E3DEE5004FE}
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Firefox extension", "Firefox extension", "{C0AD175A-0A29-4B39-916E-5C46A88296FD}"
+	ProjectSection(SolutionItems) = preProject
+		Tools\Firefox\extension\bootstrap.js = Tools\Firefox\extension\bootstrap.js
+		Tools\Firefox\extension\chrome.manifest = Tools\Firefox\extension\chrome.manifest
+		Tools\Firefox\extension\install.rdf = Tools\Firefox\extension\install.rdf
+		Tools\Firefox\extension\selfrando.js = Tools\Firefox\extension\selfrando.js
+		Tools\Firefox\extension\selfrando.xul = Tools\Firefox\extension\selfrando.xul
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -138,5 +147,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C0AD175A-0A29-4B39-916E-5C46A88296FD} = {C55508A3-37D1-4B6C-8CE9-F2A3B76E791A}
 	EndGlobalSection
 EndGlobal
