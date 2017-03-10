@@ -62,6 +62,9 @@
     <ClCompile Include="..\util\qsort.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\util\printf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\util\fnv.h">

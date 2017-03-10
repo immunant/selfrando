@@ -241,6 +241,7 @@
     </ClCompile>
     <ClCompile Include="..\util\hash_32a.c" />
     <ClCompile Include="..\RandoLib.cpp" />
+    <ClCompile Include="..\util\printf.cpp" />
     <ClCompile Include="..\util\qsort.c" />
     <ClCompile Include="OSImpl.cpp" />
     <ClCompile Include="x86\Relocation.cpp">

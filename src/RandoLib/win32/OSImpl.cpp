@@ -42,6 +42,8 @@
 
 extern "C" {
 #include <util/fnv.h>
+
+int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
 }
 
 #pragma comment(lib, "ntdll")
@@ -67,7 +69,6 @@ ULONG(WINAPI *APIImpl::ntdll_RtlRandomEx)(PULONG);
 LONGLONG(WINAPI *APIImpl::ntdll_allmul)(LONGLONG, LONGLONG);
 LONGLONG(WINAPI *APIImpl::ntdll_alldiv)(LONGLONG, LONGLONG);
 // ntdll functions that implement the C runtime are cdecl, not WINAPI
-int(*APIImpl::ntdll_vsprintf_s)(const char*, ...);
 int(*APIImpl::ntdll_memcmp)(const void*, const void*, size_t);
 int(*APIImpl::ntdll_memcpy)(void*, const void*, size_t);
 int(*APIImpl::ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
@@ -90,7 +91,7 @@ RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
-    RANDO_SYS_FUNCTION(ntdll, vsprintf_s, tmp, 255, fmt, args);
+    _TRaP_vsnprintf(tmp, 255, fmt, args);
     va_end(args);
     RANDO_SYS_FUNCTION(kernel32, OutputDebugStringA, tmp);
 }
@@ -102,7 +103,7 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
-    RANDO_SYS_FUNCTION(ntdll, vsprintf_s, tmp, 255, fmt, args);
+    _TRaP_vsnprintf(tmp, 255, fmt, args);
     va_end(args);
     RANDO_SYS_FUNCTION(user32, MessageBoxA, NULL, tmp, "RandoLib", 0);
 }
@@ -116,7 +117,6 @@ RANDO_SECTION void API::Init() {
     ntdll = LoadLibrary(TEXT("ntdll"));
     kernel32 = LoadLibrary(TEXT("kernel32"));
     GetLibFunction(&ntdll_RtlRandomEx, ntdll, "RtlRandomEx");
-    GetLibFunction(&ntdll_vsprintf_s, ntdll, "vsprintf_s");
     GetLibFunction(&ntdll_memcmp, ntdll, "memcmp");
     GetLibFunction(&ntdll_memcpy, ntdll, "memcpy");
     GetLibFunction(&ntdll_wcscat_s, ntdll, "wcscat_s");

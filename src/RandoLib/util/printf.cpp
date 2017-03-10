@@ -15,8 +15,9 @@
 static const char kHexTableLo[] = "0123456789abcdef";
 static const char kHexTableHi[] = "0123456789abcdef";
 
-static bool print_number32(uint32_t uval, char *buf,
-                           size_t *cnt, size_t bufsize) {
+static RANDO_SECTION
+bool print_number32(uint32_t uval, char *buf,
+                    size_t *cnt, size_t bufsize) {
     if (uval == 0)
         return true;
 
@@ -44,12 +45,14 @@ static bool print_number32(uint32_t uval, char *buf,
 } 
 
 extern "C"
+RANDO_SECTION
 int _TRaP_vsnprintf(char *buf, size_t bufsize,
                     const char *fmt, va_list va) {
     size_t cnt = 0;
     const char *fmtp = fmt, *hex_table;
     int ival;
     uintmax_t uval;
+    uintptr_t pval;
     const char *sval;
 
 #define PRINT_CHAR(ch)  do {            \
@@ -115,7 +118,7 @@ int _TRaP_vsnprintf(char *buf, size_t bufsize,
 
         case 'p':
         case 'P':
-            uval = (uintmax_t)va_arg(va, uintptr_t);
+            pval = va_arg(va, uintptr_t);
             PRINT_CHAR('0');
             PRINT_CHAR('x');
             // fall-through
@@ -126,15 +129,28 @@ int _TRaP_vsnprintf(char *buf, size_t bufsize,
                 hex_table = kHexTableHi;
             }
             if (*fmtp == 'x')
-                uval = (uintmax_t)va_arg(va, uintptr_t); // FIXME: should be fixed size
-            if (uval == 0) {
+                pval = (uintptr_t)va_arg(va, unsigned int);
+            if (pval == 0) {
                 PRINT_CHAR('0');
             } else {
                 // Skip the leading zero digits
-                ival = (sizeof(uintptr_t) == 8) ? __builtin_clzll(uval) : __builtin_clz(uval);
+#if RANDOLIB_IS_POSIX
+                ival = (sizeof(uintptr_t) == 8) ? __builtin_clzll(pval) : __builtin_clz(pval);
+#elif RANDOLIB_IS_WIN32
+                DWORD clz = 0;
+#if RANDOLIB_IS_X86
+                _BitScanReverse(&clz, pval);
+                ival = 31 - clz;
+#else
+                _BitScanReverse64(&clz, pval);
+                ival = 63 - clz;
+#endif
+#else
+#error Unknown architecture
+#endif
                 ival = 2 * sizeof(uintptr_t) - (ival / 4);
                 while (--ival >= 0)
-                    PRINT_CHAR(hex_table[(uval >> (4 * ival)) & 0xf]);
+                    PRINT_CHAR(hex_table[(pval >> (4 * ival)) & 0xf]);
             }
             break;
 

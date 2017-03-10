@@ -422,7 +422,6 @@ protected:
     static LONGLONG(WINAPI *ntdll_allmul)(LONGLONG, LONGLONG);
     static LONGLONG(WINAPI *ntdll_alldiv)(LONGLONG, LONGLONG);
     // ntdll functions that implement the C runtime are cdecl, not WINAPI
-    static int(*ntdll_vsprintf_s)(const char*, ...);
     static int(*ntdll_memcmp)(const void*, const void*, size_t);
     static int(*ntdll_memcpy)(void*, const void*, size_t);
     static int(*ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
