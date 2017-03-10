@@ -33,7 +33,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
-extern long __set_errno_internal(int);
+#define __set_errno_internal(errno)
 
 /*
  * Convert a string to a long integer.
