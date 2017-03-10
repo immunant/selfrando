@@ -95,7 +95,8 @@ static void ProcessCommands(const _TCHAR *file) {
         auto comment_pos = word.find(TCHAR(';'));
         assert(comment_pos == -1 && "Found comment in command file");
 		if (!word.empty()) {
-			ProcessArg(word.data());
+			// fwprintf(stderr, L"ProcessArg: %s\n", word.data());
+            ProcessArg(word.data());
 		}
 	}
 	fclose(f);
@@ -216,6 +217,7 @@ static void CallPatchEntry() {
             fprintf(stderr, "PatchEntry return value:%d\n", errnum);
             exit(errnum);
         }
+        // fwprintf(stderr, L"LinkWrapper:CallPatchEntry: processed %s\n", output_file.c_str());
     }
 }
 
@@ -252,7 +254,8 @@ int _tmain(int argc, _TCHAR* argv[])
         linker_args.push_back(kLinkerNoIncrementalArg);
     }
     linker_args.push_back(NULL);
-	//PrintArgs(linker_args);
+    // fwprintf(stderr, L"Lib_mode: %s\n", lib_mode ? L"true" : L"false");
+	// PrintArgs(linker_args);
     auto errnum = _tspawnvp(_P_WAIT, linker_exe.data(), linker_args.data());
 	if (errnum) {
 		perror("LinkWrapper:_tmain");
