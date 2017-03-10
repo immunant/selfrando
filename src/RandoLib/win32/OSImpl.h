@@ -396,9 +396,7 @@ public:
         return res;
     }
 
-    static char *GetEnv(const char *var) {
-        return nullptr; // FIXME: implement
-    }
+    static char *GetEnv(const char *var);
 
     // TODO: make this into a compile-time value,
     // or maybe a run-time one, and also a TRaP
@@ -416,6 +414,9 @@ protected:
     static HMODULE ntdll, kernel32;
     static LARGE_INTEGER timer_freq;
     static ULONG rand_seed;
+
+    static char *env_buf;
+    static size_t env_buf_size;
 
 #define SYS_FUNCTION(library, name, API, result_type, ...)   static result_type (API *library##_##name)(__VA_ARGS__);
 #include "SysFunctions.inc"

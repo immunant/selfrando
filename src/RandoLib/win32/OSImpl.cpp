@@ -63,6 +63,8 @@ namespace os {
 HMODULE APIImpl::ntdll, APIImpl::kernel32;
 LARGE_INTEGER APIImpl::timer_freq;
 ULONG APIImpl::rand_seed;
+char *APIImpl::env_buf;
+size_t APIImpl::env_buf_size;
 
 #define SYS_FUNCTION(library, name, API, result_type, ...)   result_type (API *APIImpl::library##_##name)(__VA_ARGS__);
 #include "SysFunctions.inc"
@@ -108,6 +110,9 @@ RANDO_SECTION void API::Init() {
     if (user32 != nullptr)
         FreeLibrary(user32);
 
+    env_buf = nullptr;
+    env_buf_size = 0;
+
     // TODO: make this optional (a compile-time option)
     // Initialize global constants and values
     RANDO_SYS_FUNCTION(kernel32, QueryPerformanceFrequency, &timer_freq);
@@ -123,6 +128,11 @@ RANDO_SECTION void API::Init() {
 }
 
 RANDO_SECTION void API::Finish() {
+    if (env_buf != nullptr) {
+        MemFree(env_buf);
+        env_buf = nullptr;
+        env_buf_size = 0;
+    }
     FreeLibrary(ntdll);
     FreeLibrary(kernel32);
 }
@@ -200,6 +210,21 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
         RANDO_ASSERT(false);
         return PagePermissions::NONE;
     }
+}
+
+RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
+    auto buf_needed = RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableA,
+                                         var, env_buf, env_buf_size);
+    if (buf_needed > env_buf_size) {
+        if (env_buf != nullptr)
+            API::MemFree(env_buf);
+        env_buf = reinterpret_cast<char*>(API::MemAlloc(buf_needed, false));
+        env_buf_size = buf_needed;
+        buf_needed = RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableA,
+                                        var, env_buf, env_buf_size);
+        RANDO_ASSERT(buf_needed < env_buf_size);
+    }
+    return buf_needed == 0 ? nullptr : env_buf;
 }
 
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {

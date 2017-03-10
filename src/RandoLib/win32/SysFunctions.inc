@@ -24,6 +24,7 @@ SYS_FUNCTION(ntdll, RtlFreeHeap, WINAPI, BOOL, HANDLE, DWORD, LPVOID)
 SYS_FUNCTION(kernel32, OutputDebugStringA, WINAPI, void, LPCSTR)
 SYS_FUNCTION(kernel32, QueryPerformanceFrequency, WINAPI, bool, LARGE_INTEGER*)
 SYS_FUNCTION(kernel32, QueryPerformanceCounter, WINAPI, bool, LARGE_INTEGER*)
+SYS_FUNCTION(kernel32, GetEnvironmentVariableA, WINAPI, DWORD, LPCSTR, LPSTR, DWORD)
 
 // Other functions
 SYS_FUNCTION(user32, MessageBoxA, WINAPI, int, HWND, LPCSTR, LPCSTR, UINT)
