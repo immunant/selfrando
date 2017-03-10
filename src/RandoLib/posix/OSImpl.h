@@ -309,27 +309,8 @@ private:
 
 class APIImpl {
 public:
-    // Debugging functions and settings
-#if RANDOLIB_DEBUG_LEVEL_IS_ENV
-    static int debug_level;
-#else
-#ifdef RANDOLIB_DEBUG_LEVEL
-    static const int debug_level = RANDOLIB_DEBUG_LEVEL;
-#else
-    static const int debug_level = 0;
-#endif
-#endif
-    static const bool kEnableAsserts = true;
-
     static void DebugPrintfImpl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
-
-    template<int level, typename... Args>
-    static inline void DebugPrintf(Args... args) {
-        // FIXME: this should use std::forward, but can we pull in <utility>???
-        if (level <= debug_level)
-            DebugPrintfImpl(args...);
-    }
 
     // C library functions
     static inline void QuickSort(void* base, size_t num, size_t size,

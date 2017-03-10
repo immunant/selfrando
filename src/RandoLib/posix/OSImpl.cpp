@@ -52,7 +52,7 @@ int APIImpl::log_fd = -1;
 #endif
 
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
-int APIImpl::debug_level = RANDOLIB_DEBUG_LEVEL;
+int API::debug_level = RANDOLIB_DEBUG_LEVEL;
 #endif
 
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {

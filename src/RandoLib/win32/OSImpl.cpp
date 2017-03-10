@@ -70,6 +70,10 @@ size_t APIImpl::env_buf_size;
 #include "SysFunctions.inc"
 #undef SYS_FUNCTION
 
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+int API::debug_level = RANDOLIB_DEBUG_LEVEL;
+#endif
+
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
     char tmp[256];
     va_list args;

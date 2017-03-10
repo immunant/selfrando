@@ -61,6 +61,25 @@ public:
     static void Init();
     static void Finish();
 
+    // Debugging functions and settings
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    static int debug_level;
+#else
+#ifdef RANDOLIB_DEBUG_LEVEL
+    static const int debug_level = RANDOLIB_DEBUG_LEVEL;
+#else
+    static const int debug_level = 0;
+#endif
+#endif
+    static const bool kEnableAsserts = true;
+
+    template<int level, typename... Args>
+    static inline void DebugPrintf(Args... args) {
+        // FIXME: this should use std::forward, but can we pull in <utility>???
+        if (level <= debug_level)
+            DebugPrintfImpl(args...);
+    }
+
     // Explicitly list functions inherited from APIImpl, so compilation fails if they're missing
     using APIImpl::QuickSort;
     using APIImpl::MemCpy;
@@ -69,7 +88,7 @@ public:
     using APIImpl::GetTime;
     using APIImpl::GetEnv;
     using APIImpl::TimeDeltaMicroSec;
-    using APIImpl::DebugPrintf;
+    using APIImpl::DebugPrintfImpl;
 
     // Architecture-specific functions/constants
     using APIImpl::Is1ByteNOP;

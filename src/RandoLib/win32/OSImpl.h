@@ -343,19 +343,8 @@ private:
 
 class RANDO_SECTION APIImpl {
 public:
-    // Debugging functions and settings
-    static const int kDebugLevel = 1;
-    static const bool kEnableAsserts = true;
-
     static void DebugPrintfImpl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
-
-    template<int level, typename... Args>
-    static inline void DebugPrintf(Args... args) {
-        // FIXME: this should use std::forward, but can we pull in <utility>???
-        if (level <= kDebugLevel)
-            DebugPrintfImpl(args...);
-    }
 
     // C library functions
     static inline void QuickSort(void* base, size_t num, size_t size,
