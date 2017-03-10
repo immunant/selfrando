@@ -44,6 +44,7 @@ extern "C" {
 #include <util/fnv.h>
 
 int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
+long _TRaP_libc_strtol(const char*, char **, int);
 }
 
 #pragma comment(lib, "ntdll")
@@ -120,6 +121,12 @@ RANDO_SECTION void API::Init() {
 
     env_buf = nullptr;
     env_buf_size = 0;
+
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    const char *debug_level_var = GetEnv("SELFRANDO_debug_level");
+    if (debug_level_var != nullptr)
+        debug_level = _TRaP_libc_strtol(debug_level_var, nullptr, 0);
+#endif
 
     // TODO: make this optional (a compile-time option)
     // Initialize global constants and values
