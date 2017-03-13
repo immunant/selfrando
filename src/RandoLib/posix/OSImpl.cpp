@@ -515,47 +515,4 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
     }
 }
 
-#if RANDOLIB_WRITE_LAYOUTS > 0
-RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
-                                             size_t *shuffled_order) const {
-#if RANDOLIB_WRITE_LAYOUTS == 1
-    if (API::GetEnv("SELFRANDO_write_layout_file") == nullptr)
-        return;
-#endif
-
-    auto fd = API::OpenLayoutFile(true);
-    if (fd == kInvalidFile) {
-        API::DebugPrintf<1>("Error opening layout file!\n");
-        return;
-    }
-
-    uint32_t version = 0x00000101;
-    uint32_t seed = 0; // FIXME: we write a fake seed for now
-    BytePointer func_base = functions->functions[0].undiv_start;
-    BytePointer func_end = functions->functions[functions->num_funcs - 1].undiv_end();
-    ptrdiff_t func_size = func_end - func_base;
-    const char *module_name = get_module_name();
-    nullptr_t np = nullptr;
-    API::WriteFile(fd, &version, sizeof(version));
-    API::WriteFile(fd, &seed, sizeof(seed));
-    API::WriteFile(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
-    API::WriteFile(fd, &func_base, sizeof(func_base));
-    API::WriteFile(fd, &func_size, sizeof(func_size));
-    API::WriteFile(fd, module_name, strlen(module_name) + 1);
-    for (size_t i = 0; i < functions->num_funcs; i++) {
-        auto si = shuffled_order[i];
-        auto &func = functions->functions[si];
-        if (func.skip_copy)
-            continue;
-
-        uint32_t size32 = static_cast<uint32_t>(func.size);
-        API::WriteFile(fd, &func.undiv_start, sizeof(func.undiv_start));
-        API::WriteFile(fd, &func.div_start, sizeof(func.div_start));
-        API::WriteFile(fd, &size32, sizeof(size32));
-    }
-    API::WriteFile(fd, &np, sizeof(np));
-    API::CloseFile(fd);
-}
-#endif
-
 }
