@@ -258,8 +258,7 @@ RANDO_SECTION void API::CloseFile(File file) {
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
-template<size_t len>
-static inline int build_pid_filename(char(&filename)[len], const char *fmt, ...) {
+static inline int build_pid_filename(char *filename, size_t len, const char *fmt, ...) {
     int res;
     va_list args;
     va_start(args, fmt);
@@ -269,9 +268,19 @@ static inline int build_pid_filename(char(&filename)[len], const char *fmt, ...)
 }
 
 RANDO_SECTION File API::OpenLayoutFile(bool write) {
+    // FIXME: does this work for paths that contain Unicode???
+    const char *path = API::GetEnv("SELFRANDO_layout_files_path");
+    if (path == nullptr) {
+        API::DebugPrintf<1>("Unknown path to layout files (perhaps set SELFRANDO_layout_files_path)!\n");
+        return kInvalidFile;
+    }
+
+    auto pathlen = strlen(path);
+    const int kExtraFileChars = 16;
+    auto filename_len = pathlen + kExtraFileChars;
+    char *filename = reinterpret_cast<char*>(alloca(filename_len));
     os::Pid pid = API::GetPid();
-    char filename[32];
-    build_pid_filename(filename, "/tmp/%d.mlf", pid);
+    build_pid_filename(filename, filename_len, "%s\\%d.mlf", pid);
     return API::OpenFile(filename, write, true);
 }
 #endif
