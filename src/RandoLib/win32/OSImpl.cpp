@@ -284,6 +284,7 @@ RANDO_SECTION File API::OpenLayoutFile(bool write) {
         return kInvalidFile;
     }
 
+    // FIXME: we really, really, really need to validate/sanitize the contents of the environment variable
     auto pathlen = strlen(path);
     const int kExtraFileChars = 16;
     auto filename_len = pathlen + kExtraFileChars;
