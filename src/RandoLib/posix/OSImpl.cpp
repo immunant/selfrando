@@ -528,7 +528,7 @@ RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
     BytePointer func_base = functions->functions[0].undiv_start;
     BytePointer func_end = functions->functions[functions->num_funcs - 1].undiv_end();
     ptrdiff_t func_size = func_end - func_base;
-    const char *module_name = m_phdr_info.dlpi_name;
+    const char *module_name = get_module_name();
     nullptr_t np = nullptr;
     API::WriteFile(fd, &version, sizeof(version));
     API::WriteFile(fd, &seed, sizeof(seed));

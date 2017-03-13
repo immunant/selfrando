@@ -285,6 +285,10 @@ public:
         return m_got;
     }
 
+    inline RANDO_SECTION const char *get_module_name() const {
+        return m_phdr_info.dlpi_name;
+    }
+
 #if RANDOLIB_WRITE_LAYOUTS
     void write_layout_file(FunctionList *functions,
                            size_t *shuffled_order) const;
