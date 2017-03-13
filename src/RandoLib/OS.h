@@ -87,6 +87,7 @@ public:
     using APIImpl::GetRandom;
     using APIImpl::GetTime;
     using APIImpl::GetEnv;
+    using APIImpl::GetPid;
     using APIImpl::TimeDeltaMicroSec;
     using APIImpl::DebugPrintfImpl;
 
@@ -112,6 +113,11 @@ public:
     static void *MemMap(void*, size_t, PagePermissions, bool); // TODO
     static void MemUnmap(void*, size_t, bool); // TODO
     static PagePermissions MemProtect(void*, size_t, PagePermissions);
+
+    static File OpenFile(const char *name, bool write, bool create);
+    static ssize_t WriteFile(File file, const void *buf, size_t len);
+    static void CloseFile(File file);
+
 };
 
 }

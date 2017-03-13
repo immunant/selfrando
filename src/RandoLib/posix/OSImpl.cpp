@@ -35,10 +35,6 @@ int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
 void *_TRaP_libc_mmap(void*, size_t, int, int, int, off_t);
 int _TRaP_libc_munmap(void*, size_t);
 int _TRaP_libc_mprotect(const void*, size_t, int);
-ssize_t _TRaP_libc_write(int, const void*, size_t);
-int _TRaP_libc_open(const char*, int, ...);
-int _TRaP_libc____close(int);
-pid_t _TRaP_libc___getpid(void);
 
 void _TRaP_rand_close_fd(void);
 }
@@ -194,6 +190,29 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
     auto paged_size = (reinterpret_cast<uintptr_t>(addr) + size) - paged_addr;
     _TRaP_libc_mprotect(reinterpret_cast<void*>(paged_addr), paged_size, prot_perms);
     return PagePermissions::UNKNOWN;
+}
+
+RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
+    int flags = O_CLOEXEC;
+    if (write) {
+        flags |= O_RDWR | O_APPEND;
+    } else {
+        flags |= O_RDONLY;
+    }
+    if (create)
+        flags |= O_CREAT;
+    int fd = _TRaP_libc_open(name, flags, 0660);
+    return fd < 0 ? kInvalidFile : fd;
+}
+
+RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
+    RANDO_ASSERT(file != kInvalidFile);
+    return _TRaP_libc_write(file, buf, len);
+}
+
+RANDO_SECTION void API::CloseFile(File file) {
+    RANDO_ASSERT(file != kInvalidFile);
+    _TRaP_libc____close(file);
 }
 
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
@@ -491,15 +510,15 @@ static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...
 RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
                                              size_t *shuffled_order) const {
 #if RANDOLIB_WRITE_LAYOUTS == 1
-    if (APIImpl::GetEnv("SELFRANDO_write_layout_file") == nullptr)
+    if (API::GetEnv("SELFRANDO_write_layout_file") == nullptr)
         return;
 #endif
 
-    pid_t pid = _TRaP_libc___getpid();
+    os::Pid pid = API::GetPid();
     char filename[32];
     build_pid_filename(filename, "/tmp/%d.mlf", pid);
-    int fd = _TRaP_libc_open(filename, O_CREAT | O_WRONLY | O_APPEND, 0660);
-    if (fd <= 0) {
+    auto fd = API::OpenFile(filename, true, true);
+    if (fd == kInvalidFile) {
         API::DebugPrintf<1>("Error opening layout file!\n");
         return;
     }
@@ -511,12 +530,12 @@ RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
     ptrdiff_t func_size = func_end - func_base;
     const char *module_name = m_phdr_info.dlpi_name;
     nullptr_t np = nullptr;
-    _TRaP_libc_write(fd, &version, sizeof(version));
-    _TRaP_libc_write(fd, &seed, sizeof(seed));
-    _TRaP_libc_write(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
-    _TRaP_libc_write(fd, &func_base, sizeof(func_base));
-    _TRaP_libc_write(fd, &func_size, sizeof(func_size));
-    _TRaP_libc_write(fd, module_name, strlen(module_name) + 1);
+    API::WriteFile(fd, &version, sizeof(version));
+    API::WriteFile(fd, &seed, sizeof(seed));
+    API::WriteFile(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
+    API::WriteFile(fd, &func_base, sizeof(func_base));
+    API::WriteFile(fd, &func_size, sizeof(func_size));
+    API::WriteFile(fd, module_name, strlen(module_name) + 1);
     for (size_t i = 0; i < functions->num_funcs; i++) {
         auto si = shuffled_order[i];
         auto &func = functions->functions[si];
@@ -524,12 +543,12 @@ RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
             continue;
 
         uint32_t size32 = static_cast<uint32_t>(func.size);
-        _TRaP_libc_write(fd, &func.undiv_start, sizeof(func.undiv_start));
-        _TRaP_libc_write(fd, &func.div_start, sizeof(func.div_start));
-        _TRaP_libc_write(fd, &size32, sizeof(size32));
+        API::WriteFile(fd, &func.undiv_start, sizeof(func.undiv_start));
+        API::WriteFile(fd, &func.div_start, sizeof(func.div_start));
+        API::WriteFile(fd, &size32, sizeof(size32));
     }
-    _TRaP_libc_write(fd, &np, sizeof(np));
-    _TRaP_libc____close(fd);
+    API::WriteFile(fd, &np, sizeof(np));
+    API::CloseFile(fd);
 }
 #endif
 

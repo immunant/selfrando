@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <fcntl.h>
 #include <link.h>
 
 // FIXME: gcc doesn't support assigning an entire class to a section
@@ -55,6 +56,10 @@ int _TRaP_libc_rand_r(unsigned int*);
 #elif RANDOLIB_RNG_IS_URANDOM
 long _TRaP_rand_linux(long);
 #endif
+pid_t _TRaP_libc___getpid(void);
+int _TRaP_libc_open(const char*, int, ...);
+ssize_t _TRaP_libc_write(int, const void*, size_t);
+int _TRaP_libc____close(int);
 }
 
 namespace os {
@@ -64,6 +69,10 @@ extern "C" {
 }
 
 typedef time_t Time;
+typedef int File;
+typedef pid_t Pid;
+
+static const File kInvalidFile = -1;
 
 class Module {
 public:
@@ -361,6 +370,10 @@ public:
 
     static char *GetEnv(const char *var) {
         return _TRaP_libc_getenv(var);
+    }
+
+    static Pid GetPid() {
+        return _TRaP_libc___getpid();
     }
 
     // TODO: make this into a compile-time value,
