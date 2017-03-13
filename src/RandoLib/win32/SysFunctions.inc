@@ -18,6 +18,8 @@ SYS_FUNCTION(ntdll, NtProtectVirtualMemory, WINAPI, NTSTATUS, HANDLE, PVOID*, SI
 SYS_FUNCTION(ntdll, RtlAllocateHeap, WINAPI, LPVOID, HANDLE, DWORD, SIZE_T)
 SYS_FUNCTION(ntdll, RtlFreeHeap, WINAPI, BOOL, HANDLE, DWORD, LPVOID)
 
+SYS_FUNCTION(ntdll, NtQueryInformationProcess, WINAPI, NTSTATUS, HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG)
+
 // kernel32 functions
 // FIXME: not clear if we need to import these using GetProcAddress
 // since every program imports kernel32.dll by default

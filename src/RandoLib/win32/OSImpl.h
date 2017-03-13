@@ -398,9 +398,7 @@ public:
 
     static char *GetEnv(const char *var);
 
-    static Pid GetPid() {
-        return -1; // FIXME: implement
-    }
+    static Pid GetPid();
 
     // TODO: make this into a compile-time value,
     // or maybe a run-time one, and also a TRaP

@@ -242,6 +242,15 @@ RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
     return buf_needed == 0 ? nullptr : env_buf;
 }
 
+RANDO_SECTION Pid APIImpl::GetPid() {
+    PROCESS_BASIC_INFORMATION pbi;
+    auto res = RANDO_SYS_FUNCTION(ntdll, NtQueryInformationProcess,
+                                  os::GetCurrentProcess(),
+                                  ProcessBasicInformation,
+                                  &pbi, sizeof(pbi), nullptr);
+    return res == 0 ? pbi.UniqueProcessId : 0;
+}
+
 RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
     return INVALID_HANDLE_VALUE;
     // FIXME: implement
