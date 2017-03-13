@@ -68,9 +68,16 @@ void _TRaP_qsort(void *, size_t, size_t,
 
 namespace os {
 
+// For some reason, MSVC doesn't have ssize_t
+typedef SSIZE_T ssize_t;
+
 // OS-specific typedefs
 typedef LARGE_INTEGER Time;
 typedef BYTE *BytePointer;
+typedef HANDLE File;
+typedef DWORD Pid;
+
+static const File kInvalidHandle = INVALID_HANDLE_VALUE;
 
 class RANDO_SECTION Module {
 public:
@@ -386,6 +393,10 @@ public:
     }
 
     static char *GetEnv(const char *var);
+
+    static Pid GetPid() {
+        return -1; // FIXME: implement
+    }
 
     // TODO: make this into a compile-time value,
     // or maybe a run-time one, and also a TRaP
