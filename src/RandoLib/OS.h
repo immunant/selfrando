@@ -118,6 +118,9 @@ public:
     static ssize_t WriteFile(File file, const void *buf, size_t len);
     static void CloseFile(File file);
 
+#if RANDOLIB_WRITE_LAYOUTS > 0
+    static File OpenLayoutFile(bool write);
+#endif
 };
 
 }

@@ -215,6 +215,25 @@ RANDO_SECTION void API::CloseFile(File file) {
     _TRaP_libc____close(file);
 }
 
+#if RANDOLIB_WRITE_LAYOUTS > 0
+template<size_t len>
+static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...) {
+    int res;
+    va_list args;
+    va_start(args, fmt);
+    res = _TRaP_vsnprintf(filename, len - 1, fmt, args);
+    va_end(args);
+    return res;
+}
+
+RANDO_SECTION File API::OpenLayoutFile(bool write) {
+    os::Pid pid = API::GetPid();
+    char filename[32];
+    build_pid_filename(filename, "/tmp/%d.mlf", pid);
+    return API::OpenFile(filename, write, true);
+}
+#endif
+
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
     RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
     m_address = addr;
@@ -497,16 +516,6 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
-template<size_t len>
-static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...) {
-    int res;
-    va_list args;
-    va_start(args, fmt);
-    res = _TRaP_vsnprintf(filename, len - 1, fmt, args);
-    va_end(args);
-    return res;
-}
-
 RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
                                              size_t *shuffled_order) const {
 #if RANDOLIB_WRITE_LAYOUTS == 1
@@ -514,10 +523,7 @@ RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
         return;
 #endif
 
-    os::Pid pid = API::GetPid();
-    char filename[32];
-    build_pid_filename(filename, "/tmp/%d.mlf", pid);
-    auto fd = API::OpenFile(filename, true, true);
+    auto fd = API::OpenLayoutFile(true);
     if (fd == kInvalidFile) {
         API::DebugPrintf<1>("Error opening layout file!\n");
         return;
