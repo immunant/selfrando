@@ -242,6 +242,40 @@ RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
     return buf_needed == 0 ? nullptr : env_buf;
 }
 
+RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
+    return INVALID_HANDLE_VALUE;
+    // FIXME: implement
+}
+
+RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
+    RANDO_ASSERT(file != kInvalidFile);
+    return 0; // FIXME: implement
+}
+
+RANDO_SECTION void API::CloseFile(File file) {
+    RANDO_ASSERT(file != kInvalidFile);
+    // FIXME: implement
+}
+
+#if RANDOLIB_WRITE_LAYOUTS > 0
+template<size_t len>
+static inline int build_pid_filename(char(&filename)[len], const char *fmt, ...) {
+    int res;
+    va_list args;
+    va_start(args, fmt);
+    res = _TRaP_vsnprintf(filename, len - 1, fmt, args);
+    va_end(args);
+    return res;
+}
+
+RANDO_SECTION File API::OpenLayoutFile(bool write) {
+    os::Pid pid = API::GetPid();
+    char filename[32];
+    build_pid_filename(filename, "/tmp/%d.mlf", pid);
+    return API::OpenFile(filename, write, true);
+}
+#endif
+
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
     RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
     m_address = addr;

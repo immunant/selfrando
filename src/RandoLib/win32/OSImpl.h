@@ -77,7 +77,7 @@ typedef BYTE *BytePointer;
 typedef HANDLE File;
 typedef DWORD Pid;
 
-static const File kInvalidHandle = INVALID_HANDLE_VALUE;
+const File kInvalidFile = INVALID_HANDLE_VALUE;
 
 class RANDO_SECTION Module {
 public:
@@ -302,6 +302,10 @@ public:
 
     inline RANDO_SECTION Section export_section() const {
         return Section(*this, m_export_section);
+    }
+
+    inline RANDO_SECTION const char *get_module_name() const {
+        return ""; // FIXME: implement
     }
 
 private:
