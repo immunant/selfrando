@@ -1,6 +1,26 @@
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 Components.utils.import("resource://gre/modules/OSFile.jsm");
 
+const START_RGBA = [255, 255, 255, 255];
+const   END_RGBA = [0, 0, 255, 255];
+
+function draw_modules(modules) {
+    console.log("Modules:" + modules.length);
+    for (let module of modules) {
+        console.log("Version:" + module.version.toString(16) + " seed:" + module.seed.toString(16));
+        console.log("Module@" + module.file_base.toString(16) +
+                    " funcs@" + module.func_base.toString(16) +
+                    "[" + module.func_size.toString() + "]");
+        console.log("Module:'" + module.name + "'");
+        console.log("Functions:" + module.functions.length);
+        for (let func of module.functions) {
+            //console.log("Func@" + func.undiv_start.toString(16) +
+            //            "[" + func.size.toString() + "]" +
+            //            "=>" + func.div_start.toString(16));
+        }
+    }
+}
+
 // FIXME: add a Linux version of this
 let kernel32 = ctypes.open("kernel32.dll");
 let GetCurrentProcessId = kernel32.declare("GetCurrentProcessId", ctypes.winapi_abi, ctypes.uint32_t);
@@ -46,18 +66,10 @@ function read_mlf_file(file_data) {
         module = {};
         module.version = read_uint32();
         module.seed = read_uint32();
-        console.log("Version:" + module.version.toString(16) + " seed:" + module.seed.toString(16));
-
         module.file_base = read_ptr();
         module.func_base = read_ptr();
         module.func_size = read_ptr();
-        console.log("Module@" + module.file_base.toString(16) +
-                    " funcs@" + module.func_base.toString(16) +
-                    "[" + module.func_size.toString() + "]");
-
         module.name = read_string();
-        console.log("Module:'" + module.name + "'");
-
         module.functions = [];
         for (;;) {
             let func = {};
@@ -67,14 +79,10 @@ function read_mlf_file(file_data) {
             func.div_start = read_ptr();
             func.size = read_uint32();
             module.functions.push(func);
-            //console.log("Func@" + func.undiv_start.toString(16) +
-            //            "[" + func.size.toString() + "]" +
-            //            "=>" + func.div_start.toString(16));
         }
-        console.log("Functions:" + module.functions.length);
         modules.push(module);
     }
-    console.log("Modules:" + modules.length);
+    draw_modules(modules);
 }
 let mlf_promise = OS.File.read(mlf_file, { read: true, write: false, existing: true });
 mlf_promise.then(read_mlf_file, function (error) { console.log('Error reading layout file: ' + error) });
