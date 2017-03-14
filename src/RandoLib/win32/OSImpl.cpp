@@ -299,7 +299,11 @@ int build_pid_filename(char *filename, size_t len, const char *fmt, ...) {
 RANDO_SECTION File API::OpenLayoutFile(bool write) {
     // FIXME: does this work for paths that contain Unicode???
     // TODO: on Windows, should we use the registry to store our settings???
-    const char *path = API::GetEnv("SELFRANDO_layout_files_path");
+    const char *path = API::GetEnv("TEMP");
+    if (path == nullptr)
+        path = API::GetEnv("TMP");
+    if (path == nullptr)
+        path = API::GetEnv("SELFRANDO_layout_files_path");
     if (path == nullptr) {
         API::DebugPrintf<1>("Unknown path to layout files (perhaps set SELFRANDO_layout_files_path)!\n");
         return kInvalidFile;
