@@ -42,7 +42,7 @@
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
 
-#define RANDO_SYS_FUNCTION(library, function, ...)  (library##_##function)(__VA_ARGS__)
+#define RANDO_SYS_FUNCTION(library, function, ...)  (os::APIImpl::library##_##function)(__VA_ARGS__)
 
 #define RANDO_ASSERT(cond)      \
     do {                        \
@@ -91,6 +91,7 @@ public:
 
     Module() = delete;
     Module(Handle info, UNICODE_STRING *name = nullptr);
+    ~Module();
 
     class RANDO_SECTION Address {
     public:
@@ -305,12 +306,13 @@ public:
     }
 
     inline RANDO_SECTION const char *get_module_name() const {
-        return ""; // FIXME: implement
+        return m_ansi_name;
     }
 
 private:
     ModuleInfo *m_info;
     HANDLE m_handle;
+    char *m_ansi_name;
     UNICODE_STRING *m_name;
     IMAGE_DOS_HEADER *m_dos_hdr;
     IMAGE_NT_HEADERS *m_nt_hdr;
