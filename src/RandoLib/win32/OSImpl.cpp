@@ -252,22 +252,32 @@ RANDO_SECTION Pid APIImpl::GetPid() {
 }
 
 RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
-    return INVALID_HANDLE_VALUE;
-    // FIXME: implement
+    DWORD access = GENERIC_READ;
+    DWORD sharing = FILE_SHARE_READ; // Consistent with Linux
+    DWORD creation = create ? OPEN_ALWAYS : OPEN_EXISTING;
+    DWORD flags = FILE_ATTRIBUTE_NORMAL;
+    if (write)
+        access |= GENERIC_WRITE;
+    return RANDO_SYS_FUNCTION(kernel32, CreateFileA,
+                              name, access, sharing, nullptr,
+                              creation, flags, nullptr);
 }
 
 RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
     RANDO_ASSERT(file != kInvalidFile);
-    return 0; // FIXME: implement
+    DWORD res = 0;
+    RANDO_SYS_FUNCTION(kernel32, WriteFile, file, buf, len, &res, nullptr);
+    return res;
 }
 
 RANDO_SECTION void API::CloseFile(File file) {
     RANDO_ASSERT(file != kInvalidFile);
-    // FIXME: implement
+    RANDO_SYS_FUNCTION(kernel32, CloseHandle, file);
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
-static inline int build_pid_filename(char *filename, size_t len, const char *fmt, ...) {
+static inline RANDO_SECTION
+int build_pid_filename(char *filename, size_t len, const char *fmt, ...) {
     int res;
     va_list args;
     va_start(args, fmt);
@@ -278,6 +288,7 @@ static inline int build_pid_filename(char *filename, size_t len, const char *fmt
 
 RANDO_SECTION File API::OpenLayoutFile(bool write) {
     // FIXME: does this work for paths that contain Unicode???
+    // TODO: on Windows, should we use the registry to store our settings???
     const char *path = API::GetEnv("SELFRANDO_layout_files_path");
     if (path == nullptr) {
         API::DebugPrintf<1>("Unknown path to layout files (perhaps set SELFRANDO_layout_files_path)!\n");
@@ -286,12 +297,14 @@ RANDO_SECTION File API::OpenLayoutFile(bool write) {
 
     // FIXME: we really, really, really need to validate/sanitize the contents of the environment variable
     auto pathlen = strlen(path);
-    const int kExtraFileChars = 16;
+    const int kExtraFileChars = 16; // Warning: needs to include NULL terminator
     auto filename_len = pathlen + kExtraFileChars;
-    char *filename = reinterpret_cast<char*>(alloca(filename_len));
+    char *filename = reinterpret_cast<char*>(API::MemAlloc(filename_len, false));
     os::Pid pid = API::GetPid();
-    build_pid_filename(filename, filename_len, "%s\\%d.mlf", pid);
-    return API::OpenFile(filename, write, true);
+    build_pid_filename(filename, filename_len, "%s\\\\%d.mlf", path, pid);
+    auto res = API::OpenFile(filename, write, true);
+    API::MemFree(filename);
+    return res;
 }
 #endif
 
