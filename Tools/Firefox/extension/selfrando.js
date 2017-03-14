@@ -41,35 +41,40 @@ function read_mlf_file(file_data) {
         return res;
     }
 
+    let modules = [];
     while (idx < file_data.length) {
-        let version = read_uint32();
-        let seed = read_uint32();
-        console.log("Version:" + version.toString(16) + " seed:" + seed.toString(16));
+        module = {};
+        module.version = read_uint32();
+        module.seed = read_uint32();
+        console.log("Version:" + module.version.toString(16) + " seed:" + module.seed.toString(16));
 
-        let file_base = read_ptr();
-        let func_base = read_ptr();
-        let func_size = read_ptr();
-        console.log("Module@" + file_base.toString(16) +
-                    " funcs@" + func_base.toString(16) +
-                    "[" + func_size.toString() + "]");
+        module.file_base = read_ptr();
+        module.func_base = read_ptr();
+        module.func_size = read_ptr();
+        console.log("Module@" + module.file_base.toString(16) +
+                    " funcs@" + module.func_base.toString(16) +
+                    "[" + module.func_size.toString() + "]");
 
-        let module_name = read_string();
-        console.log("Module:'" + module_name + "'");
+        module.name = read_string();
+        console.log("Module:'" + module.name + "'");
 
-        let num_funcs = 0;
-        for (; ;) {
-            let undiv_start = read_ptr();
-            if (undiv_start == 0)
+        module.functions = [];
+        for (;;) {
+            let func = {};
+            func.undiv_start = read_ptr();
+            if (func.undiv_start == 0)
                 break;
-            let div_start = read_ptr();
-            let undiv_size = read_uint32();
-            num_funcs++;
-            //console.log("Func@" + undiv_start.toString(16) +
-            //            "[" + undiv_size.toString() + "]" +
-            //            "=>" + div_start.toString(16));
+            func.div_start = read_ptr();
+            func.size = read_uint32();
+            module.functions.push(func);
+            //console.log("Func@" + func.undiv_start.toString(16) +
+            //            "[" + func.size.toString() + "]" +
+            //            "=>" + func.div_start.toString(16));
         }
-        console.log("Functions:" + num_funcs);
+        console.log("Functions:" + module.functions.length);
+        modules.push(module);
     }
+    console.log("Modules:" + modules.length);
 }
 let mlf_promise = OS.File.read(mlf_file, { read: true, write: false, existing: true });
 mlf_promise.then(read_mlf_file, function (error) { console.log('Error reading layout file: ' + error) });
