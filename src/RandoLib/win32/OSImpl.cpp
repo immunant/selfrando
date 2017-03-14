@@ -257,15 +257,25 @@ RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
     DWORD creation = create ? OPEN_ALWAYS : OPEN_EXISTING;
     DWORD flags = FILE_ATTRIBUTE_NORMAL;
     if (write)
-        access |= GENERIC_WRITE;
-    return RANDO_SYS_FUNCTION(kernel32, CreateFileA,
-                              name, access, sharing, nullptr,
-                              creation, flags, nullptr);
+        access |= GENERIC_WRITE | FILE_APPEND_DATA; // FIXME: separate flag for append???
+    
+    auto res = RANDO_SYS_FUNCTION(kernel32, CreateFileA,
+                                  name, access, sharing, nullptr,
+                                  creation, flags, nullptr);
+    if (res == INVALID_HANDLE_VALUE)
+        return kInvalidFile;
+
+    // If we're writing to the file, set file pointer to the end
+    // FIXME: separate flag for this???
+    if (write)
+        RANDO_SYS_FUNCTION(kernel32, SetFilePointer, res, 0, nullptr, FILE_END);
+    return res;
 }
 
 RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
     RANDO_ASSERT(file != kInvalidFile);
     DWORD res = 0;
+    // TODO: lock file while writing to it???
     RANDO_SYS_FUNCTION(kernel32, WriteFile, file, buf, len, &res, nullptr);
     return res;
 }
