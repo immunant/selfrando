@@ -75,7 +75,9 @@ function draw_modules(modules) {
                 break;
             if (addr >= module.functions[func].div_start) {
                 // We found a function for this address, add it to the mapping
-                div_mapping[i] = Math.floor((module.functions[func].undiv_start - module.func_base) / plot_step);
+                let div_delta = addr - module.functions[func].div_start;
+                let undiv_addr = module.functions[func].undiv_start + div_delta;
+                div_mapping[i] = Math.floor((undiv_addr - module.func_base) / plot_step);
             }
         }
         let div_canvas = plot_mapping(div_mapping);
