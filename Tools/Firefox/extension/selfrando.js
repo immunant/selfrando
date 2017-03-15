@@ -109,9 +109,8 @@ function read_mlf_file(file_data) {
     let is_64bit = ctypes.intptr_t.size == ctypes.int64_t.size;
     function read_ptr() {
         let lo = read_uint32();
-        let hi = 0;
         if (is_64bit) {
-            hi = read_uint32();
+            let hi = read_uint32();
             if (hi >= (1 << 21))
                 throw new Error("Pointer value does not fit in JavaScript Number");
             return hi * Math.pow(2, 32) + lo;
