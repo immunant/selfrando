@@ -1,8 +1,8 @@
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 Components.utils.import("resource://gre/modules/OSFile.jsm");
 
-const START_RGBA = [255, 255, 255, 255];
-const   END_RGBA = [0, 0, 255, 255];
+const RGBA_START = [255, 255, 255, 255];
+const RGBA_END   = [  0,   0, 255, 255];
 const PLOT_HEIGHT = 512;
 const PLOT_WIDTH = 200;
 const MAX_PLOT_FUNCTIONS = 1000000;
@@ -19,7 +19,7 @@ function plot_mapping(mapping) {
     let idx = 0;
     for (let i = 0; i < PLOT_HEIGHT; i++) {
         let im = mapping[i];
-        let icols = [0, 1, 2, 3].map(k => START_RGBA[k] + Math.floor((END_RGBA[k] - START_RGBA[k]) * im / PLOT_HEIGHT));
+        let icols = [0, 1, 2, 3].map(k => RGBA_START[k] + Math.floor((RGBA_END[k] - RGBA_START[k]) * im / PLOT_HEIGHT));
         for (let j = 0; j < PLOT_WIDTH; j++)
             for (let k = 0; k < 4; k++)
                 img.data[idx++] = icols[k];
