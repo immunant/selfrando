@@ -55,6 +55,10 @@ function draw_modules(modules) {
         let undiv_canvas = plot_mapping(undiv_mapping);
         groupbox.appendChild(undiv_canvas);
 
+        let spacer = document.createElement("spacer");
+        spacer.setAttribute("width", 100);
+        groupbox.appendChild(spacer);
+
         let div_mapping = Array.from(Array(PLOT_HEIGHT).keys());
         let plot_step = Math.floor(module.func_size / PLOT_HEIGHT);
         console.log("Plot step:" + plot_step);

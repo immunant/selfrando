@@ -6,7 +6,7 @@
     title="Selfrando"
     orient="vertical"
     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-    <vbox id="selfrando-box" flex="1" style="overflow: auto">
+    <vbox id="selfrando-box" align="start" flex="1" style="overflow: auto">
         <description>
           This is a Firefox extension used to debug Selfrando.
         </description>
