@@ -3,8 +3,33 @@ Components.utils.import("resource://gre/modules/OSFile.jsm");
 
 const START_RGBA = [255, 255, 255, 255];
 const   END_RGBA = [0, 0, 255, 255];
+const PLOT_HEIGHT = 512;
+const PLOT_WIDTH = 200;
+const MAX_PLOT_FUNCTIONS = 1000000;
+
+function plot_mapping(mapping) {
+    if (mapping.length != PLOT_HEIGHT)
+        throw new Error("Invalid length for mapping array!");
+
+    let canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+    canvas.width = PLOT_WIDTH;
+    canvas.height = PLOT_HEIGHT;
+    let ctx = canvas.getContext('2d');
+    let img = ctx.createImageData(PLOT_WIDTH, PLOT_HEIGHT);
+    let idx = 0;
+    for (let i = 0; i < PLOT_HEIGHT; i++) {
+        let im = mapping[i];
+        let icols = [0, 1, 2, 3].map(k => START_RGBA[k] + Math.floor((END_RGBA[k] - START_RGBA[k]) * im / PLOT_HEIGHT));
+        for (let j = 0; j < PLOT_WIDTH; j++)
+            for (let k = 0; k < 4; k++)
+                img.data[idx++] = icols[k];
+    }
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+}
 
 function draw_modules(modules) {
+    let sr_box = document.getElementById("selfrando-box");
     console.log("Modules:" + modules.length);
     for (let module of modules) {
         console.log("Version:" + module.version.toString(16) + " seed:" + module.seed.toString(16));
@@ -13,11 +38,44 @@ function draw_modules(modules) {
                     "[" + module.func_size.toString() + "]");
         console.log("Module:'" + module.name + "'");
         console.log("Functions:" + module.functions.length);
-        for (let func of module.functions) {
-            //console.log("Func@" + func.undiv_start.toString(16) +
-            //            "[" + func.size.toString() + "]" +
-            //            "=>" + func.div_start.toString(16));
+        if (module.functions.length > MAX_PLOT_FUNCTIONS) {
+            console.log("Module has too many functions, ignoring...");
+            continue;
         }
+
+        let groupbox = document.createElement("groupbox");
+        groupbox.setAttribute("orient", "horizontal");
+        sr_box.appendChild(groupbox);
+
+        let module_text = document.createElement("caption");
+        module_text.setAttribute("label", "Module: " + module.name);
+        groupbox.appendChild(module_text);
+        
+        let undiv_mapping = Array.from(Array(PLOT_HEIGHT).keys());
+        let undiv_canvas = plot_mapping(undiv_mapping);
+        groupbox.appendChild(undiv_canvas);
+
+        let div_mapping = Array.from(Array(PLOT_HEIGHT).keys());
+        let plot_step = Math.floor(module.func_size / PLOT_HEIGHT);
+        console.log("Plot step:" + plot_step);
+        for (let i = 0, func = 0, addr = module.func_base;
+             i < PLOT_HEIGHT; i++, addr += plot_step) {
+            // We rely on the function list being sorted by div_start
+            while (func < module.functions.length) {
+                let func_end = module.functions[func].div_start + module.functions[func].size;
+                if (addr < func_end)
+                    break;
+                func++;
+            }
+            if (func == module.functions.length)
+                break;
+            if (addr >= module.functions[func].div_start) {
+                // We found a function for this address, add it to the mapping
+                div_mapping[i] = Math.floor((module.functions[func].undiv_start - module.func_base) / plot_step);
+            }
+        }
+        let div_canvas = plot_mapping(div_mapping);
+        groupbox.appendChild(div_canvas);
     }
 }
 
@@ -39,18 +97,25 @@ function read_mlf_file(file_data) {
     function read_uint32() {
         let res = file_vals.getUint32(idx, true);
         idx += 4;
-        return ctypes.UInt64(res);
+        return res >>> 0;
     }
 
+    // Small hack we do here: JavaScript numbers can accurately store 53-bit integers,
+    // and in most cases that's all we need for pointers (due to x86_64 architecture design)
     let is_64bit = ctypes.intptr_t.size == ctypes.int64_t.size;
     function read_ptr() {
         let lo = read_uint32();
         let hi = 0;
-        if (is_64bit)
+        if (is_64bit) {
             hi = read_uint32();
-        return ctypes.UInt64.join(hi, lo);
+            if (hi >= (1 << 21))
+                throw new Error("Pointer value does not fit in JavaScript Number");
+            return hi * Math.pow(2, 32) + lo;
+        }
+        return lo;
     }
 
+    // FIXME: Windows actually emits ANSI, but UTF-8 is the closest thing we have
     let utf8_decoder = new TextDecoder('utf-8');
     function read_string() {
         let name_start = idx;
