@@ -43,21 +43,33 @@ function draw_modules(modules) {
             continue;
         }
 
-        let groupbox = document.createElement("groupbox");
-        groupbox.setAttribute("orient", "horizontal");
-        sr_box.appendChild(groupbox);
+        let module_box = document.createElement("groupbox");
+        module_box.setAttribute("orient", "vertical");
+        sr_box.appendChild(module_box);
 
         let module_text = document.createElement("caption");
-        module_text.setAttribute("label", "Module: " + module.name);
-        groupbox.appendChild(module_text);
+        module_text.setAttribute("label", "Module: " + OS.Path.basename(module.name));
+        module_box.appendChild(module_text);
+
+        let func_text = document.createElement("description");
+        func_text.setAttribute("value", "Functions: " + module.functions.length);
+        module_box.appendChild(func_text);
+
+        let bytes_text = document.createElement("description");
+        bytes_text.setAttribute("value", "Bytes: " + module.func_size);
+        module_box.appendChild(bytes_text);
         
+        let canvas_box = document.createElement("groupbox");
+        canvas_box.setAttribute("orient", "horizontal");
+        module_box.appendChild(canvas_box);
+
         let undiv_mapping = Array.from(Array(PLOT_HEIGHT).keys());
         let undiv_canvas = plot_mapping(undiv_mapping);
-        groupbox.appendChild(undiv_canvas);
+        canvas_box.appendChild(undiv_canvas);
 
         let spacer = document.createElement("spacer");
         spacer.setAttribute("width", 100);
-        groupbox.appendChild(spacer);
+        canvas_box.appendChild(spacer);
 
         let div_mapping = Array.from(Array(PLOT_HEIGHT).keys());
         let plot_step = Math.floor(module.func_size / PLOT_HEIGHT);
@@ -81,7 +93,7 @@ function draw_modules(modules) {
             }
         }
         let div_canvas = plot_mapping(div_mapping);
-        groupbox.appendChild(div_canvas);
+        canvas_box.appendChild(div_canvas);
     }
 }
 
