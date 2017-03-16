@@ -2,3 +2,7 @@
     overflow: auto;
     font-size: 28px;
 }
+
+selfrando-module {
+  -moz-binding: url("chrome://selfrando/content/selfrando.xml#module");
+}

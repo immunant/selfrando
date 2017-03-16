@@ -7,11 +7,10 @@ const PLOT_HEIGHT = 512;
 const PLOT_WIDTH = 200;
 const MAX_PLOT_FUNCTIONS = 1000000;
 
-function plot_mapping(mapping) {
+function plot_mapping(canvas, mapping) {
     if (mapping.length != PLOT_HEIGHT)
         throw new Error("Invalid length for mapping array!");
 
-    let canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
     canvas.width = PLOT_WIDTH;
     canvas.height = PLOT_HEIGHT;
     let ctx = canvas.getContext('2d');
@@ -25,7 +24,6 @@ function plot_mapping(mapping) {
                 img.data[idx++] = icols[k];
     }
     ctx.putImageData(img, 0, 0);
-    return canvas;
 }
 
 function draw_modules(modules) {
@@ -43,34 +41,7 @@ function draw_modules(modules) {
             continue;
         }
 
-        let module_box = document.createElement("groupbox");
-        module_box.setAttribute("orient", "vertical");
-        sr_box.appendChild(module_box);
-
-        let module_text = document.createElement("caption");
-        module_text.setAttribute("label", "Module: " + OS.Path.basename(module.name));
-        module_box.appendChild(module_text);
-
-        let func_text = document.createElement("description");
-        func_text.setAttribute("value", "Functions: " + module.functions.length);
-        module_box.appendChild(func_text);
-
-        let bytes_text = document.createElement("description");
-        bytes_text.setAttribute("value", "Bytes: " + module.func_size);
-        module_box.appendChild(bytes_text);
-        
-        let canvas_box = document.createElement("groupbox");
-        canvas_box.setAttribute("orient", "horizontal");
-        module_box.appendChild(canvas_box);
-
         let undiv_mapping = Array.from(Array(PLOT_HEIGHT).keys());
-        let undiv_canvas = plot_mapping(undiv_mapping);
-        canvas_box.appendChild(undiv_canvas);
-
-        let spacer = document.createElement("spacer");
-        spacer.setAttribute("width", 100);
-        canvas_box.appendChild(spacer);
-
         let div_mapping = Array.from(Array(PLOT_HEIGHT).keys());
         let plot_step = Math.floor(module.func_size / PLOT_HEIGHT);
         console.log("Plot step:" + plot_step);
@@ -92,8 +63,12 @@ function draw_modules(modules) {
                 div_mapping[i] = Math.floor((undiv_addr - module.func_base) / plot_step);
             }
         }
-        let div_canvas = plot_mapping(div_mapping);
-        canvas_box.appendChild(div_canvas);
+
+        let xul_module = document.createElement("selfrando-module");
+        sr_box.appendChild(xul_module);
+        xul_module.set_module_data(module);
+        plot_mapping(xul_module.undiv_canvas, undiv_mapping);
+        plot_mapping(xul_module.div_canvas, div_mapping);
     }
 }
 
