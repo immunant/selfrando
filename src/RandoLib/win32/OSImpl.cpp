@@ -402,7 +402,7 @@ RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms)
     return API::MemProtect(m_start.to_ptr(), m_size, perms);
 }
 
-RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_utf8_name(nullptr), m_name(name) {
+RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_file_name(nullptr), m_name(name) {
     RANDO_ASSERT(info != nullptr);
     if ((info->file_header_characteristics & IMAGE_FILE_DLL) == 0) {
         // We can't trust info->module, so get the module from the OS
@@ -429,12 +429,12 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
 }
 
 RANDO_SECTION Module::~Module() {
-    if (m_utf8_name != nullptr)
-        API::MemFree(m_utf8_name);
+    if (m_file_name != nullptr)
+        API::MemFree(m_file_name);
 }
 
-RANDO_SECTION void Module::get_utf8_name() const {
-    if (m_utf8_name != nullptr)
+RANDO_SECTION void Module::get_file_name() const {
+    if (m_file_name != nullptr)
         return;
 
     Buffer<wchar_t> name_buf{ 64 };
@@ -452,12 +452,12 @@ RANDO_SECTION void Module::get_utf8_name() const {
     auto buf_needed = RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
                                          CP_UTF8, 0, name_buf.data(), -1,
                                          nullptr, 0, nullptr, nullptr);
-    m_utf8_name = reinterpret_cast<char*>(API::MemAlloc(buf_needed));
+    m_file_name = reinterpret_cast<char*>(API::MemAlloc(buf_needed));
     RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
                        CP_UTF8, 0, name_buf.data(), -1,
-                       m_utf8_name, buf_needed,
+                       m_file_name, buf_needed,
                        nullptr, nullptr);
-    API::DebugPrintf<1>("Module@%p:'%s'\n", m_handle, m_utf8_name);
+    API::DebugPrintf<1>("Module@%p:'%s'\n", m_handle, m_file_name);
 }
 
 RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {

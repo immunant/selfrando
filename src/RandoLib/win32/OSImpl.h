@@ -340,15 +340,15 @@ public:
     }
 
     inline RANDO_SECTION const char *get_module_name() const {
-        if (m_utf8_name == nullptr)
-            get_utf8_name();
-        return m_utf8_name;
+        if (m_file_name == nullptr)
+            get_file_name();
+        return m_file_name;
     }
 
 private:
     ModuleInfo *m_info;
     HANDLE m_handle;
-    mutable char *m_utf8_name;
+    mutable char *m_file_name;
     UNICODE_STRING *m_name;
     IMAGE_DOS_HEADER *m_dos_hdr;
     IMAGE_NT_HEADERS *m_nt_hdr;
@@ -375,7 +375,7 @@ private:
 
     void fixup_target_relocations(FunctionList*, Relocation::Callback, void*) const;
 
-    void get_utf8_name() const;
+    void get_file_name() const;
 
 private:
     // Architecture-specific fields
