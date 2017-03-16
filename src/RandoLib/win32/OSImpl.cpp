@@ -277,8 +277,15 @@ RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
     if (write)
         access |= GENERIC_WRITE | FILE_APPEND_DATA; // FIXME: separate flag for append???
     
-    auto res = RANDO_SYS_FUNCTION(kernel32, CreateFileA,
-                                  name, access, sharing, nullptr,
+    // Convert name from UTF8 to WideChar
+    int buf_needed = RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                                        CP_UTF8, 0, name, -1, nullptr, 0);
+    Buffer<wchar_t> name_buf(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                       CP_UTF8, 0, name, -1, name_buf.data(), name_buf.capacity());
+
+    auto res = RANDO_SYS_FUNCTION(kernel32, CreateFileW,
+                                  name_buf.data(), access, sharing, nullptr,
                                   creation, flags, nullptr);
     if (res == INVALID_HANDLE_VALUE)
         return kInvalidFile;
