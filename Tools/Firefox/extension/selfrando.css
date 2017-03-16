@@ -6,3 +6,7 @@
 selfrando-module {
   -moz-binding: url("chrome://selfrando/content/selfrando.xml#module");
 }
+
+[anonid="module-start-address"], [anonid="module-end-address"] {
+    font-size: 20px;
+}
