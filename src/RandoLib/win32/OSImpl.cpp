@@ -402,7 +402,7 @@ RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms)
     return API::MemProtect(m_start.to_ptr(), m_size, perms);
 }
 
-RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_ansi_name(nullptr), m_name(name) {
+RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_utf8_name(nullptr), m_name(name) {
     RANDO_ASSERT(info != nullptr);
     if ((info->file_header_characteristics & IMAGE_FILE_DLL) == 0) {
         // We can't trust info->module, so get the module from the OS
@@ -429,29 +429,35 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
 }
 
 RANDO_SECTION Module::~Module() {
-    if (m_ansi_name != nullptr)
-        API::MemFree(m_ansi_name);
+    if (m_utf8_name != nullptr)
+        API::MemFree(m_utf8_name);
 }
 
-RANDO_SECTION void Module::get_ansi_name() const {
-    if (m_ansi_name != nullptr)
+RANDO_SECTION void Module::get_utf8_name() const {
+    if (m_utf8_name != nullptr)
         return;
 
-    int curr_name_len = 64;
+    Buffer<wchar_t> name_buf{ 64 };
     for (;;) {
         // We can't tell how much memory we need to store the name,
         // so try increasingly large buffers until we get a fit
-        m_ansi_name = reinterpret_cast<char*>(API::MemAlloc(curr_name_len));
-        auto new_name_len = RANDO_SYS_FUNCTION(kernel32, GetModuleFileNameA,
+        auto new_name_len = RANDO_SYS_FUNCTION(kernel32, GetModuleFileNameW,
                                                reinterpret_cast<HMODULE>(m_handle),
-                                               m_ansi_name, curr_name_len);
-        if (new_name_len < curr_name_len)
+                                               name_buf.data(), name_buf.capacity());
+        if (new_name_len < name_buf.capacity())
             break;
-
-        API::MemFree(m_ansi_name);
-        curr_name_len *= 2;
+        name_buf.ensure(name_buf.capacity() * 2);
     }
-    API::DebugPrintf<1>("Module@%p:'%s'\n", m_handle, m_ansi_name);
+
+    auto buf_needed = RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                                         CP_UTF8, 0, name_buf.data(), -1,
+                                         nullptr, 0, nullptr, nullptr);
+    m_utf8_name = reinterpret_cast<char*>(API::MemAlloc(buf_needed));
+    RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                       CP_UTF8, 0, name_buf.data(), -1,
+                       m_utf8_name, buf_needed,
+                       nullptr, nullptr);
+    API::DebugPrintf<1>("Module@%p:'%s'\n", m_handle, m_utf8_name);
 }
 
 RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {

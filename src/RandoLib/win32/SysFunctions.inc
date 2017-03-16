@@ -27,7 +27,7 @@ SYS_FUNCTION(kernel32, OutputDebugStringA, WINAPI, void, LPCSTR)
 SYS_FUNCTION(kernel32, QueryPerformanceFrequency, WINAPI, bool, LARGE_INTEGER*)
 SYS_FUNCTION(kernel32, QueryPerformanceCounter, WINAPI, bool, LARGE_INTEGER*)
 SYS_FUNCTION(kernel32, GetEnvironmentVariableW, WINAPI, DWORD, LPCWSTR, LPWSTR, DWORD)
-SYS_FUNCTION(kernel32, GetModuleFileNameA, WINAPI, DWORD, HMODULE, LPSTR, DWORD)
+SYS_FUNCTION(kernel32, GetModuleFileNameW, WINAPI, DWORD, HMODULE, LPWSTR, DWORD)
 
 // Unicode functions
 SYS_FUNCTION(kernel32, WideCharToMultiByte, WINAPI, int, UINT, DWORD, LPCWSTR, int, LPSTR, int, LPCSTR, LPBOOL)
