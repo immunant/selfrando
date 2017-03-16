@@ -79,6 +79,40 @@ typedef DWORD Pid;
 
 const File kInvalidFile = INVALID_HANDLE_VALUE;
 
+template<typename T>
+class RANDO_SECTION Buffer {
+public:
+    Buffer() : m_ptr(nullptr), m_capacity(0) {}
+
+    Buffer(size_t capacity) : m_ptr(nullptr), m_capacity(0) {
+        ensure(capacity);
+    }
+
+    ~Buffer() {
+        clear();
+    }
+
+    void ensure(size_t);
+
+    T *data() {
+        return m_ptr;
+    }
+
+    size_t capacity() {
+        return m_capacity;
+    }
+
+    void clear();
+
+    static Buffer<T> *new_buffer();
+
+    static void release_buffer(Buffer<T>*);
+
+private:
+    T *m_ptr;
+    size_t m_capacity;
+};
+
 class RANDO_SECTION Module {
 public:
     struct ModuleInfo {
@@ -413,7 +447,7 @@ public:
     static const int kTextAlignment = 1;
     static const int kPageAlignment = 4096;
     static const bool kPreserveFunctionOffset = true;
-    
+
     static bool Is1ByteNOP(BytePointer);
     static void InsertNOPs(BytePointer, size_t);
 
@@ -423,8 +457,7 @@ protected:
     static LARGE_INTEGER timer_freq;
     static ULONG rand_seed;
 
-    static char *env_buf;
-    static size_t env_buf_size;
+    static Buffer<char> *env_buf;
 
 #define SYS_FUNCTION(library, name, API, result_type, ...)   static result_type (API *library##_##name)(__VA_ARGS__);
 #include "SysFunctions.inc"

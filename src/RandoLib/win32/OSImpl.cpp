@@ -64,8 +64,14 @@ namespace os {
 HMODULE APIImpl::ntdll, APIImpl::kernel32;
 LARGE_INTEGER APIImpl::timer_freq;
 ULONG APIImpl::rand_seed;
-char *APIImpl::env_buf;
-size_t APIImpl::env_buf_size;
+
+// Buffer that holds the return values for environment variables
+// We need to hold it in a global variable, since GetEnv callers may hold
+// it indefinitely (WARNING: although they can't hold it past the next call)
+// We can't just store a Buffer<char> object here, since that makes
+// the compiler emit a dynamic initializer for it in a ".text$di" section
+// and add a call to atexit() for the object's destructor
+Buffer<char> *APIImpl::env_buf;
 
 #define SYS_FUNCTION(library, name, API, result_type, ...)   result_type (API *APIImpl::library##_##name)(__VA_ARGS__);
 #include "SysFunctions.inc"
@@ -119,9 +125,6 @@ RANDO_SECTION void API::Init() {
     if (user32 != nullptr)
         FreeLibrary(user32);
 
-    env_buf = nullptr;
-    env_buf_size = 0;
-
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
     const char *debug_level_var = GetEnv("SELFRANDO_debug_level");
     if (debug_level_var != nullptr)
@@ -143,11 +146,9 @@ RANDO_SECTION void API::Init() {
 }
 
 RANDO_SECTION void API::Finish() {
-    if (env_buf != nullptr) {
-        MemFree(env_buf);
-        env_buf = nullptr;
-        env_buf_size = 0;
-    }
+    Buffer<char>::release_buffer(env_buf);
+    env_buf = nullptr;
+
     FreeLibrary(ntdll);
     FreeLibrary(kernel32);
 }
@@ -228,18 +229,35 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
 }
 
 RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
-    auto buf_needed = RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableA,
-                                         var, env_buf, env_buf_size);
-    if (buf_needed > env_buf_size) {
-        if (env_buf != nullptr)
-            API::MemFree(env_buf);
-        env_buf = reinterpret_cast<char*>(API::MemAlloc(buf_needed, false));
-        env_buf_size = buf_needed;
-        buf_needed = RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableA,
-                                        var, env_buf, env_buf_size);
-        RANDO_ASSERT(buf_needed < env_buf_size);
-    }
-    return buf_needed == 0 ? nullptr : env_buf;
+    int buf_needed = RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                                        CP_UTF8, 0, var, -1, nullptr, 0);
+    Buffer<wchar_t> var_buf(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                       CP_UTF8, 0, var, -1, var_buf.data(), var_buf.capacity());
+
+    // TODO: we can just parse the environment inside ProcessParameters ourselves,
+    // which saves us an allocation
+    buf_needed = RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableW,
+                                    var_buf.data(), nullptr, 0);
+    if (buf_needed == 0)
+        return nullptr;
+
+    Buffer<wchar_t> res_buf(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableW,
+                       var_buf.data(), res_buf.data(), res_buf.capacity());
+
+    // Now convert to UTF-8
+    buf_needed = RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                                    CP_UTF8, 0, res_buf.data(), -1,
+                                    nullptr, 0, nullptr, nullptr);
+    if (env_buf == nullptr)
+        env_buf = Buffer<char>::new_buffer();
+    env_buf->ensure(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                       CP_UTF8, 0, res_buf.data(), -1,
+                       env_buf->data(), env_buf->capacity(),
+                       nullptr, nullptr);
+    return env_buf->data();
 }
 
 RANDO_SECTION Pid APIImpl::GetPid() {
@@ -321,6 +339,49 @@ RANDO_SECTION File API::OpenLayoutFile(bool write) {
     return res;
 }
 #endif
+
+template<typename T>
+RANDO_SECTION void Buffer<T>::clear() {
+    if (m_capacity > 0) {
+        API::MemFree(m_ptr);
+        m_ptr = nullptr;
+        m_capacity = 0;
+    }
+}
+
+template<typename T>
+RANDO_SECTION void Buffer<T>::ensure(size_t capacity) {
+    if (capacity <= m_capacity)
+        return;
+
+    if (m_ptr != nullptr)
+        API::MemFree(m_ptr);
+
+    m_capacity = capacity;
+    if (capacity > 0) {
+        m_ptr = reinterpret_cast<T*>(API::MemAlloc(m_capacity * sizeof(T)));
+    } else {
+        m_ptr = nullptr;
+    }
+}
+
+template<typename T>
+RANDO_SECTION Buffer<T> *Buffer<T>::new_buffer() {
+    // FIXME: this is a pretty ugly hack, but
+    // we really don't want to depend on placement new here
+    // WARNING: this will seriously break if Buffer<T> ever gets
+    // a vtable (because of virtual functions)
+    auto buffer_bytes = API::MemAlloc(sizeof(Buffer<T>), true);
+    return reinterpret_cast<Buffer<T>*>(buffer_bytes);
+}
+
+template<typename T>
+RANDO_SECTION void Buffer<T>::release_buffer(Buffer<T> *buf) {
+    if (buf == nullptr)
+        return;
+    buf->~Buffer<T>();
+    API::MemFree(buf);
+}
 
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
     RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module

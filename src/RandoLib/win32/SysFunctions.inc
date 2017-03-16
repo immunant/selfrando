@@ -26,8 +26,12 @@ SYS_FUNCTION(ntdll, NtQueryInformationProcess, WINAPI, NTSTATUS, HANDLE, PROCESS
 SYS_FUNCTION(kernel32, OutputDebugStringA, WINAPI, void, LPCSTR)
 SYS_FUNCTION(kernel32, QueryPerformanceFrequency, WINAPI, bool, LARGE_INTEGER*)
 SYS_FUNCTION(kernel32, QueryPerformanceCounter, WINAPI, bool, LARGE_INTEGER*)
-SYS_FUNCTION(kernel32, GetEnvironmentVariableA, WINAPI, DWORD, LPCSTR, LPSTR, DWORD)
+SYS_FUNCTION(kernel32, GetEnvironmentVariableW, WINAPI, DWORD, LPCWSTR, LPWSTR, DWORD)
 SYS_FUNCTION(kernel32, GetModuleFileNameA, WINAPI, DWORD, HMODULE, LPSTR, DWORD)
+
+// Unicode functions
+SYS_FUNCTION(kernel32, WideCharToMultiByte, WINAPI, int, UINT, DWORD, LPCWSTR, int, LPSTR, int, LPCSTR, LPBOOL)
+SYS_FUNCTION(kernel32, MultiByteToWideChar, WINAPI, int, UINT, DWORD, LPCSTR, int, LPWSTR, int)
 
 // file functions
 SYS_FUNCTION(kernel32, CreateFileA, WINAPI, HANDLE, LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)
