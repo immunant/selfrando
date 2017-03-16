@@ -80,7 +80,7 @@ typedef DWORD Pid;
 const File kInvalidFile = INVALID_HANDLE_VALUE;
 
 template<typename T>
-class RANDO_SECTION Buffer {
+class RANDO_SECTION __declspec(novtable) Buffer final {
 public:
     Buffer() : m_ptr(nullptr), m_capacity(0) {}
 
