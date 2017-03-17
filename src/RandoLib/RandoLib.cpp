@@ -632,10 +632,14 @@ static RANDO_SECTION void RandomizeModule(os::Module &mod2, void *arg) {
 
 RANDO_MAIN_FUNCTION() {
     os::API::Init();
-    os::Module mod(asm_module);
-    // For every section in the current program...
-    mod.ForAllExecSections(true, RandomizeExecSection, nullptr);
-    os::Module::ForAllModules(RandomizeModule, nullptr);
-    // FIXME: we could make .rndtext non-executable here
+    {
+        // os::Module needs to be in a deep scope,
+        // so that its destructor gets called before os::API::Finish
+        os::Module mod(asm_module);
+        // For every section in the current program...
+        mod.ForAllExecSections(true, RandomizeExecSection, nullptr);
+        os::Module::ForAllModules(RandomizeModule, nullptr);
+        // FIXME: we could make .rndtext non-executable here
+    }
     os::API::Finish();
 }
