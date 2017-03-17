@@ -151,6 +151,17 @@ RANDO_SECTION void API::Finish() {
 
     FreeLibrary(ntdll);
     FreeLibrary(kernel32);
+
+    // Clear all the global data, to prevent leaks
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    debug_level = 0;
+#endif
+    ntdll = nullptr;
+    kernel32 = nullptr;
+    rand_seed = 0;
+#define SYS_FUNCTION(library, name, API, result_type, ...)  library##_##name = nullptr;
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
 }
 
 
