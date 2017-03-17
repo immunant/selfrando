@@ -587,6 +587,9 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             Module::Section section(*this, &m_sections[i]);
             section.MemProtect(old_sec_perms[i]);
         }
+    // Un-map .txtrp from memory to prevent leaks
+    if (textrap_data != nullptr)
+        API::MemProtect(textrap_data, textrap_size, PagePermissions::NONE);
         
     MarkRandomized(RandoState::RANDOMIZED);
     if (release_textrap)
