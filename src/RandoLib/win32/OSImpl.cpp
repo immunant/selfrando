@@ -51,12 +51,12 @@ long _TRaP_libc_strtol(const char*, char **, int);
 #pragma comment(lib, "kernel32")
 
 // TODO: move these into os::Module
-static char kRandoEntrySection[] = ".rndentr";
-static char kRandoTextSection[] = ".rndtext";
-static char kTrapSection[] = ".txtrp\x00\x00";
-static char kExportSection[] = ".xptramp";
-static char kRelocSection[] = ".reloc\x00\x00";
-static TCHAR kTextrapPathVar[] = TEXT("TEXTRAP_PATH");
+static const char kRandoEntrySection[] = ".rndentr";
+static const char kRandoTextSection[] = ".rndtext";
+static const char kTrapSection[] = ".txtrp\x00\x00";
+static const char kExportSection[] = ".xptramp";
+static const char kRelocSection[] = ".reloc\x00\x00";
+static const TCHAR kTextrapPathVar[] = TEXT("TEXTRAP_PATH");
 
 namespace os {
 
