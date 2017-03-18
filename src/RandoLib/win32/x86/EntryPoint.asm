@@ -34,6 +34,10 @@
 public __TRaP_RandoEntry
 extern __TRaP_RandoMain@4:near
 
+extern ___TRaP_VirtualProtect_ptr:near
+extern ___TRaP_rndtext_address:near
+extern ___TRaP_rndtext_size:near
+
 rndentry segment byte public flat read execute alias(".rndentr")
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
 ; We store it in a separate section to make it easier to patch on-disk, and also to un-map from memory
@@ -62,6 +66,14 @@ do_rando:
 	call __TRaP_RandoMain@4
 	; Pop parameters
 	add esp, 16
+
+    ; TODO: call NtProtectVirtualMemory on .rndtext
+
+    ; Clear out the VirtualProtect and .rndtext pointers
+    xor eax, eax
+    mov dword ptr [___TRaP_VirtualProtect_ptr], eax
+    mov dword ptr [___TRaP_rndtext_address], eax
+    mov dword ptr [___TRaP_rndtext_size], eax
 
 	; Pop registers
 	pop edi

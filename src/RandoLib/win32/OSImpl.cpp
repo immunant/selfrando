@@ -58,6 +58,13 @@ static const char kExportSection[] = ".xptramp";
 static const char kRelocSection[] = ".reloc\x00\x00";
 static const TCHAR kTextrapPathVar[] = TEXT("TEXTRAP_PATH");
 
+extern "C" {
+// We need to store the pointer to VirtualProtect somewhere for a bit of time
+void *__TRaP_VirtualProtect_ptr;
+void *__TRaP_rndtext_address;
+size_t __TRaP_rndtext_size;
+};
+
 namespace os {
 
 // Other Windows globals
@@ -151,6 +158,9 @@ RANDO_SECTION void API::Finish() {
 
     FreeLibrary(ntdll);
     FreeLibrary(kernel32);
+
+    // Save the VirtualProtect pointer before clearing everything
+    __TRaP_VirtualProtect_ptr = ntdll_NtProtectVirtualMemory;
 
     // Clear all the global data, to prevent leaks
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
@@ -567,8 +577,11 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0) {
             if (API::MemCmp(m_sections[i].Name, kRandoEntrySection, IMAGE_SIZEOF_SHORT_NAME) == 0)
                 continue; // Skip ".rndentr"
-            if (API::MemCmp(m_sections[i].Name, kRandoTextSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+            if (API::MemCmp(m_sections[i].Name, kRandoTextSection, IMAGE_SIZEOF_SHORT_NAME) == 0) {
+                __TRaP_rndtext_address = RVA2Address(m_sections[i].VirtualAddress).to_ptr<void*>();
+                __TRaP_rndtext_size = m_sections[i].Misc.VirtualSize;
                 continue; // Skip ".rndtext"
+            }
             if (API::MemCmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
                 continue; // Skip ".xptramp"
             // Found executable section (maybe .text)
