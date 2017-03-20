@@ -1,5 +1,5 @@
 Components.utils.import("resource://gre/modules/ctypes.jsm");
-Components.utils.import("resource://gre/modules/OSFile.jsm");
+Components.utils.import("resource://gre/modules/osfile.jsm");
 
 const RGBA_START = [255, 255, 255, 255];
 const RGBA_END   = [  0,   0, 255, 255];
