@@ -5,8 +5,10 @@ TrappedMSVCLibs/
 libelf
 
 # Machine-specific files
-Scripts/set-buildvars-cygwin-x86.sh
-Scripts/set-buildvars-cygwin-x64.sh
+scripts/set-buildvars-cygwin-x86.sh
+scripts/set-buildvars-cygwin-x64.sh
+scripts/set-buildvars.bat
+scripts/set-buildvars.ps1
 
 # User-specific files
 *.suo
@@ -125,6 +127,7 @@ ClientBin/
 *.[Pp]ublish.xml
 *.pfx
 *.publishsettings
+*.pyc
 
 # RIA/Silverlight projects
 Generated_Code/
