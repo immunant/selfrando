@@ -5,10 +5,7 @@ TrappedMSVCLibs/
 libelf
 
 # Machine-specific files
-scripts/set-buildvars-cygwin-x86.sh
-scripts/set-buildvars-cygwin-x64.sh
-scripts/set-buildvars.bat
-scripts/set-buildvars.ps1
+Scripts/set-buildvars*
 
 # User-specific files
 *.suo

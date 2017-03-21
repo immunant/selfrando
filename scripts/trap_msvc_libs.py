@@ -130,3 +130,8 @@ if __name__ == '__main__':
         print 'Created output directory %s...' % out_path
 
     trap_msvc_libs(input_libs)
+<<<<<<< HEAD:scripts/trap_msvc_libs.py
+=======
+
+    set_env_vars()
+>>>>>>> 2f2fd7ed9a7a97aea6204e601c0629172c4dee6e:scripts/trap-msvc-libs.py
