@@ -118,20 +118,25 @@ def set_env_vars():
     print " > {}".format(os.path.basename(batchs_outpath))
 
 
+def gen_msbuild_properties():
+    # python -m pip install mako
+    from mako.template import Template
+    props_templ = Template(filename="TrapLinker32.props.mako")
+    conf = "Release"
+    sln_dir = os.path.abspath(os.path.join(os.path.curdir, ".."))
+
+    with open("TrapLinker32.props", "wb") as fh:
+        fh.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf))
+
+    props_templ = Template(filename="TrapLinker64.props.mako")
+    with open("TrapLinker64.props", "wb") as fh:
+        fh.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf,
+                 Platform="x64"))
+
+    print "Generated msbuild .props files for inclusion in .vcxproj files."
+
 if __name__ == '__main__':
 
-    # locate the files we need
-    trap_lib_exe = get_exe_path()
-    input_libs = get_libs_from_env()
-
-    # make sure the output directory exists
-    scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    platform_name = get_platform_name()
-    out_path = os.path.join(scpt_path, os.pardir, 'TrappedMSVCLibs', platform_name)
-    if not os.path.isdir(out_path):
-        os.makedirs(out_path)
-        print 'Created output directory %s...' % out_path
-
-    # trap_msvc_libs(input_libs)
+    gen_msbuild_properties()
 
     set_env_vars()
