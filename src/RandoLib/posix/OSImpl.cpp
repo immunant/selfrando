@@ -35,10 +35,6 @@ int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
 void *_TRaP_libc_mmap(void*, size_t, int, int, int, off_t);
 int _TRaP_libc_munmap(void*, size_t);
 int _TRaP_libc_mprotect(const void*, size_t, int);
-ssize_t _TRaP_libc_write(int, const void*, size_t);
-int _TRaP_libc_open(const char*, int, ...);
-int _TRaP_libc____close(int);
-pid_t _TRaP_libc___getpid(void);
 
 void _TRaP_rand_close_fd(void);
 }
@@ -52,7 +48,11 @@ int APIImpl::log_fd = -1;
 #endif
 
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
-int APIImpl::debug_level = RANDOLIB_DEBUG_LEVEL;
+#ifdef RANDOLIB_DEBUG_LEVEL
+int API::debug_level = RANDOLIB_DEBUG_LEVEL;
+#else
+int API::debug_level = 0;
+#endif
 #endif
 
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
@@ -191,6 +191,48 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
     _TRaP_libc_mprotect(reinterpret_cast<void*>(paged_addr), paged_size, prot_perms);
     return PagePermissions::UNKNOWN;
 }
+
+RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
+    int flags = O_CLOEXEC;
+    if (write) {
+        flags |= O_RDWR | O_APPEND;
+    } else {
+        flags |= O_RDONLY;
+    }
+    if (create)
+        flags |= O_CREAT;
+    int fd = _TRaP_libc_open(name, flags, 0660);
+    return fd < 0 ? kInvalidFile : fd;
+}
+
+RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
+    RANDO_ASSERT(file != kInvalidFile);
+    return _TRaP_libc_write(file, buf, len);
+}
+
+RANDO_SECTION void API::CloseFile(File file) {
+    RANDO_ASSERT(file != kInvalidFile);
+    _TRaP_libc____close(file);
+}
+
+#if RANDOLIB_WRITE_LAYOUTS > 0
+template<size_t len>
+static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...) {
+    int res;
+    va_list args;
+    va_start(args, fmt);
+    res = _TRaP_vsnprintf(filename, len - 1, fmt, args);
+    va_end(args);
+    return res;
+}
+
+RANDO_SECTION File API::OpenLayoutFile(bool write) {
+    os::Pid pid = API::GetPid();
+    char filename[32];
+    build_pid_filename(filename, "/tmp/%d.mlf", pid);
+    return API::OpenFile(filename, write, true);
+}
+#endif
 
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
     RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
@@ -472,61 +514,5 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
         }
     }
 }
-
-#if RANDOLIB_WRITE_LAYOUTS > 0
-template<size_t len>
-static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...) {
-    int res;
-    va_list args;
-    va_start(args, fmt);
-    res = _TRaP_vsnprintf(filename, len - 1, fmt, args);
-    va_end(args);
-    return res;
-}
-
-RANDO_SECTION void Module::write_layout_file(FunctionList *functions,
-                                             size_t *shuffled_order) const {
-#if RANDOLIB_WRITE_LAYOUTS == 1
-    if (APIImpl::GetEnv("SELFRANDO_write_layout_file") == nullptr)
-        return;
-#endif
-
-    pid_t pid = _TRaP_libc___getpid();
-    char filename[32];
-    build_pid_filename(filename, "/tmp/%d.mlf", pid);
-    int fd = _TRaP_libc_open(filename, O_CREAT | O_WRONLY | O_APPEND, 0660);
-    if (fd <= 0) {
-        API::DebugPrintf<1>("Error opening layout file!\n");
-        return;
-    }
-
-    uint32_t version = 0x00000101;
-    uint32_t seed = 0; // FIXME: we write a fake seed for now
-    BytePointer func_base = functions->functions[0].undiv_start;
-    BytePointer func_end = functions->functions[functions->num_funcs - 1].undiv_end();
-    ptrdiff_t func_size = func_end - func_base;
-    const char *module_name = m_phdr_info.dlpi_name;
-    nullptr_t np = nullptr;
-    _TRaP_libc_write(fd, &version, sizeof(version));
-    _TRaP_libc_write(fd, &seed, sizeof(seed));
-    _TRaP_libc_write(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
-    _TRaP_libc_write(fd, &func_base, sizeof(func_base));
-    _TRaP_libc_write(fd, &func_size, sizeof(func_size));
-    _TRaP_libc_write(fd, module_name, strlen(module_name) + 1);
-    for (size_t i = 0; i < functions->num_funcs; i++) {
-        auto si = shuffled_order[i];
-        auto &func = functions->functions[si];
-        if (func.skip_copy)
-            continue;
-
-        uint32_t size32 = static_cast<uint32_t>(func.size);
-        _TRaP_libc_write(fd, &func.undiv_start, sizeof(func.undiv_start));
-        _TRaP_libc_write(fd, &func.div_start, sizeof(func.div_start));
-        _TRaP_libc_write(fd, &size32, sizeof(size32));
-    }
-    _TRaP_libc_write(fd, &np, sizeof(np));
-    _TRaP_libc____close(fd);
-}
-#endif
 
 }

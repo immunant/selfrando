@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="selfrando.css" type="text/css"?>
+
+<window
+    id="selfrando-window"
+    title="Selfrando"
+    orient="vertical"
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    <vbox id="selfrando-box" align="start" flex="1">
+        <description>
+          This is a Firefox extension used to debug Selfrando.
+        </description>
+        <script src="selfrando.js"/>
+    </vbox>
+</window>

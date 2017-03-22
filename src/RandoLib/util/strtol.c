@@ -33,7 +33,9 @@
 #include <limits.h>
 #include <stdlib.h>
 
-extern long __set_errno_internal(int);
+#include <OS.h>
+
+#define __set_errno_internal(errno)
 
 /*
  * Convert a string to a long integer.
@@ -41,7 +43,7 @@ extern long __set_errno_internal(int);
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
-long
+RANDO_SECTION long
 _TRaP_libc_strtol(const char *nptr, char **endptr, int base)
 {
 	const char *s;

@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+
+<bindings
+    xmlns="http://www.mozilla.org/xbl"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+    <binding id="module">
+        <content>
+            <xul:groupbox orient="vertical">
+                <xul:caption anonid="module-name"/>
+                <xul:description anonid="module-funcs"/>
+                <xul:description anonid="module-bytes"/>
+                <xul:hbox>
+                    <html:canvas anonid="module-undiv-canvas"/>
+                    <xul:vbox align="center">
+                        <xul:description anonid="module-start-address" minwidth="100"/>
+                        <xul:spacer flex="1"/>
+                        <xul:description anonid="module-end-address" minwidth="100"/>
+                    </xul:vbox>
+                    <html:canvas anonid="module-div-canvas"/>
+                </xul:hbox>
+            </xul:groupbox>    
+        </content>
+
+        <implementation>
+            <field name="undiv_canvas" readonly="true">
+                getAnonymousElementByAttribute(this, "anonid", "module-undiv-canvas");
+            </field>
+
+            <field name="div_canvas" readonly="true">
+                getAnonymousElementByAttribute(this, "anonid", "module-div-canvas");
+            </field>
+
+            <method name="set_module_data">
+                <parameter name="module"/>
+                <body>
+                    <![CDATA[
+                    let module_name = document.getAnonymousElementByAttribute(this, "anonid", "module-name");
+                    module_name.setAttribute("label", "Module: " + OS.Path.basename(module.name));
+
+                    let funcs_text = document.getAnonymousElementByAttribute(this, "anonid", "module-funcs");
+                    funcs_text.setAttribute("value", "Functions: " + module.functions.length);
+
+                    let bytes_text = document.getAnonymousElementByAttribute(this, "anonid", "module-bytes");
+                    bytes_text.setAttribute("value", "Bytes: " + module.func_size);
+                    
+                    let start_addr_text = document.getAnonymousElementByAttribute(this, "anonid", "module-start-address");
+                    start_addr_text.setAttribute("value", "0x" + module.func_base.toString(16));
+
+                    let end_addr_text = document.getAnonymousElementByAttribute(this, "anonid", "module-end-address");
+                    end_addr_text.setAttribute("value", "0x" + (module.func_base + module.func_size).toString(16));
+                ]]>
+                </body>
+            </method>
+                   
+        </implementation>
+    
+    </binding>
+    
+</bindings>

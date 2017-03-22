@@ -42,59 +42,63 @@
 
 extern "C" {
 #include <util/fnv.h>
+
+int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
+long _TRaP_libc_strtol(const char*, char **, int);
 }
 
 #pragma comment(lib, "ntdll")
 #pragma comment(lib, "kernel32")
 
 // TODO: move these into os::Module
-static char kRandoEntrySection[] = ".rndentr";
-static char kRandoTextSection[] = ".rndtext";
-static char kTrapSection[] = ".txtrp\x00\x00";
-static char kExportSection[] = ".xptramp";
-static char kRelocSection[] = ".reloc\x00\x00";
-static TCHAR kTextrapPathVar[] = TEXT("TEXTRAP_PATH");
+static const char kRandoEntrySection[] = ".rndentr";
+static const char kRandoTextSection[] = ".rndtext";
+static const char kTrapSection[] = ".txtrp\x00\x00";
+static const char kExportSection[] = ".xptramp";
+static const char kRelocSection[] = ".reloc\x00\x00";
+static const TCHAR kTextrapPathVar[] = TEXT("TEXTRAP_PATH");
+
+extern "C" {
+// We need to store the pointer to VirtualProtect somewhere for a bit of time
+void *__TRaP_VirtualProtect_ptr;
+void *__TRaP_rndtext_address;
+size_t __TRaP_rndtext_size;
+};
 
 namespace os {
 
 // Other Windows globals
 HMODULE APIImpl::ntdll, APIImpl::kernel32;
-HANDLE APIImpl::global_heap;
 LARGE_INTEGER APIImpl::timer_freq;
 ULONG APIImpl::rand_seed;
 
-// ntdll functions
-ULONG(WINAPI *APIImpl::ntdll_RtlRandomEx)(PULONG);
-LONGLONG(WINAPI *APIImpl::ntdll_allmul)(LONGLONG, LONGLONG);
-LONGLONG(WINAPI *APIImpl::ntdll_alldiv)(LONGLONG, LONGLONG);
-// ntdll functions that implement the C runtime are cdecl, not WINAPI
-int(*APIImpl::ntdll_vsprintf_s)(const char*, ...);
-int(*APIImpl::ntdll_memcmp)(const void*, const void*, size_t);
-int(*APIImpl::ntdll_memcpy)(void*, const void*, size_t);
-int(*APIImpl::ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
-int(*APIImpl::ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
+// Buffer that holds the return values for environment variables
+// We need to hold it in a global variable, since GetEnv callers may hold
+// it indefinitely (WARNING: although they can't hold it past the next call)
+// We can't just store a Buffer<char> object here, since that makes
+// the compiler emit a dynamic initializer for it in a ".text$di" section
+// and add a call to atexit() for the object's destructor
+Buffer<char> *APIImpl::env_buf;
 
-// kernel32 functions
-LPVOID(WINAPI *APIImpl::kernel32_VirtualAlloc)(LPVOID, SIZE_T, DWORD, DWORD);
-BOOL(WINAPI *APIImpl::kernel32_VirtualFree)(LPVOID, SIZE_T, DWORD);
-BOOL(WINAPI *APIImpl::kernel32_VirtualProtect)(LPVOID, SIZE_T, DWORD, PDWORD);
-LPVOID(WINAPI *APIImpl::kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
-BOOL(WINAPI *APIImpl::kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
-HANDLE(WINAPI *APIImpl::kernel32_GetProcessHeap)();
-void(WINAPI *APIImpl::kernel32_OutputDebugStringA)(LPCSTR);
-bool(WINAPI *APIImpl::kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
-bool(WINAPI *APIImpl::kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
+#define SYS_FUNCTION(library, name, API, result_type, ...)   result_type (API *APIImpl::library##_##name)(__VA_ARGS__);
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
 
-// Other functions
-int(WINAPI *APIImpl::user32_MessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+#ifdef RANDOLIB_DEBUG_LEVEL
+int API::debug_level = RANDOLIB_DEBUG_LEVEL;
+#else
+int API::debug_level = 0;
+#endif
+#endif
 
 RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
-    ntdll_vsprintf_s(tmp, 255, fmt, args);
+    _TRaP_vsnprintf(tmp, 255, fmt, args);
     va_end(args);
-    kernel32_OutputDebugStringA(tmp);
+    RANDO_SYS_FUNCTION(kernel32, OutputDebugStringA, tmp);
 }
 
 RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
@@ -104,48 +108,39 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
-    ntdll_vsprintf_s(tmp, 255, fmt, args);
+    _TRaP_vsnprintf(tmp, 255, fmt, args);
     va_end(args);
-    user32_MessageBoxA(NULL, tmp, "RandoLib", 0);
-}
-
-template<typename Func>
-static void RANDO_SECTION GetLibFunction(Func *func, HMODULE lib, const char *name) {
-    *func = reinterpret_cast<Func>(GetProcAddress(lib, name));
+    RANDO_SYS_FUNCTION(user32, MessageBoxA, NULL, tmp, "RandoLib", 0);
 }
 
 RANDO_SECTION void API::Init() {
     ntdll = LoadLibrary(TEXT("ntdll"));
     kernel32 = LoadLibrary(TEXT("kernel32"));
-    GetLibFunction(&ntdll_RtlRandomEx, ntdll, "RtlRandomEx");
-    GetLibFunction(&ntdll_vsprintf_s, ntdll, "vsprintf_s");
-    GetLibFunction(&ntdll_memcmp, ntdll, "memcmp");
-    GetLibFunction(&ntdll_memcpy, ntdll, "memcpy");
-    GetLibFunction(&ntdll_wcscat_s, ntdll, "wcscat_s");
-    GetLibFunction(&ntdll_wcsncat_s, ntdll, "wcsncat_s");
-    GetLibFunction(&ntdll_allmul, ntdll, "_allmul");
-    GetLibFunction(&ntdll_alldiv, ntdll, "_alldiv");
-    GetLibFunction(&kernel32_VirtualAlloc, kernel32, "VirtualAlloc");
-    GetLibFunction(&kernel32_VirtualFree, kernel32, "VirtualFree");
-    GetLibFunction(&kernel32_VirtualProtect, kernel32, "VirtualProtect");
-    GetLibFunction(&kernel32_GetProcessHeap, kernel32, "GetProcessHeap");
-    GetLibFunction(&kernel32_HeapAlloc, kernel32, "HeapAlloc");
-    GetLibFunction(&kernel32_HeapFree, kernel32, "HeapFree");
-    GetLibFunction(&kernel32_OutputDebugStringA, kernel32, "OutputDebugStringA");
-    GetLibFunction(&kernel32_QueryPerformanceFrequency, kernel32, "QueryPerformanceFrequency");
-    GetLibFunction(&kernel32_QueryPerformanceCounter, kernel32, "QueryPerformanceCounter");
-    // TODO: file functions from ReadTrapFile (maybe???)
+    HMODULE user32 = kEnableAsserts ? LoadLibrary(TEXT("user32")) : nullptr;
 
-    if (kEnableAsserts) {
-        auto user32 = LoadLibrary(TEXT("user32"));
-        GetLibFunction(&user32_MessageBoxA, user32, "MessageBoxA");
-        FreeLibrary(user32);
+#define SYS_FUNCTION(library, name, API, result_type, ...)  \
+    if (library != nullptr) {                               \
+        auto func_addr = GetProcAddress(library, #name);    \
+        library##_##name = reinterpret_cast<decltype(library##_##name)>(func_addr); \
+    } else {                                                \
+        library##_##name = nullptr;                         \
     }
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
+
+    // FIXME: should we keep this around until API::Finish???
+    if (user32 != nullptr)
+        FreeLibrary(user32);
+
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    const char *debug_level_var = GetEnv("SELFRANDO_debug_level");
+    if (debug_level_var != nullptr)
+        debug_level = _TRaP_libc_strtol(debug_level_var, nullptr, 0);
+#endif
 
     // TODO: make this optional (a compile-time option)
     // Initialize global constants and values
-    global_heap = kernel32_GetProcessHeap();
-    kernel32_QueryPerformanceFrequency(&timer_freq);
+    RANDO_SYS_FUNCTION(kernel32, QueryPerformanceFrequency, &timer_freq);
 
     // Initialize the seed as a hash of the current TSC (should be random enough)
     // FIXME: find a better way of computing the seed
@@ -158,18 +153,37 @@ RANDO_SECTION void API::Init() {
 }
 
 RANDO_SECTION void API::Finish() {
+    Buffer<char>::release_buffer(env_buf);
+    env_buf = nullptr;
+
     FreeLibrary(ntdll);
     FreeLibrary(kernel32);
+
+    // Save the VirtualProtect pointer before clearing everything
+    __TRaP_VirtualProtect_ptr = ntdll_NtProtectVirtualMemory;
+
+    // Clear all the global data, to prevent leaks
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    debug_level = 0;
+#endif
+    ntdll = nullptr;
+    kernel32 = nullptr;
+    rand_seed = 0;
+#define SYS_FUNCTION(library, name, API, result_type, ...)  library##_##name = nullptr;
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
 }
 
 
 RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
+    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
-    return kernel32_HeapAlloc(global_heap, flags, size);
+    return RANDO_SYS_FUNCTION(ntdll, RtlAllocateHeap, global_heap, flags, size);
 }
 
 RANDO_SECTION void API::MemFree(void *ptr) {
-    kernel32_HeapFree(global_heap, 0, ptr);
+    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
+    RANDO_SYS_FUNCTION(ntdll, RtlFreeHeap, global_heap, 0, ptr);
 }
 
 // WARNING!!!: should be in the same order as the PagePermissions entries
@@ -184,24 +198,36 @@ static const DWORD PermissionsTable[] = {
     PAGE_EXECUTE_READWRITE
 };
 
+static inline RANDO_SECTION HANDLE GetCurrentProcess() {
+    return reinterpret_cast<HANDLE>(-1);
+}
+
 RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, bool commit) {
+    SIZE_T wsize = size;
     DWORD alloc_type = commit ? (MEM_RESERVE | MEM_COMMIT) : MEM_RESERVE;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    return kernel32_VirtualAlloc(addr, size, alloc_type, win_perms);
+    RANDO_SYS_FUNCTION(ntdll, NtAllocateVirtualMemory,
+                       os::GetCurrentProcess(), &addr, 0, &wsize, alloc_type, win_perms);
+    return addr;
 }
 
 RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
+    SIZE_T wsize = size;
     if (commit) {
-        kernel32_VirtualFree(addr, 0, MEM_RELEASE);
+        RANDO_SYS_FUNCTION(ntdll, NtFreeVirtualMemory,
+                           os::GetCurrentProcess(), &addr, &wsize, MEM_RELEASE);
     } else {
-        kernel32_VirtualFree(addr, size, MEM_DECOMMIT);
+        RANDO_SYS_FUNCTION(ntdll, NtFreeVirtualMemory,
+                           os::GetCurrentProcess(), &addr, &wsize, MEM_DECOMMIT);
     }
 }
 
 RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermissions perms) {
-    DWORD old_win_perms = 0;
+    SIZE_T wsize = size;
+    ULONG old_win_perms = 0;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
-    kernel32_VirtualProtect(addr, size, win_perms, &old_win_perms);
+    RANDO_SYS_FUNCTION(ntdll, NtProtectVirtualMemory,
+                       os::GetCurrentProcess(), &addr, &wsize, win_perms, &old_win_perms);
     switch (old_win_perms) {
     case PAGE_NOACCESS:
         return PagePermissions::NONE;
@@ -223,6 +249,168 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
     }
 }
 
+RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
+    int buf_needed = RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                                        CP_UTF8, 0, var, -1, nullptr, 0);
+    Buffer<wchar_t> var_buf(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                       CP_UTF8, 0, var, -1, var_buf.data(), var_buf.capacity());
+
+    // TODO: we can just parse the environment inside ProcessParameters ourselves,
+    // which saves us an allocation
+    buf_needed = RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableW,
+                                    var_buf.data(), nullptr, 0);
+    if (buf_needed == 0)
+        return nullptr;
+
+    Buffer<wchar_t> res_buf(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, GetEnvironmentVariableW,
+                       var_buf.data(), res_buf.data(), res_buf.capacity());
+
+    // Now convert to UTF-8
+    buf_needed = RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                                    CP_UTF8, 0, res_buf.data(), -1,
+                                    nullptr, 0, nullptr, nullptr);
+    if (env_buf == nullptr)
+        env_buf = Buffer<char>::new_buffer();
+    env_buf->ensure(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                       CP_UTF8, 0, res_buf.data(), -1,
+                       env_buf->data(), env_buf->capacity(),
+                       nullptr, nullptr);
+    return env_buf->data();
+}
+
+RANDO_SECTION Pid APIImpl::GetPid() {
+    PROCESS_BASIC_INFORMATION pbi;
+    auto res = RANDO_SYS_FUNCTION(ntdll, NtQueryInformationProcess,
+                                  os::GetCurrentProcess(),
+                                  ProcessBasicInformation,
+                                  &pbi, sizeof(pbi), nullptr);
+    return res == 0 ? pbi.UniqueProcessId : 0;
+}
+
+RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
+    DWORD access = GENERIC_READ;
+    DWORD sharing = FILE_SHARE_READ; // Consistent with Linux
+    DWORD creation = create ? OPEN_ALWAYS : OPEN_EXISTING;
+    DWORD flags = FILE_ATTRIBUTE_NORMAL;
+    if (write)
+        access |= GENERIC_WRITE | FILE_APPEND_DATA; // FIXME: separate flag for append???
+    
+    // Convert name from UTF8 to WideChar
+    int buf_needed = RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                                        CP_UTF8, 0, name, -1, nullptr, 0);
+    Buffer<wchar_t> name_buf(buf_needed);
+    RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
+                       CP_UTF8, 0, name, -1, name_buf.data(), name_buf.capacity());
+
+    auto res = RANDO_SYS_FUNCTION(kernel32, CreateFileW,
+                                  name_buf.data(), access, sharing, nullptr,
+                                  creation, flags, nullptr);
+    if (res == INVALID_HANDLE_VALUE)
+        return kInvalidFile;
+
+    // If we're writing to the file, set file pointer to the end
+    // FIXME: separate flag for this???
+    if (write)
+        RANDO_SYS_FUNCTION(kernel32, SetFilePointer, res, 0, nullptr, FILE_END);
+    return res;
+}
+
+RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
+    RANDO_ASSERT(file != kInvalidFile);
+    DWORD res = 0;
+    // TODO: lock file while writing to it???
+    RANDO_SYS_FUNCTION(kernel32, WriteFile, file, buf, len, &res, nullptr);
+    return res;
+}
+
+RANDO_SECTION void API::CloseFile(File file) {
+    RANDO_ASSERT(file != kInvalidFile);
+    RANDO_SYS_FUNCTION(kernel32, CloseHandle, file);
+}
+
+#if RANDOLIB_WRITE_LAYOUTS > 0
+static inline RANDO_SECTION
+int build_pid_filename(char *filename, size_t len, const char *fmt, ...) {
+    int res;
+    va_list args;
+    va_start(args, fmt);
+    res = _TRaP_vsnprintf(filename, len - 1, fmt, args);
+    va_end(args);
+    return res;
+}
+
+RANDO_SECTION File API::OpenLayoutFile(bool write) {
+    // FIXME: does this work for paths that contain Unicode???
+    // TODO: on Windows, should we use the registry to store our settings???
+    const char *path = API::GetEnv("TEMP");
+    if (path == nullptr)
+        path = API::GetEnv("TMP");
+    if (path == nullptr)
+        path = API::GetEnv("SELFRANDO_layout_files_path");
+    if (path == nullptr) {
+        API::DebugPrintf<1>("Unknown path to layout files (perhaps set SELFRANDO_layout_files_path)!\n");
+        return kInvalidFile;
+    }
+
+    // FIXME: we really, really, really need to validate/sanitize the contents of the environment variable
+    auto pathlen = strlen(path);
+    const int kExtraFileChars = 16; // Warning: needs to include NULL terminator
+    auto filename_len = pathlen + kExtraFileChars;
+    char *filename = reinterpret_cast<char*>(API::MemAlloc(filename_len, false));
+    os::Pid pid = API::GetPid();
+    build_pid_filename(filename, filename_len, "%s\\\\%d.mlf", path, pid);
+    auto res = API::OpenFile(filename, write, true);
+    API::MemFree(filename);
+    return res;
+}
+#endif
+
+template<typename T>
+RANDO_SECTION void Buffer<T>::clear() {
+    if (m_capacity > 0) {
+        API::MemFree(m_ptr);
+        m_ptr = nullptr;
+        m_capacity = 0;
+    }
+}
+
+template<typename T>
+RANDO_SECTION void Buffer<T>::ensure(size_t capacity) {
+    if (capacity <= m_capacity)
+        return;
+
+    if (m_ptr != nullptr)
+        API::MemFree(m_ptr);
+
+    m_capacity = capacity;
+    if (capacity > 0) {
+        m_ptr = reinterpret_cast<T*>(API::MemAlloc(m_capacity * sizeof(T)));
+    } else {
+        m_ptr = nullptr;
+    }
+}
+
+template<typename T>
+RANDO_SECTION Buffer<T> *Buffer<T>::new_buffer() {
+    // FIXME: this is a pretty ugly hack, but
+    // we really don't want to depend on placement new here
+    // WARNING: this will seriously break if Buffer<T> ever gets
+    // a vtable (because of virtual functions)
+    auto buffer_bytes = API::MemAlloc(sizeof(Buffer<T>), true);
+    return reinterpret_cast<Buffer<T>*>(buffer_bytes);
+}
+
+template<typename T>
+RANDO_SECTION void Buffer<T>::release_buffer(Buffer<T> *buf) {
+    if (buf == nullptr)
+        return;
+    buf->~Buffer<T>();
+    API::MemFree(buf);
+}
+
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
     RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
     m_address = addr;
@@ -235,7 +423,7 @@ RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms)
     return API::MemProtect(m_start.to_ptr(), m_size, perms);
 }
 
-RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_name(name) {
+RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_file_name(nullptr), m_name(name) {
     RANDO_ASSERT(info != nullptr);
     if ((info->file_header_characteristics & IMAGE_FILE_DLL) == 0) {
         // We can't trust info->module, so get the module from the OS
@@ -244,6 +432,7 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
     } else {
         m_handle = info->module;
     }
+
     m_dos_hdr = RVA2Address(0).to_ptr<IMAGE_DOS_HEADER*>();
     m_nt_hdr = RVA2Address(m_dos_hdr->e_lfanew).to_ptr<IMAGE_NT_HEADERS*>();
     m_sections = IMAGE_FIRST_SECTION(m_nt_hdr);
@@ -258,6 +447,38 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
     arch_init();
     API::DebugPrintf<1>("Module@%p sections .txtrp@%p .reloc@%p .xptramp@%p\n",
                         m_handle, m_textrap_section, m_reloc_section, m_export_section);
+}
+
+RANDO_SECTION Module::~Module() {
+    if (m_file_name != nullptr)
+        API::MemFree(m_file_name);
+}
+
+RANDO_SECTION void Module::get_file_name() const {
+    if (m_file_name != nullptr)
+        return;
+
+    Buffer<wchar_t> name_buf{ 64 };
+    for (;;) {
+        // We can't tell how much memory we need to store the name,
+        // so try increasingly large buffers until we get a fit
+        auto new_name_len = RANDO_SYS_FUNCTION(kernel32, GetModuleFileNameW,
+                                               reinterpret_cast<HMODULE>(m_handle),
+                                               name_buf.data(), name_buf.capacity());
+        if (new_name_len < name_buf.capacity())
+            break;
+        name_buf.ensure(name_buf.capacity() * 2);
+    }
+
+    auto buf_needed = RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                                         CP_UTF8, 0, name_buf.data(), -1,
+                                         nullptr, 0, nullptr, nullptr);
+    m_file_name = reinterpret_cast<char*>(API::MemAlloc(buf_needed));
+    RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
+                       CP_UTF8, 0, name_buf.data(), -1,
+                       m_file_name, buf_needed,
+                       nullptr, nullptr);
+    API::DebugPrintf<1>("Module@%p:'%s'\n", m_handle, m_file_name);
 }
 
 RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
@@ -278,9 +499,9 @@ static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
         // FIXME: just use the current directory for now
         GetCurrentDirectoryW(kTmpMax, textrap_file_name);
     }
-    ntdll_wcscat_s(textrap_file_name, kTmpMax, L"\\");
-    ntdll_wcsncat_s(textrap_file_name, kTmpMax, module_name->Buffer, module_name->Length);
-    ntdll_wcscat_s(textrap_file_name, kTmpMax, L".textrap");
+    RANDO_SYS_FUNCTION(ntdll, wcscat_s(textrap_file_name, kTmpMax, L"\\");
+    RANDO_SYS_FUNCTION(ntdll, wcsncat_s(textrap_file_name, kTmpMax, module_name->Buffer, module_name->Length);
+    RANDO_SYS_FUNCTION(ntdll, wcscat_s(textrap_file_name, kTmpMax, L".textrap");
 
     auto textrap_file = CreateFileW(textrap_file_name, GENERIC_READ, FILE_SHARE_READ,
         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -356,8 +577,11 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0) {
             if (API::MemCmp(m_sections[i].Name, kRandoEntrySection, IMAGE_SIZEOF_SHORT_NAME) == 0)
                 continue; // Skip ".rndentr"
-            if (API::MemCmp(m_sections[i].Name, kRandoTextSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+            if (API::MemCmp(m_sections[i].Name, kRandoTextSection, IMAGE_SIZEOF_SHORT_NAME) == 0) {
+                __TRaP_rndtext_address = RVA2Address(m_sections[i].VirtualAddress).to_ptr<void*>();
+                __TRaP_rndtext_size = m_sections[i].Misc.VirtualSize;
                 continue; // Skip ".rndtext"
+            }
             if (API::MemCmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
                 continue; // Skip ".xptramp"
             // Found executable section (maybe .text)
@@ -376,6 +600,9 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             Module::Section section(*this, &m_sections[i]);
             section.MemProtect(old_sec_perms[i]);
         }
+    // Un-map .txtrp from memory to prevent leaks
+    if (textrap_data != nullptr)
+        API::MemProtect(textrap_data, textrap_size, PagePermissions::NONE);
         
     MarkRandomized(RandoState::RANDOMIZED);
     if (release_textrap)

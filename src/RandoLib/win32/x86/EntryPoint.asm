@@ -34,7 +34,18 @@
 public __TRaP_RandoEntry
 extern __TRaP_RandoMain@4:near
 
-rndentry segment byte public flat read execute alias(".rndentr")
+extern ___TRaP_VirtualProtect_ptr:near
+extern ___TRaP_rndtext_address:near
+extern ___TRaP_rndtext_size:near
+
+; Trampoline to NtProtectVirtualMemory
+; We put this into .rndtext so it disappears after the call
+rndtext segment byte read execute alias(".rndtext") 'CODE'
+virtual_protect_trampoline:
+    jmp dword ptr [___TRaP_VirtualProtect_ptr]
+rndtext ends
+
+rndentry segment byte public flat read execute alias(".rndentr") 'CODE'
 ; This stores the original contents of AddressOfEntryPoint from the PE optional header
 ; We store it in a separate section to make it easier to patch on-disk, and also to un-map from memory
 __TRaP_OriginalEntry dd 0
@@ -62,6 +73,31 @@ do_rando:
 	call __TRaP_RandoMain@4
 	; Pop parameters
 	add esp, 16
+
+    ; Remove .rndtext from memory using NtProtectVirtualMemory
+    ; OldAccessProtection == &temporary stack variable
+    push 0
+    push esp
+    ; NewAccessProtection == PAGE_NOACCESS
+    push 1
+    ; NumberOfBytesToProtect == &__TRaP_rndtext_size
+    lea eax, dword ptr [___TRaP_rndtext_size]
+    push eax
+    ; BaseAddress == &__TRaP_rndtext_address
+    lea eax, dword ptr [___TRaP_rndtext_address]
+    push eax
+    ; ProcessHandle == -1
+    push -1
+    call virtual_protect_trampoline
+
+    ; Pop the temporary variable
+    pop eax
+
+    ; Clear out the VirtualProtect and .rndtext pointers
+    xor eax, eax
+    mov dword ptr [___TRaP_VirtualProtect_ptr], eax
+    mov dword ptr [___TRaP_rndtext_address], eax
+    mov dword ptr [___TRaP_rndtext_size], eax
 
 	; Pop registers
 	pop edi

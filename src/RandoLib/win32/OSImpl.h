@@ -42,6 +42,8 @@
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
 
+#define RANDO_SYS_FUNCTION(library, function, ...)  (os::APIImpl::library##_##function)(__VA_ARGS__)
+
 #define RANDO_ASSERT(cond)      \
     do {                        \
         if (!os::API::kEnableAsserts)\
@@ -66,9 +68,50 @@ void _TRaP_qsort(void *, size_t, size_t,
 
 namespace os {
 
+// For some reason, MSVC doesn't have ssize_t
+typedef SSIZE_T ssize_t;
+
 // OS-specific typedefs
 typedef LARGE_INTEGER Time;
 typedef BYTE *BytePointer;
+typedef HANDLE File;
+typedef DWORD Pid;
+
+const File kInvalidFile = INVALID_HANDLE_VALUE;
+
+template<typename T>
+class RANDO_SECTION __declspec(novtable) Buffer final {
+public:
+    Buffer() : m_ptr(nullptr), m_capacity(0) {}
+
+    Buffer(size_t capacity) : m_ptr(nullptr), m_capacity(0) {
+        ensure(capacity);
+    }
+
+    ~Buffer() {
+        clear();
+    }
+
+    void ensure(size_t);
+
+    T *data() {
+        return m_ptr;
+    }
+
+    size_t capacity() {
+        return m_capacity;
+    }
+
+    void clear();
+
+    static Buffer<T> *new_buffer();
+
+    static void release_buffer(Buffer<T>*);
+
+private:
+    T *m_ptr;
+    size_t m_capacity;
+};
 
 class RANDO_SECTION Module {
 public:
@@ -82,6 +125,7 @@ public:
 
     Module() = delete;
     Module(Handle info, UNICODE_STRING *name = nullptr);
+    ~Module();
 
     class RANDO_SECTION Address {
     public:
@@ -295,9 +339,16 @@ public:
         return Section(*this, m_export_section);
     }
 
+    inline RANDO_SECTION const char *get_module_name() const {
+        if (m_file_name == nullptr)
+            get_file_name();
+        return m_file_name;
+    }
+
 private:
     ModuleInfo *m_info;
     HANDLE m_handle;
+    mutable char *m_file_name;
     UNICODE_STRING *m_name;
     IMAGE_DOS_HEADER *m_dos_hdr;
     IMAGE_NT_HEADERS *m_nt_hdr;
@@ -324,6 +375,8 @@ private:
 
     void fixup_target_relocations(FunctionList*, Relocation::Callback, void*) const;
 
+    void get_file_name() const;
+
 private:
     // Architecture-specific fields
 #if RANDOLIB_IS_X86
@@ -341,19 +394,8 @@ private:
 
 class RANDO_SECTION APIImpl {
 public:
-    // Debugging functions and settings
-    static const int kDebugLevel = 1;
-    static const bool kEnableAsserts = true;
-
     static void DebugPrintfImpl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
-
-    template<int level, typename... Args>
-    static inline void DebugPrintf(Args... args) {
-        // FIXME: this should use std::forward, but can we pull in <utility>???
-        if (level <= kDebugLevel)
-            DebugPrintfImpl(args...);
-    }
 
     // C library functions
     static inline void QuickSort(void* base, size_t num, size_t size,
@@ -362,31 +404,31 @@ public:
     }
 
     static inline void MemCpy(void *dst, const void *src, size_t size) {
-        ntdll_memcpy(dst, src, size);
+        RANDO_SYS_FUNCTION(ntdll, memcpy, dst, src, size);
     }
 
     static inline int MemCmp(const void *a, const void *b, size_t size) {
-        return ntdll_memcmp(a, b, size);
+        return RANDO_SYS_FUNCTION(ntdll, memcmp, a, b, size);
     }
 
     static inline ULONG GetRandom(ULONG max) {
         // TODO: do we need the seed???
-        auto res = ntdll_RtlRandomEx(&rand_seed);
+        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed);
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
     }
 
     static inline Time GetTime() {
         LARGE_INTEGER res;
-        kernel32_QueryPerformanceCounter(&res);
+        RANDO_SYS_FUNCTION(kernel32, QueryPerformanceCounter, &res);
         return res;
     }
 
     static inline LONGLONG TimeDeltaMicroSec(const Time &from, const Time &to) {
         LONGLONG res = to.QuadPart - from.QuadPart;
 #if RANDOLIB_IS_X86
-        res = ntdll_allmul(res, 1000000);
-        res = ntdll_alldiv(res, timer_freq.QuadPart);
+        res = RANDO_SYS_FUNCTION(ntdll, allmul, res, 1000000);
+        res = RANDO_SYS_FUNCTION(ntdll, alldiv, res, timer_freq.QuadPart);
 #else
         res *= 1000000LL;
         res /= timer_freq.QuadPart;
@@ -394,9 +436,9 @@ public:
         return res;
     }
 
-    static char *GetEnv(const char *var) {
-        return nullptr; // FIXME: implement
-    }
+    static char *GetEnv(const char *var);
+
+    static Pid GetPid();
 
     // TODO: make this into a compile-time value,
     // or maybe a run-time one, and also a TRaP
@@ -405,44 +447,21 @@ public:
     static const int kTextAlignment = 1;
     static const int kPageAlignment = 4096;
     static const bool kPreserveFunctionOffset = true;
-    
+
     static bool Is1ByteNOP(BytePointer);
     static void InsertNOPs(BytePointer, size_t);
 
 protected:
     // Other Windows globals
     static HMODULE ntdll, kernel32;
-    static HANDLE global_heap;
     static LARGE_INTEGER timer_freq;
     static ULONG rand_seed;
 
-    // ntdll functions
-    static ULONG(WINAPI *ntdll_RtlRandomEx)(PULONG);
-    static LONGLONG(WINAPI *ntdll_allmul)(LONGLONG, LONGLONG);
-    static LONGLONG(WINAPI *ntdll_alldiv)(LONGLONG, LONGLONG);
-    // ntdll functions that implement the C runtime are cdecl, not WINAPI
-    static int(*ntdll_vsprintf_s)(const char*, ...);
-    static int(*ntdll_memcmp)(const void*, const void*, size_t);
-    static int(*ntdll_memcpy)(void*, const void*, size_t);
-    static int(*ntdll_wcscat_s)(wchar_t*, size_t, const wchar_t*);
-    static int(*ntdll_wcsncat_s)(wchar_t*, size_t, const wchar_t*, size_t);
+    static Buffer<char> *env_buf;
 
-    // kernel32 functions
-    // FIXME: not clear if we need to import these using GetProcAddress
-    // since every program import kernel32.dll by default
-    static LPVOID(WINAPI *kernel32_VirtualAlloc)(LPVOID, SIZE_T, DWORD, DWORD);
-    static BOOL(WINAPI *kernel32_VirtualFree)(LPVOID, SIZE_T, DWORD);
-    static BOOL(WINAPI *kernel32_VirtualProtect)(LPVOID, SIZE_T, DWORD, PDWORD);
-    static LPVOID(WINAPI *kernel32_HeapAlloc)(HANDLE, DWORD, SIZE_T);
-    static BOOL(WINAPI *kernel32_HeapFree)(HANDLE, DWORD, LPVOID);
-    static HANDLE(WINAPI *kernel32_GetProcessHeap)();
-    static void(WINAPI *kernel32_OutputDebugStringA)(LPCSTR);
-    static bool(WINAPI *kernel32_QueryPerformanceFrequency)(LARGE_INTEGER*);
-    static bool(WINAPI *kernel32_QueryPerformanceCounter)(LARGE_INTEGER*);
-
-    // Other functions
-    static int(WINAPI *user32_MessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
-
+#define SYS_FUNCTION(library, name, API, result_type, ...)   static result_type (API *library##_##name)(__VA_ARGS__);
+#include "SysFunctions.inc"
+#undef SYS_FUNCTION
     friend class Module;
 };
 

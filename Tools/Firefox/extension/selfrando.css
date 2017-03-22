@@ -1,0 +1,12 @@
+#selfrando-box {
+    overflow: auto;
+    font-size: 28px;
+}
+
+selfrando-module {
+  -moz-binding: url("chrome://selfrando/content/selfrando.xml#module");
+}
+
+[anonid="module-start-address"], [anonid="module-end-address"] {
+    font-size: 20px;
+}

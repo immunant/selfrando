@@ -108,9 +108,8 @@ public:
         TIME_FUNCTION_CALL(FixupRelocations);
         TIME_FUNCTION_CALL(ProcessTrapRelocations);
         TIME_FUNCTION_CALL(FixupExports);
-
-#if RANDOLIB_WRITE_LAYOUTS
-        m_module.write_layout_file(&m_functions, m_shuffled_order);
+#if RANDOLIB_WRITE_LAYOUTS > 0
+        TIME_FUNCTION_CALL(WriteLayoutFile);
 #endif
 
         // Cleanup
@@ -159,6 +158,9 @@ private:
     void FixupRelocations();
     void ProcessTrapRelocations();
     void FixupExports();
+#if RANDOLIB_WRITE_LAYOUTS > 0
+    void WriteLayoutFile();
+#endif
 
     static void AdjustRelocation(os::Module::Relocation &reloc,
                                  void *callback_arg);
@@ -574,6 +576,48 @@ void ExecSectionProcessor::FixupExports() {
                                                         this);
 }
 
+#if RANDOLIB_WRITE_LAYOUTS > 0
+void ExecSectionProcessor::WriteLayoutFile() {
+#if RANDOLIB_WRITE_LAYOUTS == 1
+    if (os::API::GetEnv("SELFRANDO_write_layout_file") == nullptr)
+        return;
+#endif
+
+    auto fd = os::API::OpenLayoutFile(true);
+    if (fd == os::kInvalidFile) {
+        os::API::DebugPrintf<1>("Error opening layout file!\n");
+        return;
+    }
+
+    uint32_t version = 0x00000101;
+    uint32_t seed = 0; // FIXME: we write a fake seed for now
+    os::BytePointer func_base = m_functions.functions[0].undiv_start;
+    os::BytePointer func_end = m_functions.functions[m_functions.num_funcs - 1].undiv_end();
+    ptrdiff_t func_size = func_end - func_base;
+    const char *module_name = m_module.get_module_name();
+    nullptr_t np = nullptr;
+    os::API::WriteFile(fd, &version, sizeof(version));
+    os::API::WriteFile(fd, &seed, sizeof(seed));
+    os::API::WriteFile(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
+    os::API::WriteFile(fd, &func_base, sizeof(func_base));
+    os::API::WriteFile(fd, &func_size, sizeof(func_size));
+    os::API::WriteFile(fd, module_name, strlen(module_name) + 1);
+    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        auto si = m_shuffled_order[i];
+        auto &func = m_functions.functions[si];
+        if (func.skip_copy)
+            continue;
+
+        uint32_t size32 = static_cast<uint32_t>(func.size);
+        os::API::WriteFile(fd, &func.undiv_start, sizeof(func.undiv_start));
+        os::API::WriteFile(fd, &func.div_start, sizeof(func.div_start));
+        os::API::WriteFile(fd, &size32, sizeof(size32));
+    }
+    os::API::WriteFile(fd, &np, sizeof(np));
+    os::API::CloseFile(fd);
+}
+#endif
+
 static RANDO_SECTION void RandomizeExecSection(const os::Module &mod,
                                                const os::Module::Section &sec,
                                                TrapInfo &trap_info,
@@ -588,10 +632,14 @@ static RANDO_SECTION void RandomizeModule(os::Module &mod2, void *arg) {
 
 RANDO_MAIN_FUNCTION() {
     os::API::Init();
-    os::Module mod(asm_module);
-    // For every section in the current program...
-    mod.ForAllExecSections(true, RandomizeExecSection, nullptr);
-    os::Module::ForAllModules(RandomizeModule, nullptr);
-    // FIXME: we could make .rndtext non-executable here
+    {
+        // os::Module needs to be in a deep scope,
+        // so that its destructor gets called before os::API::Finish
+        os::Module mod(asm_module);
+        // For every section in the current program...
+        mod.ForAllExecSections(true, RandomizeExecSection, nullptr);
+        os::Module::ForAllModules(RandomizeModule, nullptr);
+        // FIXME: we could make .rndtext non-executable here
+    }
     os::API::Finish();
 }

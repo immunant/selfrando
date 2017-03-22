@@ -61,6 +61,25 @@ public:
     static void Init();
     static void Finish();
 
+    // Debugging functions and settings
+#if RANDOLIB_DEBUG_LEVEL_IS_ENV
+    static int debug_level;
+#else
+#ifdef RANDOLIB_DEBUG_LEVEL
+    static const int debug_level = RANDOLIB_DEBUG_LEVEL;
+#else
+    static const int debug_level = 0;
+#endif
+#endif
+    static const bool kEnableAsserts = true;
+
+    template<int level, typename... Args>
+    static inline void DebugPrintf(Args... args) {
+        // FIXME: this should use std::forward, but can we pull in <utility>???
+        if (level <= debug_level)
+            DebugPrintfImpl(args...);
+    }
+
     // Explicitly list functions inherited from APIImpl, so compilation fails if they're missing
     using APIImpl::QuickSort;
     using APIImpl::MemCpy;
@@ -68,8 +87,9 @@ public:
     using APIImpl::GetRandom;
     using APIImpl::GetTime;
     using APIImpl::GetEnv;
+    using APIImpl::GetPid;
     using APIImpl::TimeDeltaMicroSec;
-    using APIImpl::DebugPrintf;
+    using APIImpl::DebugPrintfImpl;
 
     // Architecture-specific functions/constants
     using APIImpl::Is1ByteNOP;
@@ -93,6 +113,14 @@ public:
     static void *MemMap(void*, size_t, PagePermissions, bool); // TODO
     static void MemUnmap(void*, size_t, bool); // TODO
     static PagePermissions MemProtect(void*, size_t, PagePermissions);
+
+    static File OpenFile(const char *name, bool write, bool create);
+    static ssize_t WriteFile(File file, const void *buf, size_t len);
+    static void CloseFile(File file);
+
+#if RANDOLIB_WRITE_LAYOUTS > 0
+    static File OpenLayoutFile(bool write);
+#endif
 };
 
 }

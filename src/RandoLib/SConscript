@@ -1,6 +1,6 @@
 Import('env')
 
-SOURCES = ['util/hash_32a.c', 'RandoLib.cpp', 'util/qsort.c',
+SOURCES = ['util/hash_32a.c', 'RandoLib.cpp', 'util/strtol.c', 'util/qsort.c',
            'util/printf.cpp', 'arch/%s/Util.cpp' % env['TARGET_ARCH']]
 
 SOURCES = [Glob(f) for f in SOURCES] # Replace source files with full paths

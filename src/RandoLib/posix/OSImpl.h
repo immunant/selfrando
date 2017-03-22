@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <fcntl.h>
 #include <link.h>
 
 // FIXME: gcc doesn't support assigning an entire class to a section
@@ -55,6 +56,10 @@ int _TRaP_libc_rand_r(unsigned int*);
 #elif RANDOLIB_RNG_IS_URANDOM
 long _TRaP_rand_linux(long);
 #endif
+pid_t _TRaP_libc___getpid(void);
+int _TRaP_libc_open(const char*, int, ...);
+ssize_t _TRaP_libc_write(int, const void*, size_t);
+int _TRaP_libc____close(int);
 }
 
 namespace os {
@@ -64,6 +69,10 @@ extern "C" {
 }
 
 typedef time_t Time;
+typedef int File;
+typedef pid_t Pid;
+
+static const File kInvalidFile = -1;
 
 class Module {
 public:
@@ -276,6 +285,10 @@ public:
         return m_got;
     }
 
+    inline RANDO_SECTION const char *get_module_name() const {
+        return m_phdr_info.dlpi_name;
+    }
+
 #if RANDOLIB_WRITE_LAYOUTS
     void write_layout_file(FunctionList *functions,
                            size_t *shuffled_order) const;
@@ -309,27 +322,8 @@ private:
 
 class APIImpl {
 public:
-    // Debugging functions and settings
-#if RANDOLIB_DEBUG_LEVEL_IS_ENV
-    static int debug_level;
-#else
-#ifdef RANDOLIB_DEBUG_LEVEL
-    static const int debug_level = RANDOLIB_DEBUG_LEVEL;
-#else
-    static const int debug_level = 0;
-#endif
-#endif
-    static const bool kEnableAsserts = true;
-
     static void DebugPrintfImpl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
-
-    template<int level, typename... Args>
-    static inline void DebugPrintf(Args... args) {
-        // FIXME: this should use std::forward, but can we pull in <utility>???
-        if (level <= debug_level)
-            DebugPrintfImpl(args...);
-    }
 
     // C library functions
     static inline void QuickSort(void* base, size_t num, size_t size,
@@ -380,6 +374,10 @@ public:
 
     static char *GetEnv(const char *var) {
         return _TRaP_libc_getenv(var);
+    }
+
+    static Pid GetPid() {
+        return _TRaP_libc___getpid();
     }
 
     // TODO: make this into a compile-time value,
