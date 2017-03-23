@@ -8,25 +8,6 @@
 
 #pragma once
 
-#if 0 // RANDOLIB_IS_ARM || RANDOLIB_IS_ARM64
-#include "RelocTypes.h"
-#endif
-
-#define R_X86_64_GOTPCRELX 41 // 32 bit signed PC relative offset to GOT
-                              // without REX prefix, relaxable.
-#define R_X86_64_REX_GOTPCRELX 42 // 32 bit signed PC relative offset to GOT
-
-#define R_ARM_REL32              3
-#define R_ARM_GOTOFF32          24
-#define R_ARM_BASE_PREL         25
-#define R_ARM_TARGET2           41
-#define R_ARM_PREL31            42
-#define R_ARM_MOVW_ABS_NC       43
-#define R_ARM_MOVT_ABS          44
-#define R_ARM_THM_MOVW_ABS_NC   47
-#define R_ARM_THM_MOVT_ABS      48
-#define R_ARM_GOT_PREL          96
-
 enum ExtraInfo : uint32_t {
     EXTRA_NONE = 0,
     EXTRA_SYMBOL = 0x1,
@@ -38,7 +19,8 @@ enum ExtraInfo : uint32_t {
 #define RANDO_SECTION
 #endif
 
-static inline RANDO_SECTION uint32_t RelocExtraInfo(unsigned type) {
+static inline RANDO_SECTION
+uint32_t RelocExtraInfo(unsigned type) {
 #if RANDOLIB_IS_POSIX
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64
@@ -47,8 +29,11 @@ static inline RANDO_SECTION uint32_t RelocExtraInfo(unsigned type) {
     case R_X86_64_PLT32:
     case R_X86_64_GOTPC32:
     case R_X86_64_GOTPCREL:
-    case R_X86_64_GOTPCRELX:
-    case R_X86_64_REX_GOTPCRELX:
+    // 32 bit signed PC relative offset to GOT
+    // without REX prefix, relaxable.
+    case 41: // R_X86_64_GOTPCRELX
+    // 32 bit signed PC relative offset to GOT
+    case 42: // R_X86_64_REX_GOTPCRELX
     case R_X86_64_TLSGD:
     case R_X86_64_TLSLD:
     case R_X86_64_GOTTPOFF:
@@ -66,18 +51,18 @@ static inline RANDO_SECTION uint32_t RelocExtraInfo(unsigned type) {
     };
 #elif RANDOLIB_IS_ARM
     switch (type) {
-    case R_ARM_REL32:
-    case R_ARM_GOTOFF32:
-    case R_ARM_BASE_PREL:
-    case R_ARM_PREL31:
-    case R_ARM_GOT_PREL:
-    case R_ARM_TARGET2:
+    case 3:     // R_ARM_REL32
+    case 24:    // R_ARM_GOTOFF32
+    case 25:    // R_ARM_BASE_PREL
+    case 41:    // R_ARM_TARGET2
+    case 42:    // R_ARM_PREL31
+    case 96:    // R_ARM_GOT_PREL
         return EXTRA_ADDEND;
 
-    case R_ARM_MOVW_ABS_NC:
-    case R_ARM_MOVT_ABS:
-    case R_ARM_THM_MOVW_ABS_NC:
-    case R_ARM_THM_MOVT_ABS:
+    case 43:    // R_ARM_MOVW_ABS_NC
+    case 44:    // R_ARM_MOVT_ABS
+    case 47:    // R_ARM_THM_MOVW_ABS_NC
+    case 48:    // R_ARM_THM_MOVT_ABS
         return EXTRA_SYMBOL | EXTRA_ADDEND;
 
     case R_ARM_GOT32:
