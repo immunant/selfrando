@@ -52,7 +52,7 @@ static inline bool is_pcrel_gotpc_tlsdesc(os::BytePointer at_ptr) {
 }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
-    // IMPORTANT: Keep RandoLib/TrapInfoCommonh.h in sync whenever a new
+    // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
     auto at_ptr = m_src_addr.to_ptr();

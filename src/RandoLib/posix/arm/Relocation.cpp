@@ -116,7 +116,7 @@ inline uint32_t thm_movwt_set(uint32_t ins, uint32_t imm) {
 }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
-    // IMPORTANT: Keep RandoLib/TrapInfoCommon.h in sync whenever a new
+    // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
     auto cur_address = m_src_addr.to_ptr();

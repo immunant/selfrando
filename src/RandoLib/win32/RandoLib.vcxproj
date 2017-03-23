@@ -259,7 +259,7 @@
     <ClInclude Include="..\OS.h" />
     <ClInclude Include="..\RandoLib.h" />
     <ClInclude Include="..\..\TrapInfo\TrapInfo.h" />
-    <ClInclude Include="..\..\TrapInfo\TrapInfoCommon.h" />
+    <ClInclude Include="..\..\TrapInfo\TrapInfoRelocs.h" />
     <ClInclude Include="OSImpl.h" />
   </ItemGroup>
   <ItemGroup>

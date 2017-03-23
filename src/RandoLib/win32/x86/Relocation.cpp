@@ -14,7 +14,7 @@ os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type) { }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
-    // IMPORTANT: Keep RandoLib/TrapInfoCommonh.h in sync whenever a new
+    // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
     auto at_ptr = m_src_addr.to_ptr();
