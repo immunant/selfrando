@@ -5,9 +5,9 @@
     <MSVC_LINKER_PATH>$(VC_ExecutablePath_x64)</MSVC_LINKER_PATH>
   </PropertyGroup>
   <PropertyGroup>
-    <ExecutablePath>"${SolutionDir}\${Configuration}";$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(SystemRoot)\SysWow64;$(FxCopDir);$(PATH);</ExecutablePath>
+    <ExecutablePath>${SolutionDir}\${Configuration};$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(SystemRoot)\SysWow64;$(FxCopDir);$(PATH);</ExecutablePath>
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>"${SolutionDir}${Platform}\${Configuration}";"${SolutionDir}\TrappedMSVCLibs\x64";$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
+    <LibraryPath>$(SolutionDir)\$(Configuration);${SolutionDir}${Platform}\${Configuration};${SolutionDir}\TrappedMSVCLibs\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
   </PropertyGroup>
 <ItemDefinitionGroup>
     <ClCompile>

@@ -5,6 +5,7 @@
 # included with selfrando.
 #
 
+import re
 from trap_msvc_libs import *
 
 def set_env_vars():
@@ -114,29 +115,31 @@ def set_env_vars():
     # print instructions
     print "Setting build variables in posix shell/powershell/cmd.exe: "
     print " # . {}".format(os.path.basename(cygwin_outpath))
-    print " > . .\{}".format(os.path.basename(pshell_outpath))
+    print " > . .\\{}".format(os.path.basename(pshell_outpath))
     print " > {}".format(os.path.basename(batchs_outpath))
 
 
-def gen_msbuild_properties():
+def gen_msbuild_properties(sln_dir):
     # python -m pip install mako
     from mako.template import Template
     props_templ = Template(filename="TrapLinker32.props.mako")
     conf = "Release"
-    sln_dir = os.path.abspath(os.path.join(os.path.curdir, ".."))
 
-    with open("TrapLinker32.props", "wb") as fh:
-        fh.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf))
+    with open("TrapLinker32.props", "wb") as propfile:
+        propfile.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf))
 
     props_templ = Template(filename="TrapLinker64.props.mako")
-    with open("TrapLinker64.props", "wb") as fh:
-        fh.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf,
-                 Platform="x64"))
+    with open("TrapLinker64.props", "wb") as propfile:
+        propfile.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf,
+                                          Platform="x64"))
 
     print "Generated msbuild .props files for inclusion in .vcxproj files."
 
 if __name__ == '__main__':
+    sln_dir = os.path.abspath(os.path.join(os.path.curdir, ".."))
+    if re.search(r"\s", sln_dir):
+        print "Warning: spaces in path to selfrando"
 
-    gen_msbuild_properties()
+    gen_msbuild_properties(sln_dir)
 
     set_env_vars()
