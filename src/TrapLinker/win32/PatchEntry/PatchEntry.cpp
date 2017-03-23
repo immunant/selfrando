@@ -79,6 +79,8 @@ static void patch_entry(MemReadFn file_to_mem_ptr, IMAGE_DOS_HEADER *dos_hdr, WO
             // Set the new entry point to just after where we store the old one and Characteristics
             nt_hdr->OptionalHeader.AddressOfEntryPoint = entry_sec->VirtualAddress + 2 * sizeof(*sec_ptr);
         }
+    } else {
+        assert(0 && "file doesn't contain section .rndentr\n");
     }
     // Patch export table to point to .xptramp trampolines
     auto &export_hdr_dir = nt_hdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
