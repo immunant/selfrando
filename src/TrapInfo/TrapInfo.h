@@ -160,14 +160,14 @@ static inline RANDO_SECTION void SkipTrapRelocVector(os::BytePointer *trap_ptr,
         if (curr_delta == 0 && curr_type == 0)
             break;
 
-        auto extra_info = RelocExtraInfo(curr_type);
-        if ((extra_info & EXTRA_SYMBOL) != 0)
+        auto extra_info = trap_reloc_info(curr_type);
+        if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
             *trap_ptr += trap_header->pc_relative_addresses()
                          ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
         // TODO: we currently encode the addend as a native "ptrdiff" type,
         // which is pretty wasteful; we should use a SLEB128 instead
         // but first we need to implement support for SLEB128s
-        if ((extra_info & EXTRA_ADDEND) != 0)
+        if ((extra_info & TRAP_RELOC_ADDEND) != 0)
             ReadSLEB128(trap_ptr);
     }
 }
@@ -262,11 +262,11 @@ public:
             auto  type = static_cast<size_t>(ReadULEB128(&m_trap_ptr));
             m_address += delta;
 
-            auto extra_info = RelocExtraInfo(type);
-            if ((extra_info & EXTRA_SYMBOL) != 0)
+            auto extra_info = trap_reloc_info(type);
+            if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
                 m_trap_ptr += m_header->pc_relative_addresses()
                               ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
-            if ((extra_info & EXTRA_ADDEND) != 0)
+            if ((extra_info & TRAP_RELOC_ADDEND) != 0)
                 ReadSLEB128(&m_trap_ptr);
             return *this;
         }
@@ -276,10 +276,10 @@ public:
             auto curr_delta = ReadULEB128(&tmp_trap_ptr);
             auto curr_type = static_cast<size_t>(ReadULEB128(&tmp_trap_ptr));
 
-            auto extra_info = RelocExtraInfo(curr_type);
+            auto extra_info = trap_reloc_info(curr_type);
             uintptr_t curr_symbol = 0;
             ptrdiff_t curr_addend = 0;
-            if ((extra_info & EXTRA_SYMBOL) != 0) {
+            if ((extra_info & TRAP_RELOC_SYMBOL) != 0) {
                 if (m_header->pc_relative_addresses()) {
                     auto delta = *reinterpret_cast<ptrdiff_t*>(tmp_trap_ptr);
 #if !RANDOLIB_IS_ARM64
@@ -295,7 +295,7 @@ public:
                     tmp_trap_ptr += sizeof(uintptr_t);
                 }
             }
-            if ((extra_info & EXTRA_ADDEND) != 0)
+            if ((extra_info & TRAP_RELOC_ADDEND) != 0)
                 curr_addend = ReadSLEB128(&tmp_trap_ptr);
             return TrapReloc(m_address + curr_delta, curr_type,
                              curr_symbol, curr_addend);

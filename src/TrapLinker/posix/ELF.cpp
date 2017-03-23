@@ -1191,10 +1191,10 @@ void TrapRecordBuilder::mark_symbol(TargetOff offset, ElfSymbolTable::SymbolRef 
 
 void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol) {
-    auto extra_info = RelocExtraInfo(type);
-    if (extra_info & RELOC_IGNORE)
+    auto extra_info = trap_reloc_info(type);
+    if (extra_info & TRAP_RELOC_IGNORE)
         return;
-    if (extra_info & EXTRA_ADDEND)
+    if (extra_info & TRAP_RELOC_ADDEND)
         m_addendless_relocs.push_back(m_relocs.size());
     m_relocs.push_back(ElfReloc(offset, type, symbol));
 }
@@ -1202,8 +1202,8 @@ void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
 void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol,
                                         TargetPtrDiff addend) {
-    auto extra_info = RelocExtraInfo(type);
-    if (extra_info & RELOC_IGNORE)
+    auto extra_info = trap_reloc_info(type);
+    if (extra_info & TRAP_RELOC_IGNORE)
         return;
     m_relocs.push_back(ElfReloc(offset, type, symbol, addend));
 }
@@ -1277,7 +1277,7 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, TargetOff prev_offset
     // Type
     push_back_uleb128(reloc.type);
     TargetPtrDiff trap_addend = reloc.addend;
-    if (RelocExtraInfo(reloc.type) & EXTRA_SYMBOL) {
+    if (trap_reloc_info(reloc.type) & TRAP_RELOC_SYMBOL) {
         // Symbol
         ElfReloc reloc(m_data.size(), R_ARCH_SYMBOL, reloc.symbol, 0);
         if (trap_addend > 0) {
@@ -1289,7 +1289,7 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, TargetOff prev_offset
         Target::add_reloc_to_buffer(m_reloc_data, &reloc);
         push_back_int(reloc.addend);
     }
-    if (RelocExtraInfo(reloc.type) & EXTRA_ADDEND) {
+    if (trap_reloc_info(reloc.type) & TRAP_RELOC_ADDEND) {
         // Addend
         push_back_sleb128(trap_addend);
     }
