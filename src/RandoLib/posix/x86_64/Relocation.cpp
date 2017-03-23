@@ -66,8 +66,8 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     case R_X86_64_GOTOFF64:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(at_ptr);
     case R_X86_64_GOTPCREL:
-    case R_X86_64_GOTPCRELX:
-    case R_X86_64_REX_GOTPCRELX:
+    case 41: // R_X86_64_GOTPCRELX
+    case 42: // R_X86_64_REX_GOTPCRELX
         if (is_patched_gotpcrel(at_ptr, m_addend))
             return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
         goto pcrel_reloc;
@@ -119,8 +119,8 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         *reinterpret_cast<ptrdiff_t*>(at_ptr) = new_target - m_module.get_got_ptr();
         break;
     case R_X86_64_GOTPCREL:
-    case R_X86_64_GOTPCRELX:
-    case R_X86_64_REX_GOTPCRELX:
+    case 41: // R_X86_64_GOTPCRELX
+    case 42: // R_X86_64_REX_GOTPCRELX
         if (is_patched_gotpcrel(at_ptr, m_addend)) {
             *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
             return;
