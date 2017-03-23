@@ -7,7 +7,7 @@
  */
 
 #include "Object.h"
-#include "../RandoLib/TrapInfoCommon.h"
+#include "../TrapInfo/TrapInfoCommon.h"
 #include "../Support/Debug.h"
 #include "../Support/Filesystem.h"
 #include "../Support/Misc.h"

@@ -84,7 +84,7 @@
       <OmitDefaultLibName>true</OmitDefaultLibName>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ExceptionHandling>false</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(SolutionDir)\src\TrapInfo;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -118,7 +118,7 @@
       <OmitDefaultLibName>true</OmitDefaultLibName>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ExceptionHandling>false</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(SolutionDir)\src\TrapInfo;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -154,7 +154,7 @@
       <OmitDefaultLibName>true</OmitDefaultLibName>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <ExceptionHandling>false</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(SolutionDir)\src\TrapInfo;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -187,7 +187,7 @@
       <OmitDefaultLibName>true</OmitDefaultLibName>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <ExceptionHandling>false</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\src\RandoLib;$(SolutionDir)\src\TrapInfo;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -258,8 +258,8 @@
     <ClInclude Include="..\util\fnv.h" />
     <ClInclude Include="..\OS.h" />
     <ClInclude Include="..\RandoLib.h" />
-    <ClInclude Include="..\TrapInfo.h" />
-    <ClInclude Include="..\TrapInfoCommon.h" />
+    <ClInclude Include="..\..\TrapInfo\TrapInfo.h" />
+    <ClInclude Include="..\..\TrapInfo\TrapInfoCommon.h" />
     <ClInclude Include="OSImpl.h" />
   </ItemGroup>
   <ItemGroup>
