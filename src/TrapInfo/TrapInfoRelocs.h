@@ -8,19 +8,19 @@
 
 #pragma once
 
-enum trap_reloc_info_t {
+typedef enum {
     TRAP_RELOC_NONE   = 0,
     TRAP_RELOC_SYMBOL = 0x1,
     TRAP_RELOC_ADDEND = 0x2,
     TRAP_RELOC_IGNORE = 0x4, // Ignore this relocation
-};
+} trap_reloc_info_t;
 
 #ifndef RANDO_SECTION
 #define RANDO_SECTION
 #endif
 
 static inline RANDO_SECTION
-enum trap_reloc_info_t trap_reloc_info(unsigned type) {
+trap_reloc_info_t trap_reloc_info(unsigned type) {
 #if RANDOLIB_IS_POSIX
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64
