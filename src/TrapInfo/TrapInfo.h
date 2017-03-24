@@ -230,56 +230,37 @@ private:
 
 class RANDO_SECTION TrapVector {
 public:
-    TrapVector(trap_pointer_t start, trap_pointer_t end, uintptr_t address)
-        : m_start(start), m_end(end), m_address(address) {}
+    TrapVector(const TrapHeader *header, trap_pointer_t start,
+               trap_pointer_t end, uintptr_t address)
+        : m_header(header), m_start(start),
+          m_end(end), m_address(address) {}
 
-    class Iterator {
-    public:
-        explicit Iterator(trap_pointer_t trap_ptr, uintptr_t address)
-            : m_trap_ptr(trap_ptr), m_address(address) {}
-        Iterator(const Iterator&) = default;
-        Iterator &operator=(const Iterator&) = default;
-
-        // Preincrement
-        Iterator &operator++() {
-            auto delta = trap_read_uleb128(&m_trap_ptr);
-            m_address += delta;
-            return *this;
-        }
-
-        // FIXME: better return type
-        uintptr_t operator*() const {
-            // FIXME: would be faster to add curr_delta to m_address in advance
-            // so this turns into a simple read from m_address
-            auto tmp_trap_ptr = m_trap_ptr;
-            auto curr_delta = trap_read_uleb128(&tmp_trap_ptr);
-            return m_address + curr_delta;
-        }
-
-        bool operator==(const Iterator &it) const {
-            return m_trap_ptr == it.m_trap_ptr;
-        }
-
-        bool operator!=(const Iterator &it) const {
-            return m_trap_ptr != it.m_trap_ptr;
-        }
-
-    private:
-        trap_pointer_t m_trap_ptr;
-        uintptr_t m_address;
-    };
-
-    Iterator begin() {
-        return Iterator(m_start, m_address);
+private:
+    // Reader function to pass to TrapIterator
+    static int read_element(const TrapHeader *header, trap_pointer_t *trap_ptr,
+                            uintptr_t *address, uintptr_t *element) {
+        auto delta = trap_read_uleb128(trap_ptr);
+        *address += delta;
+        if (element)
+            *element = *address;
+        return 1;
     }
 
-    Iterator end() {
+public:
+    TrapIterator<uintptr_t> begin() {
+        return TrapIterator<uintptr_t>(m_header, m_start, m_address,
+                                       read_element);
+    }
+
+    TrapIterator<uintptr_t> end() {
         RANDO_ASSERT(m_end[0] == 0 || m_start == m_end);
         // FIXME: use MAX_INT instead of 0???
-        return Iterator(m_end, 0);
+        return TrapIterator<uintptr_t>(m_header, m_end, 0,
+                                       read_element);
     }
 
 private:
+    const TrapHeader *m_header;
     trap_pointer_t m_start, m_end;
     uintptr_t m_address;
 };
@@ -477,7 +458,7 @@ struct RANDO_SECTION TrapRecord {
     }
 
     TrapVector data_refs() {
-        return TrapVector(data_refs_start, data_refs_end, address);
+        return TrapVector(header, data_refs_start, data_refs_end, address);
     }
 
     uintptr_t padding_address() {
