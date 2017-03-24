@@ -360,12 +360,12 @@ private:
     }
 
 public:
-    auto begin() {
+    TrapIterator<uintptr_t> begin() {
         return TrapIterator<uintptr_t>(m_header, m_start, m_address,
                                        read_element);
     }
 
-    auto end() {
+    TrapIterator<uintptr_t> end() {
         RANDO_ASSERT(m_end[0] == 0 || m_start == m_end);
         // FIXME: use MAX_INT instead of 0???
         return TrapIterator<uintptr_t>(m_header, m_end, 0,
@@ -385,12 +385,12 @@ public:
                     uintptr_t address, const TrapHeader *header)
         : m_start(start), m_end(end), m_address(address), m_header(header) {}
 
-    auto begin() {
+    TrapIterator<TrapReloc> begin() {
         return TrapIterator<TrapReloc>(m_header, m_start, m_address,
                                        trap_read_reloc);
     }
 
-    auto end() {
+    TrapIterator<TrapReloc> end() {
         RANDO_ASSERT((m_end[0] == 0 && m_end[1] == 0) || m_start == m_end);
         // FIXME: use MAX_INT instead of 0???
         return TrapIterator<TrapReloc>(m_header, m_end, 0,
@@ -409,12 +409,12 @@ public:
     TrapSymbolVector(const TrapHeader *header, trap_pointer_t start, trap_pointer_t end, uintptr_t address)
         : m_header(header), m_start(start), m_end(end), m_address(address) {}
 
-    auto begin() {
+    TrapIterator<TrapSymbol> begin() {
         return TrapIterator<TrapSymbol>(m_header, m_start, m_address,
                                         trap_read_symbol);
     }
 
-    auto end() {
+    TrapIterator<TrapSymbol> end() {
         RANDO_ASSERT(m_end[0] == 0 || m_start == m_end);
         RANDO_ASSERT((!m_header->has_symbol_p2align() && !m_header->has_symbol_size()) ||
                      m_end[1] == 0);
@@ -522,12 +522,12 @@ public:
         trap_read_header(&m_header, &tmp_trap_ptr, nullptr, &m_header);
     }
 
-    auto begin() const {
+    TrapIterator<TrapRecord> begin() const {
         return TrapIterator<TrapRecord>(&m_header, m_header.record_start, 0,
                                         trap_read_record);
     }
 
-    auto end() const {
+    TrapIterator<TrapRecord> end() const {
         return TrapIterator<TrapRecord>(&m_header, m_trap_data + m_trap_size, 0,
                                         trap_read_record);
     }
