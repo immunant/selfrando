@@ -100,6 +100,7 @@ typedef enum {
 } trap_header_flags_t;
 
 // Warning: relies on little-endianness
+#pragma pack(push, 1)
 struct RANDO_SECTION TrapHeader {
 public:
     union {
@@ -146,6 +147,7 @@ public:
     }
 #endif // __cplusplus
 };
+#pragma pack(pop)
 
 static inline RANDO_SECTION
 int trap_header_has_flag(const TrapHeader *header, int flag) {
@@ -201,6 +203,7 @@ void trap_skip_vector(const TrapHeader *trap_header,
     } while (cont);
 }
 
+#pragma pack(push, 1)
 struct RANDO_SECTION TrapReloc {
     uintptr_t address;
     size_t type;
@@ -209,6 +212,7 @@ struct RANDO_SECTION TrapReloc {
     uintptr_t symbol;
     ptrdiff_t addend;
 };
+#pragma pack(pop)
 
 static inline RANDO_SECTION
 int trap_read_reloc(const TrapHeader *header,
@@ -426,6 +430,7 @@ private:
 };
 #endif // __cplusplus
 
+#pragma pack(push, 1)
 struct RANDO_SECTION TrapRecord {
     const TrapHeader *header; // TODO: get rid of this
     uintptr_t address;
@@ -455,6 +460,7 @@ struct RANDO_SECTION TrapRecord {
     }
 #endif // __cplusplus
 };
+#pragma pack(pop)
 
 static inline RANDO_SECTION
 int trap_read_record(const TrapHeader *header,
