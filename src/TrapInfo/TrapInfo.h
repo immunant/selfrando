@@ -239,10 +239,6 @@ int trap_read_reloc(const TrapHeader *header,
     if (curr_delta == 0 && curr_type == 0)
         return 0;
 
-    *address += curr_delta;
-    SET_FIELD(reloc, address, (*address));
-    SET_FIELD(reloc, type, curr_type);
-
     trap_reloc_info_t extra_info = trap_reloc_info(curr_type);
     uintptr_t curr_symbol = 0;
     ptrdiff_t curr_addend = 0;
@@ -264,6 +260,10 @@ int trap_read_reloc(const TrapHeader *header,
     }
     if ((extra_info & TRAP_RELOC_ADDEND) != 0)
         curr_addend = trap_read_sleb128(trap_ptr);
+
+    *address += curr_delta;
+    SET_FIELD(reloc, address, (*address));
+    SET_FIELD(reloc, type, curr_type);
     SET_FIELD(reloc, symbol, curr_symbol);
     SET_FIELD(reloc, addend, curr_addend);
     return 1;
