@@ -524,7 +524,6 @@ public:
         return &m_header;
     }
 
-
     TrapRelocVector nonexec_relocations() const {
         RANDO_ASSERT(m_header.reloc_end != nullptr);
         // TODO: do we want to introduce a base address for these???
