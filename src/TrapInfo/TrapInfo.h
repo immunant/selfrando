@@ -468,8 +468,8 @@ int trap_read_record(const TrapHeader *header,
                      uintptr_t *address,
                      void *data) {
     (void)address; // Unused, prevent warnings
-    TrapRecord *record = (TrapRecord*)data;
 
+    TrapRecord *record = (TrapRecord*)data;
     SET_FIELD(record, header, header);
     SET_FIELD(record, address, trap_read_address(header, trap_ptr));
     // Parse symbol vector
