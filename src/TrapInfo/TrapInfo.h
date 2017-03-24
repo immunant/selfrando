@@ -185,11 +185,12 @@ void trap_skip_vector(trap_pointer_t *trap_ptr) {
     (*trap_ptr)++;
 }
 
-template<typename DataType,
-         typename FuncType = int (*)(const TrapHeader*, trap_pointer_t*,
-                                     uintptr_t*, DataType*)>
+template<typename DataType>
 class RANDO_SECTION TrapIterator {
 public:
+    using FuncType = int (*)(const TrapHeader*, trap_pointer_t*,
+                             uintptr_t*, DataType*);
+
     explicit TrapIterator(const TrapHeader *header,
                           trap_pointer_t trap_ptr,
                           uintptr_t address,
