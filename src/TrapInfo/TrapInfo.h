@@ -563,17 +563,14 @@ public:
 
     class Iterator {
     public:
-        Iterator(const TrapHeader *header, trap_pointer_t trap_ptr, bool end)
-            : m_header(header), m_trap_ptr(trap_ptr), m_end(end) {
-            AdvanceNext();
-        }
+        Iterator(const TrapHeader *header, trap_pointer_t trap_ptr)
+            : m_header(header), m_trap_ptr(trap_ptr) {}
         Iterator(const Iterator &it) = default;
         Iterator &operator=(const Iterator &it) = default;
 
         // Preincrement
         Iterator &operator++() {
-            m_trap_ptr = m_trap_next;
-            AdvanceNext();
+            trap_read_record(m_header, &m_trap_ptr, nullptr);
             return *this;
         }
 
@@ -594,22 +591,15 @@ public:
 
     private:
         const TrapHeader *m_header;
-        trap_pointer_t m_trap_ptr, m_trap_next;
-        bool m_end;
-
-        void AdvanceNext() {
-            m_trap_next = m_trap_ptr;
-            if (!m_end)
-                trap_read_record(m_header, &m_trap_next, nullptr);
-        }
+        trap_pointer_t m_trap_ptr;
     };
 
     Iterator begin() {
-        return Iterator(m_header, m_trap_records, false);
+        return Iterator(m_header, m_trap_records);
     }
 
     Iterator end() {
-        return Iterator(m_header, m_trap_data + m_trap_size, true);
+        return Iterator(m_header, m_trap_data + m_trap_size);
     }
 
     const TrapHeader *header() const {
