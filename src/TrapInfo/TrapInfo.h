@@ -33,11 +33,27 @@
 #define __RANDOLIB_TRAPINFO_H
 #pragma once
 
-#include <OS.h>
 #include <TrapInfoRelocs.h>
 
+#ifndef RANDO_SECTION
+#define RANDO_SECTION
+#endif
+
+typedef uint8_t *trap_pointer_t;
+
+#pragma push_macro("SET_FIELD")
+#define SET_FIELD(x, field, val)    \
+    do {                            \
+        __typeof(val) tmp = (val);  \
+        if (x) {                    \
+            (x)->field = tmp;       \
+        }                           \
+        (void)tmp;                  \
+    } while (0)
+
 // FIXME: is uintptr_t the correct type here?
-static inline RANDO_SECTION uintptr_t ReadULEB128(os::BytePointer *trap_ptr) {
+static inline RANDO_SECTION
+uintptr_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
     uintptr_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
         res += ((**trap_ptr) & 0x7F) << shift;
@@ -49,7 +65,8 @@ static inline RANDO_SECTION uintptr_t ReadULEB128(os::BytePointer *trap_ptr) {
     return res;
 }
 
-static inline RANDO_SECTION ptrdiff_t ReadSLEB128(os::BytePointer *trap_ptr) {
+static inline RANDO_SECTION
+ptrdiff_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
     ptrdiff_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
         res += ((**trap_ptr) & 0x7F) << shift;
@@ -60,133 +77,108 @@ static inline RANDO_SECTION ptrdiff_t ReadSLEB128(os::BytePointer *trap_ptr) {
     (*trap_ptr)++;
     shift += 7;
 
-    ptrdiff_t sign_bit = static_cast<ptrdiff_t>(1) << (shift - 1);
+    ptrdiff_t sign_bit = ptrdiff_t(1) << (shift - 1);
     if ((res & sign_bit) != 0)
-        res |= -(static_cast<ptrdiff_t>(1) << shift);
+        res |= -(ptrdiff_t(1) << shift);
     return res;
 }
 
+typedef enum {
+    TRAP_FUNCTIONS_MARKED = 0x100,
+    TRAP_PRE_SORTED = 0x200,
+    TRAP_HAS_SYMBOL_SIZE = 0x400,
+    TRAP_HAS_DATA_REFS = 0x800,
+    TRAP_HAS_RECORD_RELOCS = 0x1000,
+    TRAP_HAS_NONEXEC_RELOCS = 0x2000,
+    TRAP_HAS_RECORD_PADDING = 0x4000,
+    TRAP_PC_RELATIVE_ADDRESSES = 0x8000,
+    TRAP_HAS_SYMBOL_P2ALIGN = 0x10000,
+} trap_header_flags_t;
+
 // Warning: relies on little-endianness
-union RANDO_SECTION TrapHeader {
+struct RANDO_SECTION TrapHeader {
 public:
-    uint8_t version;
-    uint32_t flags;
+    union {
+        uint8_t version;
+        uint32_t flags;
+    };
     // TODO: Extend this structure to contain non-exec relocs vector
 
-    enum Flags : uint32_t {
-        FUNCTIONS_MARKED = 0x100,
-        PRE_SORTED = 0x200,
-        HAS_SYMBOL_SIZE = 0x400,
-        HAS_DATA_REFS = 0x800,
-        HAS_RECORD_RELOCS = 0x1000,
-        HAS_NONEXEC_RELOCS = 0x2000,
-        HAS_RECORD_PADDING = 0x4000,
-        PC_RELATIVE_ADDRESSES = 0x8000,
-        HAS_SYMBOL_P2ALIGN = 0x10000,
-    };
-
+#ifdef __cplusplus
     // Do the Trap records also contain size info???
     bool has_symbol_size() const {
-        return (flags & Flags::HAS_SYMBOL_SIZE) != 0;
+        return (flags & TRAP_HAS_SYMBOL_SIZE) != 0;
     }
 
     bool has_data_refs() const {
-        return (flags & Flags::HAS_DATA_REFS) != 0;
+        return (flags & TRAP_HAS_DATA_REFS) != 0;
     }
 
     // Return false if the Trap records are already sorted
     bool needs_sort() const {
-        return (flags & Flags::PRE_SORTED) == 0;
+        return (flags & TRAP_PRE_SORTED) == 0;
     }
 
     bool has_record_relocs() const {
-        return (flags & Flags::HAS_RECORD_RELOCS) != 0;
+        return (flags & TRAP_HAS_RECORD_RELOCS) != 0;
     }
 
     bool has_nonexec_relocs() const {
-        return (flags & Flags::HAS_NONEXEC_RELOCS) != 0;
+        return (flags & TRAP_HAS_NONEXEC_RELOCS) != 0;
     }
 
     bool has_record_padding() const {
-        return (flags & Flags::HAS_RECORD_PADDING) != 0;
+        return (flags & TRAP_HAS_RECORD_PADDING) != 0;
     }
 
     bool pc_relative_addresses() const {
-        return (flags & Flags::PC_RELATIVE_ADDRESSES) != 0;
+        return (flags & TRAP_PC_RELATIVE_ADDRESSES) != 0;
     }
 
     bool has_symbol_p2align() const {
-        return (flags & Flags::HAS_SYMBOL_P2ALIGN) != 0;
+        return (flags & TRAP_HAS_SYMBOL_P2ALIGN) != 0;
     }
-
-    size_t elements_in_symbol() const {
-        size_t elems = 1;
-        if (has_symbol_p2align())
-            elems++;
-        if (has_symbol_size())
-            elems++;
-        return elems;
-    }
+#endif // __cplusplus
 };
 static_assert(sizeof(TrapHeader) == 4, "Invalid size of Header structure");
 
-static inline RANDO_SECTION void SkipTrapVector(os::BytePointer *trap_ptr) {
+static inline RANDO_SECTION
+int trap_header_has_flag(const TrapHeader *header, int flag) {
+    return (header->flags & flag) != 0;
+}
+
+static inline RANDO_SECTION
+size_t trap_elements_in_symbol(const TrapHeader *header) {
+    size_t elems = 1;
+    if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
+        elems++;
+    if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_SIZE))
+        elems++;
+    return elems;
+}
+
+static inline RANDO_SECTION
+void trap_skip_vector(trap_pointer_t *trap_ptr) {
     while (**trap_ptr)
         (*trap_ptr)++;
     (*trap_ptr)++;
 }
 
-static inline RANDO_SECTION void SkipTrapSymbolVector(os::BytePointer *trap_ptr,
-                                                      const TrapHeader *header) {
-    // TrapSymbolVector ends in N consecutive zeroes,
-    // where N is the number of elements in a TrapSymbol
-    for (;;) {
-        size_t left = header->elements_in_symbol();
-        while (left > 0 && !**trap_ptr) {
-            left--;
-            (*trap_ptr)++;
-        }
-        if (left == 0)
-            return;
-        (*trap_ptr)++;
-    }
-}
-
-static inline RANDO_SECTION void SkipTrapRelocVector(os::BytePointer *trap_ptr,
-                                                     const TrapHeader *trap_header) {
-    for (;;) {
-        auto curr_delta = ReadULEB128(trap_ptr);
-        auto curr_type  = ReadULEB128(trap_ptr);
-        if (curr_delta == 0 && curr_type == 0)
-            break;
-
-        auto extra_info = trap_reloc_info(curr_type);
-        if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
-            *trap_ptr += trap_header->pc_relative_addresses()
-                         ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
-        // TODO: we currently encode the addend as a native "ptrdiff" type,
-        // which is pretty wasteful; we should use a SLEB128 instead
-        // but first we need to implement support for SLEB128s
-        if ((extra_info & TRAP_RELOC_ADDEND) != 0)
-            ReadSLEB128(trap_ptr);
-    }
-}
-
 class RANDO_SECTION TrapVector {
 public:
-    TrapVector(os::BytePointer start, os::BytePointer end, uintptr_t address)
+    TrapVector(trap_pointer_t start, trap_pointer_t end, uintptr_t address)
         : m_start(start), m_end(end), m_address(address) {}
 
     class Iterator {
     public:
-        explicit Iterator(os::BytePointer trap_ptr, uintptr_t address)
+        explicit Iterator(trap_pointer_t trap_ptr, uintptr_t address)
             : m_trap_ptr(trap_ptr), m_address(address) {}
         Iterator(const Iterator&) = default;
         Iterator &operator=(const Iterator&) = default;
 
         // Preincrement
         Iterator &operator++() {
-            auto delta = ReadULEB128(&m_trap_ptr);
+            auto delta = trap_read_uleb128(&m_trap_ptr);
             m_address += delta;
             return *this;
         }
@@ -196,7 +188,7 @@ public:
             // FIXME: would be faster to add curr_delta to m_address in advance
             // so this turns into a simple read from m_address
             auto tmp_trap_ptr = m_trap_ptr;
-            auto curr_delta = ReadULEB128(&tmp_trap_ptr);
+            auto curr_delta = trap_read_uleb128(&tmp_trap_ptr);
             return m_address + curr_delta;
         }
 
@@ -209,7 +201,7 @@ public:
         }
 
     private:
-        os::BytePointer m_trap_ptr;
+        trap_pointer_t m_trap_ptr;
         uintptr_t m_address;
     };
 
@@ -224,7 +216,7 @@ public:
     }
 
 private:
-    os::BytePointer m_start, m_end;
+    trap_pointer_t m_start, m_end;
     uintptr_t m_address;
 };
 
@@ -235,22 +227,111 @@ struct RANDO_SECTION TrapReloc {
     // when they're not needed
     uintptr_t symbol;
     ptrdiff_t addend;
-
-    TrapReloc() = delete;
-    TrapReloc(uintptr_t address, size_t type, uintptr_t symbol = 0, ptrdiff_t addend = 0)
-        : address(address), type(type), symbol(symbol), addend(addend) { }
 };
+
+static inline RANDO_SECTION
+int trap_read_reloc(const TrapHeader *header,
+                    trap_pointer_t *trap_ptr,
+                    uintptr_t *address,
+                    TrapReloc *reloc) {
+    uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
+    size_t curr_type = (size_t)trap_read_uleb128(trap_ptr);
+    if (curr_delta == 0 && curr_type == 0)
+        return 0;
+
+    *address += curr_delta;
+    SET_FIELD(reloc, address, (*address));
+    SET_FIELD(reloc, type, curr_type);
+
+    trap_reloc_info_t extra_info = trap_reloc_info(curr_type);
+    uintptr_t curr_symbol = 0;
+    ptrdiff_t curr_addend = 0;
+    if ((extra_info & TRAP_RELOC_SYMBOL) != 0) {
+        if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
+            ptrdiff_t delta = *(ptrdiff_t*)*trap_ptr;
+#if !RANDOLIB_IS_ARM64
+            // We use GOT-relative offsets
+            // We add the GOT base later inside of Address::to_ptr()
+            curr_symbol = (uintptr_t)delta;
+#else
+            curr_symbol = (uintptr_t)((*trap_ptr) + delta);
+#endif
+            *trap_ptr += sizeof(ptrdiff_t);
+        } else {
+            curr_symbol = *(uintptr_t*)*trap_ptr;
+            *trap_ptr += sizeof(uintptr_t);
+        }
+    }
+    if ((extra_info & TRAP_RELOC_ADDEND) != 0)
+        curr_addend = trap_read_sleb128(trap_ptr);
+    SET_FIELD(reloc, symbol, curr_symbol);
+    SET_FIELD(reloc, addend, curr_addend);
+    return 1;
+}
+
+static inline RANDO_SECTION
+void trap_skip_reloc_vector(trap_pointer_t *trap_ptr,
+                            const TrapHeader *trap_header) {
+    uintptr_t address = 0;
+    int cont = 0;
+    do {
+        cont = trap_read_reloc(trap_header, trap_ptr, &address, nullptr);
+    } while (cont);
+}
+
+#pragma pack(push, 1)
+struct RANDO_SECTION TrapSymbol {
+    uintptr_t address;
+    uintptr_t alignment;
+    size_t size;
+};
+#pragma pack(pop)
+
+static inline RANDO_SECTION
+int trap_read_symbol(const TrapHeader *header,
+                     trap_pointer_t *trap_ptr,
+                     uintptr_t *address,
+                     TrapSymbol *symbol) {
+
+    // FIXME: would be faster to add curr_delta to m_address in advance
+    // so this turns into a simple read from m_address
+    uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
+    uintptr_t size = 0;
+    uintptr_t p2align = 0;
+    if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_SIZE))
+        size = trap_read_uleb128(trap_ptr);
+    if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
+        p2align = trap_read_uleb128(trap_ptr);
+    if (curr_delta == 0 && size == 0 && p2align == 0)
+        return 0;
+
+    *address += curr_delta;
+    SET_FIELD(symbol, address, *address);
+    SET_FIELD(symbol, alignment, (uintptr_t(1) << p2align));
+    SET_FIELD(symbol, size, (size_t)size);
+    return 1;
+}
+
+static inline RANDO_SECTION
+void trap_skip_symbol_vector(trap_pointer_t *trap_ptr,
+                             const TrapHeader *header) {
+    uintptr_t address = 0;
+    int cont = 0;
+    do {
+        cont = trap_read_symbol(header, trap_ptr, &address, nullptr);
+    } while (cont);
+}
 
 struct RANDO_SECTION TrapRelocVector {
 public:
     TrapRelocVector() = delete;
-    TrapRelocVector(os::BytePointer start, os::BytePointer end,
+    TrapRelocVector(trap_pointer_t start, trap_pointer_t end,
                     uintptr_t address, const TrapHeader *header)
         : m_start(start), m_end(end), m_address(address), m_header(header) {}
 
     class Iterator {
     public:
-        explicit Iterator(os::BytePointer trap_ptr, uintptr_t address,
+        explicit Iterator(trap_pointer_t trap_ptr, uintptr_t address,
                           const TrapHeader *header)
             : m_trap_ptr(trap_ptr), m_address(address), m_header(header) {}
         Iterator(const Iterator&) = default;
@@ -258,47 +339,19 @@ public:
 
         // Preincrement
         Iterator &operator++() {
-            auto delta = ReadULEB128(&m_trap_ptr);
-            auto  type = static_cast<size_t>(ReadULEB128(&m_trap_ptr));
-            m_address += delta;
-
-            auto extra_info = trap_reloc_info(type);
-            if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
-                m_trap_ptr += m_header->pc_relative_addresses()
-                              ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
-            if ((extra_info & TRAP_RELOC_ADDEND) != 0)
-                ReadSLEB128(&m_trap_ptr);
+            auto tmp_trap_ptr = m_trap_ptr;
+            auto ok = trap_read_reloc(m_header, &tmp_trap_ptr, &m_address, nullptr);
+            if (ok)
+                m_trap_ptr = tmp_trap_ptr;
             return *this;
         }
 
         const TrapReloc operator*() const {
+            TrapReloc reloc;
             auto tmp_trap_ptr = m_trap_ptr;
-            auto curr_delta = ReadULEB128(&tmp_trap_ptr);
-            auto curr_type = static_cast<size_t>(ReadULEB128(&tmp_trap_ptr));
-
-            auto extra_info = trap_reloc_info(curr_type);
-            uintptr_t curr_symbol = 0;
-            ptrdiff_t curr_addend = 0;
-            if ((extra_info & TRAP_RELOC_SYMBOL) != 0) {
-                if (m_header->pc_relative_addresses()) {
-                    auto delta = *reinterpret_cast<ptrdiff_t*>(tmp_trap_ptr);
-#if !RANDOLIB_IS_ARM64
-                    // We use GOT-relative offsets
-                    // We add the GOT base later inside of Address::to_ptr()
-                    curr_symbol = static_cast<uintptr_t>(delta);
-#else
-                    curr_symbol = reinterpret_cast<uintptr_t>(tmp_trap_ptr + delta);
-#endif
-                    tmp_trap_ptr += sizeof(ptrdiff_t);
-                } else {
-                    curr_symbol = *reinterpret_cast<uintptr_t*>(tmp_trap_ptr);
-                    tmp_trap_ptr += sizeof(uintptr_t);
-                }
-            }
-            if ((extra_info & TRAP_RELOC_ADDEND) != 0)
-                curr_addend = ReadSLEB128(&tmp_trap_ptr);
-            return TrapReloc(m_address + curr_delta, curr_type,
-                             curr_symbol, curr_addend);
+            auto tmp_address = m_address;
+            trap_read_reloc(m_header, &tmp_trap_ptr, &tmp_address, &reloc);
+            return reloc;
         }
 
         bool operator==(const Iterator &it) const {
@@ -310,7 +363,7 @@ public:
         }
 
     private:
-        os::BytePointer m_trap_ptr;
+        trap_pointer_t m_trap_ptr;
         uintptr_t m_address;
         const TrapHeader *m_header;
     };
@@ -326,32 +379,32 @@ public:
     }
 
 private:
-    os::BytePointer m_start, m_end;
+    trap_pointer_t m_start, m_end;
     uintptr_t m_address;
     const TrapHeader *m_header;
 };
 
 struct RANDO_SECTION TrapAddnHeaderInfo {
 private:
-    os::BytePointer reloc_start, reloc_end = nullptr;
+    trap_pointer_t reloc_start, reloc_end = nullptr;
     const TrapHeader *header_start_ptr;
-    os::BytePointer header_end_ptr = nullptr;
+    trap_pointer_t header_end_ptr = nullptr;
 
 public:
     TrapAddnHeaderInfo() {} // Invalid struct constructor
 
     TrapAddnHeaderInfo(const TrapHeader* header) {
         header_start_ptr = header;
-        auto curr_ptr = reinterpret_cast<os::BytePointer>(const_cast<TrapHeader*>(header + 1));
+        auto curr_ptr = reinterpret_cast<trap_pointer_t>(const_cast<TrapHeader*>(header + 1));
         reloc_start = reloc_end = curr_ptr;
         if (header->has_nonexec_relocs()) {
-            SkipTrapRelocVector(&curr_ptr, header);
+            trap_skip_reloc_vector(&curr_ptr, header);
             reloc_end = curr_ptr - 2;
         }
         header_end_ptr = curr_ptr;
     }
 
-    os::BytePointer header_end() const {
+    trap_pointer_t header_end() const {
         RANDO_ASSERT(header_end_ptr != nullptr);
         return header_end_ptr;
     }
@@ -364,62 +417,34 @@ public:
     }
 };
 
-#pragma pack(1)
-struct RANDO_SECTION TrapSymbol {
-    uintptr_t address;
-    uintptr_t alignment;
-    size_t size;
-
-    TrapSymbol(uintptr_t addr, uintptr_t align, size_t sz = 0)
-        : address(addr), alignment(align), size(sz) {}
-
-    void dump() const {
-        os::API::DebugPrintf<4>("Sym: %p [%u]\n", address, size);
-    }
-};
-
 // TODO: maybe we can merge this with TrapVector (using templates???)
 class RANDO_SECTION TrapSymbolVector {
 public:
-    TrapSymbolVector(const TrapHeader *header, os::BytePointer start, os::BytePointer end, uintptr_t address)
+    TrapSymbolVector(const TrapHeader *header, trap_pointer_t start, trap_pointer_t end, uintptr_t address)
         : m_header(header), m_start(start), m_end(end), m_address(address) {}
 
     class Iterator {
     public:
-        explicit Iterator(const TrapHeader *header, os::BytePointer trap_ptr, uintptr_t address)
+        explicit Iterator(const TrapHeader *header, trap_pointer_t trap_ptr, uintptr_t address)
             : m_header(header), m_trap_ptr(trap_ptr), m_address(address) {}
         Iterator(const Iterator&) = default;
         Iterator &operator=(const Iterator&) = default;
 
         // Preincrement
         Iterator &operator++() {
-            auto delta = ReadULEB128(&m_trap_ptr);
-            m_address += delta;
-            if (m_header->has_symbol_size()) {
-                auto size = ReadULEB128(&m_trap_ptr);
-                m_address += size;
-            }
-            if (m_header->has_symbol_p2align())
-                ReadULEB128(&m_trap_ptr);
+            auto tmp_trap_ptr = m_trap_ptr;
+            auto ok = trap_read_symbol(m_header, &tmp_trap_ptr, &m_address, nullptr);
+            if (ok)
+                m_trap_ptr = tmp_trap_ptr;
             return *this;
         }
 
         TrapSymbol operator*() const {
-            // FIXME: would be faster to add curr_delta to m_address in advance
-            // so this turns into a simple read from m_address
+            TrapSymbol symbol;
             auto tmp_trap_ptr = m_trap_ptr;
-            auto curr_delta = ReadULEB128(&tmp_trap_ptr);
-            uintptr_t size = 0;
-            uintptr_t alignment = 1;
-            if (m_header->has_symbol_size())
-                size = ReadULEB128(&tmp_trap_ptr);
-            if (m_header->has_symbol_p2align())
-                alignment = static_cast<uintptr_t>(1) << ReadULEB128(&tmp_trap_ptr);
-            if (m_header->has_symbol_size()) {
-                return TrapSymbol(m_address + curr_delta, alignment, size);
-            } else {
-                return TrapSymbol(m_address + curr_delta, alignment);
-            }
+            auto tmp_address = m_address;
+            trap_read_symbol(m_header, &tmp_trap_ptr, &tmp_address, &symbol);
+            return symbol;
         }
 
         bool operator==(const Iterator &it) const {
@@ -432,7 +457,7 @@ public:
 
     private:
         const TrapHeader *m_header;
-        os::BytePointer m_trap_ptr;
+        trap_pointer_t m_trap_ptr;
         uintptr_t m_address;
     };
 
@@ -450,13 +475,13 @@ public:
 
 private:
     const TrapHeader *m_header;
-    os::BytePointer m_start, m_end;
+    trap_pointer_t m_start, m_end;
     uintptr_t m_address;
 };
 
 class RANDO_SECTION TrapRecord {
 public:
-    TrapRecord(const TrapHeader *header, os::BytePointer record_start, os::BytePointer record_end)
+    TrapRecord(const TrapHeader *header, trap_pointer_t record_start, trap_pointer_t record_end)
                : m_header(header), m_start(record_start), m_end(record_end) {
         auto trap_ptr = record_start;
         if (header->pc_relative_addresses()) {
@@ -478,29 +503,29 @@ public:
         m_symbol_start = trap_ptr;
         // We include the first symbol in the symbol vector
         // and we set m_address to the section address
-        auto first_sym_ofs = ReadULEB128(&trap_ptr);
+        auto first_sym_ofs = trap_read_uleb128(&trap_ptr);
         m_address -= first_sym_ofs;
         if (header->has_symbol_size())
-            ReadULEB128(&trap_ptr);
+            trap_read_uleb128(&trap_ptr);
         if (header->has_symbol_p2align())
-            ReadULEB128(&trap_ptr);
-        SkipTrapSymbolVector(&trap_ptr, header);
-        m_symbol_end = trap_ptr - header->elements_in_symbol();
+            trap_read_uleb128(&trap_ptr);
+        trap_skip_symbol_vector(&trap_ptr, header);
+        m_symbol_end = trap_ptr - trap_elements_in_symbol(header);
         // Relocations vector
         m_reloc_start = m_reloc_end = trap_ptr;
         if (header->has_record_relocs()) {
-            SkipTrapRelocVector(&trap_ptr, header);
+            trap_skip_reloc_vector(&trap_ptr, header);
             m_reloc_end = trap_ptr - 2;
         }
         // Data references
         m_data_refs_start = m_data_refs_end = trap_ptr;
         if (header->has_data_refs()) {
-            SkipTrapVector(&trap_ptr);
+            trap_skip_vector(&trap_ptr);
             m_data_refs_end = trap_ptr - 1;
         }
         if (header->has_record_padding()) {
-            m_padding_ofs = ReadULEB128(&trap_ptr);
-            m_padding_size = ReadULEB128(&trap_ptr);
+            m_padding_ofs = trap_read_uleb128(&trap_ptr);
+            m_padding_size = trap_read_uleb128(&trap_ptr);
         }
         // TODO: also read in the data_refs
         RANDO_ASSERT(trap_ptr == m_end);
@@ -535,43 +560,19 @@ public:
         return m_padding_size;
     }
 
-    void dump() {
-        os::API::DebugPrintf<4>("Trap record @ %p:\n", m_start);
-        os::API::DebugPrintf<4>("  symbols\n");
-        for (auto sym : symbols())
-            os::API::DebugPrintf<4>("    Sym: %p [%u]\n",
-                                    sym.address,
-                                    sym.size);
-
-        os::API::DebugPrintf<4>("  relocations\n");
-        for (auto reloc : relocations())
-            os::API::DebugPrintf<4>("    Reloc %u: %p = %p+%d\n",
-                                    reloc.type, reloc.address, reloc.symbol,
-                                    reloc.addend);
-
-        if (m_header->has_data_refs()) {
-            os::API::DebugPrintf<4>("  data refs\n");
-            for (auto address : data_refs())
-                os::API::DebugPrintf<4>("    address: %p\n", address);
-        }
-        if (m_header->has_record_padding()) {
-            os::API::DebugPrintf<4>("  padding: %p[%u]\n", padding_address(), padding_size());
-        }
-    }
-
 private:
     const TrapHeader *m_header;
-    os::BytePointer m_start, m_end;
+    trap_pointer_t m_start, m_end;
     uintptr_t m_address, m_first_sym_ofs, m_padding_ofs;
     size_t m_padding_size;
-    os::BytePointer m_symbol_start, m_symbol_end;
-    os::BytePointer m_reloc_start, m_reloc_end;
-    os::BytePointer m_data_refs_start, m_data_refs_end;
+    trap_pointer_t m_symbol_start, m_symbol_end;
+    trap_pointer_t m_reloc_start, m_reloc_end;
+    trap_pointer_t m_data_refs_start, m_data_refs_end;
 };
 
 class RANDO_SECTION TrapInfo {
 public:
-    explicit TrapInfo(os::BytePointer trap_data, size_t trap_size) {
+    explicit TrapInfo(trap_pointer_t trap_data, size_t trap_size) {
         m_trap_data = trap_data;
         m_trap_size = trap_size;
         ReadHeader();
@@ -579,7 +580,7 @@ public:
 
     class Iterator {
     public:
-        Iterator(const TrapHeader *header, os::BytePointer trap_ptr, bool end)
+        Iterator(const TrapHeader *header, trap_pointer_t trap_ptr, bool end)
             : m_header(header), m_trap_ptr(trap_ptr), m_end(end) {
             AdvanceNext();
         }
@@ -607,7 +608,7 @@ public:
 
     private:
         const TrapHeader *m_header;
-        os::BytePointer m_trap_ptr, m_trap_next;
+        trap_pointer_t m_trap_ptr, m_trap_next;
         bool m_end;
 
         void AdvanceNext() {
@@ -615,19 +616,19 @@ public:
             if (!m_end) {
                 m_trap_next += m_header->pc_relative_addresses()
                                ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
-                ReadULEB128(&m_trap_next);
+                trap_read_uleb128(&m_trap_next);
                 if (m_header->has_symbol_size())
-                    ReadULEB128(&m_trap_next);
+                    trap_read_uleb128(&m_trap_next);
                 if (m_header->has_symbol_p2align())
-                    ReadULEB128(&m_trap_next);
-                SkipTrapSymbolVector(&m_trap_next, m_header);
+                    trap_read_uleb128(&m_trap_next);
+                trap_skip_symbol_vector(&m_trap_next, m_header);
                 if (m_header->has_record_relocs())
-                    SkipTrapRelocVector(&m_trap_next, m_header);
+                    trap_skip_reloc_vector(&m_trap_next, m_header);
                 if (m_header->has_data_refs())
-                    SkipTrapVector(&m_trap_next);
+                    trap_skip_vector(&m_trap_next);
                 if (m_header->has_record_padding()) {
-                    ReadULEB128(&m_trap_next);
-                    ReadULEB128(&m_trap_next);
+                    trap_read_uleb128(&m_trap_next);
+                    trap_read_uleb128(&m_trap_next);
                 }
             }
         }
@@ -651,7 +652,7 @@ public:
     }
 
 private:
-    os::BytePointer m_trap_data, m_trap_records;
+    trap_pointer_t m_trap_data, m_trap_records;
     size_t m_trap_size;
     TrapHeader *m_header;
     TrapAddnHeaderInfo m_addn_info;
@@ -660,9 +661,9 @@ private:
         m_header = reinterpret_cast<TrapHeader*>(m_trap_data);
         m_addn_info = TrapAddnHeaderInfo(m_header);
         m_trap_records = m_addn_info.header_end();
-        RANDO_ASSERT(m_trap_records <= (m_trap_data + m_trap_size));
-        RANDO_ASSERT(m_header->version == 1);
     }
 };
+
+#pragma pop_macro("SET_FIELD")
 
 #endif // __RANDOLIB_TRAPINFO_H

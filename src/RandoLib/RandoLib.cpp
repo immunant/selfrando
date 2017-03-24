@@ -89,8 +89,10 @@ public:
     }
 
     void Run() {
+#if 0
         for (auto trap_entry : m_trap_info)
             trap_entry.dump();
+#endif
 
         TIME_FUNCTION_CALL(CountFunctions);
         TIME_FUNCTION_CALL(BuildFunctions);
