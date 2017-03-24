@@ -480,82 +480,78 @@ private:
     uintptr_t m_address;
 };
 
-class RANDO_SECTION TrapRecord {
-public:
-    TrapRecord(const TrapHeader *header, trap_pointer_t record_start, trap_pointer_t record_end)
-               : m_header(header), m_start(record_start), m_end(record_end) {
-        auto trap_ptr = record_start;
-        m_address = trap_read_address(header, &trap_ptr);
-        // Parse symbol vector
-        m_symbol_start = trap_ptr;
-        // We include the first symbol in the symbol vector
-        // and we set m_address to the section address
-        auto first_sym_ofs = trap_read_uleb128(&trap_ptr);
-        m_address -= first_sym_ofs;
-        if (header->has_symbol_size())
-            trap_read_uleb128(&trap_ptr);
-        if (header->has_symbol_p2align())
-            trap_read_uleb128(&trap_ptr);
-        trap_skip_symbol_vector(header, &trap_ptr);
-        m_symbol_end = trap_ptr - trap_elements_in_symbol(header);
-        // Relocations vector
-        m_reloc_start = m_reloc_end = trap_ptr;
-        if (header->has_record_relocs()) {
-            trap_skip_reloc_vector(header, &trap_ptr);
-            m_reloc_end = trap_ptr - 2;
-        }
-        // Data references
-        m_data_refs_start = m_data_refs_end = trap_ptr;
-        if (header->has_data_refs()) {
-            trap_skip_vector(&trap_ptr);
-            m_data_refs_end = trap_ptr - 1;
-        }
-        if (header->has_record_padding()) {
-            m_padding_ofs = trap_read_uleb128(&trap_ptr);
-            m_padding_size = trap_read_uleb128(&trap_ptr);
-        }
-        // TODO: also read in the data_refs
-        RANDO_ASSERT(trap_ptr == m_end);
-    }
+struct RANDO_SECTION TrapRecord {
+    const TrapHeader *header; // TODO: get rid of this
+    uintptr_t address;
+    TrapSymbol first_symbol;
+    size_t padding_ofs, padding_size;
+    trap_pointer_t symbol_start, symbol_end;
+    trap_pointer_t reloc_start, reloc_end;
+    trap_pointer_t data_refs_start, data_refs_end;
 
-    uintptr_t base_address() const {
-        return m_address;
-    }
-
+#ifdef __cplusplus
     // TODO: find a good name for this; "symbols" isn't perfectly accurate
     // but "functions" wouldn't be either (we may wanna use these for basic blocks instead)
     TrapSymbolVector symbols() {
-        return TrapSymbolVector(m_header, m_symbol_start, m_symbol_end, m_address);
+        return TrapSymbolVector(header, symbol_start, symbol_end, address);
     }
 
     TrapRelocVector relocations() {
-        return TrapRelocVector(m_reloc_start, m_reloc_end, m_address, m_header);
+        return TrapRelocVector(reloc_start, reloc_end, address, header);
     }
 
     TrapVector data_refs() {
-        RANDO_ASSERT(m_header->has_data_refs());
-        return TrapVector(m_data_refs_start, m_data_refs_end, m_address);
+        return TrapVector(data_refs_start, data_refs_end, address);
     }
 
     uintptr_t padding_address() {
-        RANDO_ASSERT(m_header->has_record_padding());
-        return m_address + m_padding_ofs;
+        return address + padding_ofs;
     }
-
-    size_t padding_size() {
-        RANDO_ASSERT(m_header->has_record_padding());
-        return m_padding_size;
-    }
-
-private:
-    const TrapHeader *m_header;
-    trap_pointer_t m_start, m_end;
-    uintptr_t m_address, m_first_sym_ofs, m_padding_ofs;
-    size_t m_padding_size;
-    trap_pointer_t m_symbol_start, m_symbol_end;
-    trap_pointer_t m_reloc_start, m_reloc_end;
-    trap_pointer_t m_data_refs_start, m_data_refs_end;
+#endif // __cplusplus
 };
+
+static inline RANDO_SECTION
+int trap_read_record(const TrapHeader *header,
+                     trap_pointer_t *trap_ptr,
+                     TrapRecord *record) {
+    SET_FIELD(record, header, header);
+    SET_FIELD(record, address, trap_read_address(header, trap_ptr));
+    // Parse symbol vector
+    SET_FIELD(record, symbol_start, *trap_ptr);
+    // We include the first symbol in the symbol vector
+    // and we set m_address to the section address
+    uintptr_t tmp_address = 0;
+    if (record) {
+        trap_read_symbol(header, trap_ptr, &tmp_address,
+                         &record->first_symbol);
+        record->address -= record->first_symbol.address;
+    } else {
+        trap_read_symbol(header, trap_ptr, &tmp_address, nullptr);
+    }
+    trap_skip_symbol_vector(header, trap_ptr);
+    SET_FIELD(record, symbol_end, (*trap_ptr - trap_elements_in_symbol(header)));
+    // Relocations vector
+    SET_FIELD(record, reloc_start, *trap_ptr);
+    if (header->has_record_relocs()) {
+        trap_skip_reloc_vector(header, trap_ptr);
+        SET_FIELD(record, reloc_end, (*trap_ptr - 2));
+    } else {
+        SET_FIELD(record, reloc_end, *trap_ptr);
+    }
+    // Data references
+    SET_FIELD(record, data_refs_start, *trap_ptr);
+    if (header->has_data_refs()) {
+        trap_skip_vector(trap_ptr);
+        SET_FIELD(record, data_refs_end, (*trap_ptr - 2));
+    } else {
+        SET_FIELD(record, data_refs_end, *trap_ptr);
+    }
+    if (header->has_record_padding()) {
+        SET_FIELD(record, padding_ofs,  trap_read_uleb128(trap_ptr));
+        SET_FIELD(record, padding_size, trap_read_uleb128(trap_ptr));
+    }
+    return 1;
+}
 
 class RANDO_SECTION TrapInfo {
 public:
@@ -582,7 +578,10 @@ public:
         }
 
         TrapRecord operator*() const {
-            return TrapRecord(m_header, m_trap_ptr, m_trap_next);
+            TrapRecord record;
+            auto tmp_trap_ptr = m_trap_ptr;
+            trap_read_record(m_header, &tmp_trap_ptr, &record);
+            return record;
         }
 
         bool operator==(const Iterator &it) const {
@@ -600,23 +599,8 @@ public:
 
         void AdvanceNext() {
             m_trap_next = m_trap_ptr;
-            if (!m_end) {
-                trap_read_address(m_header, &m_trap_next);
-                trap_read_uleb128(&m_trap_next);
-                if (m_header->has_symbol_size())
-                    trap_read_uleb128(&m_trap_next);
-                if (m_header->has_symbol_p2align())
-                    trap_read_uleb128(&m_trap_next);
-                trap_skip_symbol_vector(m_header, &m_trap_next);
-                if (m_header->has_record_relocs())
-                    trap_skip_reloc_vector(m_header, &m_trap_next);
-                if (m_header->has_data_refs())
-                    trap_skip_vector(&m_trap_next);
-                if (m_header->has_record_padding()) {
-                    trap_read_uleb128(&m_trap_next);
-                    trap_read_uleb128(&m_trap_next);
-                }
-            }
+            if (!m_end)
+                trap_read_record(m_header, &m_trap_next, nullptr);
         }
     };
 

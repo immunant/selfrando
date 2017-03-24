@@ -173,7 +173,7 @@ template<typename FunctionPredicate>
 RANDO_ALWAYS_INLINE
 void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
     for (auto trap_entry : m_trap_info) {
-        auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
+        auto entry_addr = m_module.address_from_trap(trap_entry.address);
         if (m_exec_section.contains_addr(entry_addr)) {
             for (auto sym : trap_entry.symbols()) {
                 auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
@@ -199,7 +199,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 }
                 pred(new_func);
             }
-            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
+            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size > 0) {
                 Function new_func = {};
                 // Add the padding as skip_copy
                 new_func.skip_copy = true;
@@ -208,7 +208,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
                 new_func.undiv_alignment = 1;
                 new_func.has_size = true;
-                new_func.size = trap_entry.padding_size();
+                new_func.size = trap_entry.padding_size;
                 pred(new_func);
             }
         }
@@ -491,7 +491,7 @@ void ExecSectionProcessor::ShuffleCode() {
         }
         if (m_trap_info.header()->has_data_refs()) {
             for (auto trap_entry : m_trap_info) {
-                auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
+                auto entry_addr = m_module.address_from_trap(trap_entry.address);
                 if (m_exec_section.contains_addr(entry_addr)) {
                     for (auto ref : trap_entry.data_refs()) {
                         auto ref_addr = m_module.address_from_trap(ref).to_ptr();
