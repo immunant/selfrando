@@ -270,8 +270,8 @@ int trap_read_reloc(const TrapHeader *header,
 }
 
 static inline RANDO_SECTION
-void trap_skip_reloc_vector(trap_pointer_t *trap_ptr,
-                            const TrapHeader *trap_header) {
+void trap_skip_reloc_vector(const TrapHeader *trap_header,
+                            trap_pointer_t *trap_ptr) {
     uintptr_t address = 0;
     int cont = 0;
     do {
@@ -313,8 +313,8 @@ int trap_read_symbol(const TrapHeader *header,
 }
 
 static inline RANDO_SECTION
-void trap_skip_symbol_vector(trap_pointer_t *trap_ptr,
-                             const TrapHeader *header) {
+void trap_skip_symbol_vector(const TrapHeader *header,
+                             trap_pointer_t *trap_ptr) {
     uintptr_t address = 0;
     int cont = 0;
     do {
@@ -398,7 +398,7 @@ public:
         auto curr_ptr = reinterpret_cast<trap_pointer_t>(const_cast<TrapHeader*>(header + 1));
         reloc_start = reloc_end = curr_ptr;
         if (header->has_nonexec_relocs()) {
-            trap_skip_reloc_vector(&curr_ptr, header);
+            trap_skip_reloc_vector(header, &curr_ptr);
             reloc_end = curr_ptr - 2;
         }
         header_end_ptr = curr_ptr;
@@ -509,12 +509,12 @@ public:
             trap_read_uleb128(&trap_ptr);
         if (header->has_symbol_p2align())
             trap_read_uleb128(&trap_ptr);
-        trap_skip_symbol_vector(&trap_ptr, header);
+        trap_skip_symbol_vector(header, &trap_ptr);
         m_symbol_end = trap_ptr - trap_elements_in_symbol(header);
         // Relocations vector
         m_reloc_start = m_reloc_end = trap_ptr;
         if (header->has_record_relocs()) {
-            trap_skip_reloc_vector(&trap_ptr, header);
+            trap_skip_reloc_vector(header, &trap_ptr);
             m_reloc_end = trap_ptr - 2;
         }
         // Data references
@@ -621,9 +621,9 @@ public:
                     trap_read_uleb128(&m_trap_next);
                 if (m_header->has_symbol_p2align())
                     trap_read_uleb128(&m_trap_next);
-                trap_skip_symbol_vector(&m_trap_next, m_header);
+                trap_skip_symbol_vector(m_header, &m_trap_next);
                 if (m_header->has_record_relocs())
-                    trap_skip_reloc_vector(&m_trap_next, m_header);
+                    trap_skip_reloc_vector(m_header, &m_trap_next);
                 if (m_header->has_data_refs())
                     trap_skip_vector(&m_trap_next);
                 if (m_header->has_record_padding()) {
