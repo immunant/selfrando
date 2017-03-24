@@ -185,6 +185,49 @@ void trap_skip_vector(trap_pointer_t *trap_ptr) {
     (*trap_ptr)++;
 }
 
+template<typename DataType,
+         typename FuncType = int (*)(const TrapHeader*, trap_pointer_t*,
+                                     uintptr_t*, DataType*)>
+class RANDO_SECTION TrapIterator {
+public:
+    explicit TrapIterator(const TrapHeader *header,
+                          trap_pointer_t trap_ptr,
+                          uintptr_t address,
+                          FuncType func)
+        : m_header(header), m_trap_ptr(trap_ptr),
+          m_address(address), m_func(func) {}
+    TrapIterator(const TrapIterator&) = default;
+    TrapIterator &operator=(const TrapIterator&) = default;
+
+    // Preincrement
+    TrapIterator &operator++() {
+        (*m_func)(m_header, &m_trap_ptr, &m_address, nullptr);
+        return *this;
+    }
+
+    DataType operator*() const {
+        DataType data;
+        auto tmp_trap_ptr = m_trap_ptr;
+        auto tmp_address = m_address;
+        (*m_func)(m_header, &tmp_trap_ptr, &tmp_address, &data);
+        return data;
+    }
+
+    bool operator==(const TrapIterator &it) const {
+        return m_trap_ptr == it.m_trap_ptr;
+    }
+
+    bool operator!=(const TrapIterator &it) const {
+        return m_trap_ptr != it.m_trap_ptr;
+    }
+
+private:
+    const TrapHeader *m_header;
+    trap_pointer_t m_trap_ptr;
+    uintptr_t m_address;
+    FuncType m_func;
+};
+
 class RANDO_SECTION TrapVector {
 public:
     TrapVector(trap_pointer_t start, trap_pointer_t end, uintptr_t address)
@@ -336,50 +379,16 @@ public:
                     uintptr_t address, const TrapHeader *header)
         : m_start(start), m_end(end), m_address(address), m_header(header) {}
 
-    class Iterator {
-    public:
-        explicit Iterator(trap_pointer_t trap_ptr, uintptr_t address,
-                          const TrapHeader *header)
-            : m_trap_ptr(trap_ptr), m_address(address), m_header(header) {}
-        Iterator(const Iterator&) = default;
-        Iterator &operator=(const Iterator&) = default;
-
-        // Preincrement
-        Iterator &operator++() {
-            trap_read_reloc(m_header, &m_trap_ptr, &m_address, nullptr);
-            return *this;
-        }
-
-        const TrapReloc operator*() const {
-            TrapReloc reloc;
-            auto tmp_trap_ptr = m_trap_ptr;
-            auto tmp_address = m_address;
-            trap_read_reloc(m_header, &tmp_trap_ptr, &tmp_address, &reloc);
-            return reloc;
-        }
-
-        bool operator==(const Iterator &it) const {
-            return m_trap_ptr == it.m_trap_ptr;
-        }
-
-        bool operator!=(const Iterator &it) const {
-            return m_trap_ptr != it.m_trap_ptr;
-        }
-
-    private:
-        trap_pointer_t m_trap_ptr;
-        uintptr_t m_address;
-        const TrapHeader *m_header;
-    };
-
-    Iterator begin() {
-        return Iterator(m_start, m_address, m_header);
+    TrapIterator<TrapReloc> begin() {
+        return TrapIterator<TrapReloc>(m_header, m_start, m_address,
+                                       trap_read_reloc);
     }
 
-    Iterator end() {
+    TrapIterator<TrapReloc> end() {
         RANDO_ASSERT((m_end[0] == 0 && m_end[1] == 0) || m_start == m_end);
         // FIXME: use MAX_INT instead of 0???
-        return Iterator(m_end, 0, nullptr);
+        return TrapIterator<TrapReloc>(m_header, m_end, 0,
+                                       trap_read_reloc);
     }
 
 private:
@@ -427,51 +436,18 @@ public:
     TrapSymbolVector(const TrapHeader *header, trap_pointer_t start, trap_pointer_t end, uintptr_t address)
         : m_header(header), m_start(start), m_end(end), m_address(address) {}
 
-    class Iterator {
-    public:
-        explicit Iterator(const TrapHeader *header, trap_pointer_t trap_ptr, uintptr_t address)
-            : m_header(header), m_trap_ptr(trap_ptr), m_address(address) {}
-        Iterator(const Iterator&) = default;
-        Iterator &operator=(const Iterator&) = default;
-
-        // Preincrement
-        Iterator &operator++() {
-            trap_read_symbol(m_header, &m_trap_ptr, &m_address, nullptr);
-            return *this;
-        }
-
-        TrapSymbol operator*() const {
-            TrapSymbol symbol;
-            auto tmp_trap_ptr = m_trap_ptr;
-            auto tmp_address = m_address;
-            trap_read_symbol(m_header, &tmp_trap_ptr, &tmp_address, &symbol);
-            return symbol;
-        }
-
-        bool operator==(const Iterator &it) const {
-            return m_trap_ptr == it.m_trap_ptr;
-        }
-
-        bool operator!=(const Iterator &it) const {
-            return m_trap_ptr != it.m_trap_ptr;
-        }
-
-    private:
-        const TrapHeader *m_header;
-        trap_pointer_t m_trap_ptr;
-        uintptr_t m_address;
-    };
-
-    Iterator begin() {
-        return Iterator(m_header, m_start, m_address);
+    TrapIterator<TrapSymbol> begin() {
+        return TrapIterator<TrapSymbol>(m_header, m_start, m_address,
+                                        trap_read_symbol);
     }
 
-    Iterator end() {
+    TrapIterator<TrapSymbol> end() {
         RANDO_ASSERT(m_end[0] == 0 || m_start == m_end);
         RANDO_ASSERT((!m_header->has_symbol_p2align() && !m_header->has_symbol_size()) ||
                      m_end[1] == 0);
         // FIXME: use MAX_INT instead of 0???
-        return Iterator(m_header, m_end, 0);
+        return TrapIterator<TrapSymbol>(m_header, m_end, 0,
+                                        trap_read_symbol);
     }
 
 private:
@@ -513,7 +489,10 @@ struct RANDO_SECTION TrapRecord {
 static inline RANDO_SECTION
 int trap_read_record(const TrapHeader *header,
                      trap_pointer_t *trap_ptr,
+                     uintptr_t *address,
                      TrapRecord *record) {
+    (void)address; // Unused, prevent warnings
+
     SET_FIELD(record, header, header);
     SET_FIELD(record, address, trap_read_address(header, trap_ptr));
     // Parse symbol vector
@@ -561,45 +540,14 @@ public:
         ReadHeader();
     }
 
-    class Iterator {
-    public:
-        Iterator(const TrapHeader *header, trap_pointer_t trap_ptr)
-            : m_header(header), m_trap_ptr(trap_ptr) {}
-        Iterator(const Iterator &it) = default;
-        Iterator &operator=(const Iterator &it) = default;
-
-        // Preincrement
-        Iterator &operator++() {
-            trap_read_record(m_header, &m_trap_ptr, nullptr);
-            return *this;
-        }
-
-        TrapRecord operator*() const {
-            TrapRecord record;
-            auto tmp_trap_ptr = m_trap_ptr;
-            trap_read_record(m_header, &tmp_trap_ptr, &record);
-            return record;
-        }
-
-        bool operator==(const Iterator &it) const {
-            return m_trap_ptr == it.m_trap_ptr;
-        }
-
-        bool operator!=(const Iterator &it) const {
-            return m_trap_ptr != it.m_trap_ptr;
-        }
-
-    private:
-        const TrapHeader *m_header;
-        trap_pointer_t m_trap_ptr;
-    };
-
-    Iterator begin() {
-        return Iterator(m_header, m_trap_records);
+    TrapIterator<TrapRecord> begin() {
+        return TrapIterator<TrapRecord>(m_header, m_trap_records, 0,
+                                        trap_read_record);
     }
 
-    Iterator end() {
-        return Iterator(m_header, m_trap_data + m_trap_size);
+    TrapIterator<TrapRecord> end() {
+        return TrapIterator<TrapRecord>(m_header, m_trap_data + m_trap_size, 0,
+                                        trap_read_record);
     }
 
     const TrapHeader *header() const {
