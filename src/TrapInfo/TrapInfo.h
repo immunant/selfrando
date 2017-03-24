@@ -302,7 +302,7 @@ public:
     explicit TrapIterator(const TrapHeader *header,
                           trap_pointer_t trap_ptr,
                           uintptr_t address,
-                          trap_read_func_t func)
+                          const trap_read_func_t func)
         : m_header(header), m_trap_ptr(trap_ptr),
           m_address(address), m_func(func) {}
     TrapIterator(const TrapIterator&) = default;
@@ -334,7 +334,7 @@ private:
     const TrapHeader *m_header;
     trap_pointer_t m_trap_ptr;
     uintptr_t m_address;
-    trap_read_func_t m_func;
+    const trap_read_func_t m_func;
 };
 
 class RANDO_SECTION TrapVector {
@@ -513,12 +513,12 @@ public:
         trap_read_header(&m_header, &tmp_trap_ptr, nullptr, &m_header);
     }
 
-    auto begin() {
+    auto begin() const {
         return TrapIterator<TrapRecord>(&m_header, m_header.record_start, 0,
                                         trap_read_record);
     }
 
-    auto end() {
+    auto end() const {
         return TrapIterator<TrapRecord>(&m_header, m_trap_data + m_trap_size, 0,
                                         trap_read_record);
     }
