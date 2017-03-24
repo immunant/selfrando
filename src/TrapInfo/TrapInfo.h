@@ -158,6 +158,27 @@ size_t trap_elements_in_symbol(const TrapHeader *header) {
 }
 
 static inline RANDO_SECTION
+uintptr_t trap_read_address(const TrapHeader *header,
+                            trap_pointer_t *trap_ptr) {
+    uintptr_t addr = 0;
+    if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
+        ptrdiff_t delta = *(ptrdiff_t*)*trap_ptr;
+#if !RANDOLIB_IS_ARM64
+        // We use GOT-relative offsets
+        // We add the GOT base later inside of Address::to_ptr()
+        addr = (uintptr_t)delta;
+#else
+        addr = (uintptr_t)((*trap_ptr) + delta);
+#endif
+        *trap_ptr += sizeof(ptrdiff_t);
+    } else {
+        addr = *(uintptr_t*)*trap_ptr;
+        *trap_ptr += sizeof(uintptr_t);
+    }
+    return addr;
+}
+
+static inline RANDO_SECTION
 void trap_skip_vector(trap_pointer_t *trap_ptr) {
     while (**trap_ptr)
         (*trap_ptr)++;
@@ -242,22 +263,8 @@ int trap_read_reloc(const TrapHeader *header,
     trap_reloc_info_t extra_info = trap_reloc_info(curr_type);
     uintptr_t curr_symbol = 0;
     ptrdiff_t curr_addend = 0;
-    if ((extra_info & TRAP_RELOC_SYMBOL) != 0) {
-        if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
-            ptrdiff_t delta = *(ptrdiff_t*)*trap_ptr;
-#if !RANDOLIB_IS_ARM64
-            // We use GOT-relative offsets
-            // We add the GOT base later inside of Address::to_ptr()
-            curr_symbol = (uintptr_t)delta;
-#else
-            curr_symbol = (uintptr_t)((*trap_ptr) + delta);
-#endif
-            *trap_ptr += sizeof(ptrdiff_t);
-        } else {
-            curr_symbol = *(uintptr_t*)*trap_ptr;
-            *trap_ptr += sizeof(uintptr_t);
-        }
-    }
+    if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
+        curr_symbol = trap_read_address(header, trap_ptr);
     if ((extra_info & TRAP_RELOC_ADDEND) != 0)
         curr_addend = trap_read_sleb128(trap_ptr);
 
@@ -478,21 +485,7 @@ public:
     TrapRecord(const TrapHeader *header, trap_pointer_t record_start, trap_pointer_t record_end)
                : m_header(header), m_start(record_start), m_end(record_end) {
         auto trap_ptr = record_start;
-        if (header->pc_relative_addresses()) {
-            auto delta_ptr = reinterpret_cast<ptrdiff_t*>(trap_ptr);
-            trap_ptr += sizeof(*delta_ptr);
-            auto delta = *delta_ptr;
-#if !RANDOLIB_IS_ARM64
-            // See comment above on GOT-relative relocations
-            m_address = static_cast<uintptr_t>(delta);
-#else
-            m_address = reinterpret_cast<uintptr_t>(delta_ptr) + delta;
-#endif
-        } else {
-            auto addr_ptr = reinterpret_cast<uintptr_t*>(trap_ptr);
-            trap_ptr += sizeof(*addr_ptr); // FIXME: 8 bytes on x64???
-            m_address = *addr_ptr;
-        }
+        m_address = trap_read_address(header, &trap_ptr);
         // Parse symbol vector
         m_symbol_start = trap_ptr;
         // We include the first symbol in the symbol vector
@@ -608,8 +601,7 @@ public:
         void AdvanceNext() {
             m_trap_next = m_trap_ptr;
             if (!m_end) {
-                m_trap_next += m_header->pc_relative_addresses()
-                               ? sizeof(ptrdiff_t) : sizeof(uintptr_t);
+                trap_read_address(m_header, &m_trap_next);
                 trap_read_uleb128(&m_trap_next);
                 if (m_header->has_symbol_size())
                     trap_read_uleb128(&m_trap_next);
