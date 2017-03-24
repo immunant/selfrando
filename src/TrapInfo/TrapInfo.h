@@ -42,13 +42,13 @@
 typedef uint8_t *trap_pointer_t;
 
 #pragma push_macro("SET_FIELD")
-#define SET_FIELD(x, field, val)    \
-    do {                            \
-        __typeof(val) tmp = (val);  \
-        if (x) {                    \
-            (x)->field = tmp;       \
-        }                           \
-        (void)tmp;                  \
+#define SET_FIELD(x, field, val)  \
+    do {                          \
+        if (x) {                  \
+            (x)->field = (val);   \
+        } else {                  \
+            (void)(val);          \
+        }                         \
     } while (0)
 
 // FIXME: is uintptr_t the correct type here?
