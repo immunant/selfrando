@@ -547,7 +547,7 @@ void ExecSectionProcessor::FixupRelocations() {
 
 void ExecSectionProcessor::ProcessTrapRelocations() {
     if (m_trap_info.header()->has_nonexec_relocs()) {
-        auto nonexec_relocs = m_trap_info.addn_info().nonexec_relocations();
+        auto nonexec_relocs = m_trap_info.nonexec_relocations();
         for (auto trap_reloc : nonexec_relocs) {
             auto reloc = os::Module::Relocation(m_module, trap_reloc);
             AdjustRelocation(reloc, this);

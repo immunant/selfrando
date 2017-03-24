@@ -106,7 +106,9 @@ public:
         uint8_t version;
         uint32_t flags;
     };
-    // TODO: Extend this structure to contain non-exec relocs vector
+
+    trap_pointer_t reloc_start, reloc_end;
+    trap_pointer_t record_start;
 
 #ifdef __cplusplus
     // Do the Trap records also contain size info???
@@ -144,7 +146,6 @@ public:
     }
 #endif // __cplusplus
 };
-static_assert(sizeof(TrapHeader) == 4, "Invalid size of Header structure");
 
 static inline RANDO_SECTION
 int trap_header_has_flag(const TrapHeader *header, int flag) {
@@ -373,38 +374,29 @@ private:
     const TrapHeader *m_header;
 };
 
-struct RANDO_SECTION TrapAddnHeaderInfo {
-private:
-    trap_pointer_t reloc_start, reloc_end = nullptr;
-    const TrapHeader *header_start_ptr;
-    trap_pointer_t header_end_ptr = nullptr;
+static inline RANDO_SECTION
+int trap_read_header(const TrapHeader *header,
+                     trap_pointer_t *trap_ptr,
+                     uintptr_t *address,
+                     void *data) {
+    (void)address;
 
-public:
-    TrapAddnHeaderInfo() {} // Invalid struct constructor
+    // FIXME: assert that data == header
+    TrapHeader *headerw = (TrapHeader*)data;
+    uint32_t flags = *(uint32_t*)*trap_ptr;
+    SET_FIELD(headerw, flags, flags);
+    *trap_ptr += sizeof(uint32_t);
 
-    TrapAddnHeaderInfo(const TrapHeader* header) {
-        header_start_ptr = header;
-        auto curr_ptr = reinterpret_cast<trap_pointer_t>(const_cast<TrapHeader*>(header + 1));
-        reloc_start = reloc_end = curr_ptr;
-        if (header->has_nonexec_relocs()) {
-            trap_skip_vector(header, &curr_ptr, trap_read_reloc);
-            reloc_end = curr_ptr - 2;
-        }
-        header_end_ptr = curr_ptr;
+    SET_FIELD(headerw, reloc_start, *trap_ptr);
+    if (flags & TRAP_HAS_NONEXEC_RELOCS) {
+        trap_skip_vector(header, trap_ptr, trap_read_reloc);
+        SET_FIELD(headerw, reloc_end, (*trap_ptr - 2));
+    } else {
+        SET_FIELD(headerw, reloc_end, *trap_ptr);
     }
-
-    trap_pointer_t header_end() const {
-        RANDO_ASSERT(header_end_ptr != nullptr);
-        return header_end_ptr;
-    }
-
-    TrapRelocVector nonexec_relocations() const {
-        RANDO_ASSERT(reloc_end != nullptr);
-        // TODO: do we want to introduce a base address for these???
-        // (so they don't start from zero)
-        return TrapRelocVector(reloc_start, reloc_end, 0, header_start_ptr);
-    }
-};
+    SET_FIELD(headerw, record_start, *trap_ptr);
+    return 1;
+}
 
 // TODO: maybe we can merge this with TrapVector (using templates???)
 class RANDO_SECTION TrapSymbolVector {
@@ -514,39 +506,37 @@ public:
     explicit TrapInfo(trap_pointer_t trap_data, size_t trap_size) {
         m_trap_data = trap_data;
         m_trap_size = trap_size;
-        ReadHeader();
+        auto tmp_trap_ptr = m_trap_data;
+        trap_read_header(&m_header, &tmp_trap_ptr, nullptr, &m_header);
     }
 
     TrapIterator<TrapRecord> begin() {
-        return TrapIterator<TrapRecord>(m_header, m_trap_records, 0,
+        return TrapIterator<TrapRecord>(&m_header, m_header.record_start, 0,
                                         trap_read_record);
     }
 
     TrapIterator<TrapRecord> end() {
-        return TrapIterator<TrapRecord>(m_header, m_trap_data + m_trap_size, 0,
+        return TrapIterator<TrapRecord>(&m_header, m_trap_data + m_trap_size, 0,
                                         trap_read_record);
     }
 
     const TrapHeader *header() const {
-        return m_header;
+        return &m_header;
     }
 
 
-    const TrapAddnHeaderInfo &addn_info() const {
-        return m_addn_info;
+    TrapRelocVector nonexec_relocations() const {
+        RANDO_ASSERT(m_header.reloc_end != nullptr);
+        // TODO: do we want to introduce a base address for these???
+        // (so they don't start from zero)
+        return TrapRelocVector(m_header.reloc_start, m_header.reloc_end, 0,
+                               &m_header);
     }
 
 private:
-    trap_pointer_t m_trap_data, m_trap_records;
+    trap_pointer_t m_trap_data;
     size_t m_trap_size;
-    TrapHeader *m_header;
-    TrapAddnHeaderInfo m_addn_info;
-
-    void ReadHeader() {
-        m_header = reinterpret_cast<TrapHeader*>(m_trap_data);
-        m_addn_info = TrapAddnHeaderInfo(m_header);
-        m_trap_records = m_addn_info.header_end();
-    }
+    TrapHeader m_header;
 };
 
 #pragma pop_macro("SET_FIELD")
