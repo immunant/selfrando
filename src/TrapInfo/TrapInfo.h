@@ -339,10 +339,7 @@ public:
 
         // Preincrement
         Iterator &operator++() {
-            auto tmp_trap_ptr = m_trap_ptr;
-            auto go = trap_read_reloc(m_header, &tmp_trap_ptr, &m_address, nullptr);
-            if (go)
-                m_trap_ptr = tmp_trap_ptr;
+            trap_read_reloc(m_header, &m_trap_ptr, &m_address, nullptr);
             return *this;
         }
 
@@ -432,10 +429,7 @@ public:
 
         // Preincrement
         Iterator &operator++() {
-            auto tmp_trap_ptr = m_trap_ptr;
-            auto go = trap_read_symbol(m_header, &tmp_trap_ptr, &m_address, nullptr);
-            if (go)
-                m_trap_ptr = tmp_trap_ptr;
+            trap_read_symbol(m_header, &m_trap_ptr, &m_address, nullptr);
             return *this;
         }
 
