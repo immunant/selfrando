@@ -505,6 +505,9 @@ int trap_read_record(const TrapHeader *header,
     if (header->has_record_padding()) {
         SET_FIELD(record, padding_ofs,  trap_read_uleb128(trap_ptr));
         SET_FIELD(record, padding_size, trap_read_uleb128(trap_ptr));
+    } else {
+        SET_FIELD(record, padding_ofs, 0);
+        SET_FIELD(record, padding_size, 0);
     }
     return 1;
 }
