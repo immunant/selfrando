@@ -137,6 +137,7 @@ def gen_msbuild_properties(sln_dir):
 
 if __name__ == '__main__':
     sln_dir = os.path.abspath(os.path.join(os.path.curdir, ".."))
+    sln_dir += "\\" # the $(SolutionDir) variable includes trailing backslash  
     if re.search(r"\s", sln_dir):
         print "Warning: spaces in path to selfrando"
 
