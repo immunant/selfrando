@@ -296,19 +296,19 @@ int trap_read_symbol(const TrapHeader *header,
     // FIXME: would be faster to add curr_delta to m_address in advance
     // so this turns into a simple read from m_address
     uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
-    uintptr_t size = 0;
-    uintptr_t p2align = 0;
+    uintptr_t curr_size = 0;
+    uintptr_t curr_p2align = 0;
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_SIZE))
-        size = trap_read_uleb128(trap_ptr);
+        curr_size = trap_read_uleb128(trap_ptr);
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
-        p2align = trap_read_uleb128(trap_ptr);
-    if (curr_delta == 0 && size == 0 && p2align == 0)
+        curr_p2align = trap_read_uleb128(trap_ptr);
+    if (curr_delta == 0 && curr_size == 0 && curr_p2align == 0)
         return 0;
 
     *address += curr_delta;
     SET_FIELD(symbol, address, *address);
-    SET_FIELD(symbol, alignment, (uintptr_t(1) << p2align));
-    SET_FIELD(symbol, size, (size_t)size);
+    SET_FIELD(symbol, alignment, (uintptr_t(1) << curr_p2align));
+    SET_FIELD(symbol, size, (size_t)curr_size);
     return 1;
 }
 
@@ -340,8 +340,8 @@ public:
         // Preincrement
         Iterator &operator++() {
             auto tmp_trap_ptr = m_trap_ptr;
-            auto ok = trap_read_reloc(m_header, &tmp_trap_ptr, &m_address, nullptr);
-            if (ok)
+            auto go = trap_read_reloc(m_header, &tmp_trap_ptr, &m_address, nullptr);
+            if (go)
                 m_trap_ptr = tmp_trap_ptr;
             return *this;
         }
@@ -433,8 +433,8 @@ public:
         // Preincrement
         Iterator &operator++() {
             auto tmp_trap_ptr = m_trap_ptr;
-            auto ok = trap_read_symbol(m_header, &tmp_trap_ptr, &m_address, nullptr);
-            if (ok)
+            auto go = trap_read_symbol(m_header, &tmp_trap_ptr, &m_address, nullptr);
+            if (go)
                 m_trap_ptr = tmp_trap_ptr;
             return *this;
         }
