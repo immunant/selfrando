@@ -490,7 +490,7 @@ int trap_read_record(const struct trap_header_t *header,
     SET_FIELD(record, symbol_end, (*trap_ptr - trap_elements_in_symbol(header)));
     // Relocations vector
     SET_FIELD(record, reloc_start, *trap_ptr);
-    if (header->has_record_relocs()) {
+    if (trap_header_has_flag(header, TRAP_HAS_RECORD_RELOCS)) {
         trap_skip_vector(header, trap_ptr, trap_read_reloc);
         SET_FIELD(record, reloc_end, (*trap_ptr - 2));
     } else {
@@ -498,13 +498,13 @@ int trap_read_record(const struct trap_header_t *header,
     }
     // Data references
     SET_FIELD(record, data_refs_start, *trap_ptr);
-    if (header->has_data_refs()) {
+    if (trap_header_has_flag(header, TRAP_HAS_DATA_REFS)) {
         trap_skip_uleb128_vector(trap_ptr);
         SET_FIELD(record, data_refs_end, (*trap_ptr - 2));
     } else {
         SET_FIELD(record, data_refs_end, *trap_ptr);
     }
-    if (header->has_record_padding()) {
+    if (trap_header_has_flag(header, TRAP_HAS_RECORD_PADDING)) {
         SET_FIELD(record, padding_ofs,  trap_read_uleb128(trap_ptr));
         SET_FIELD(record, padding_size, trap_read_uleb128(trap_ptr));
     } else {
