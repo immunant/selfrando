@@ -42,10 +42,10 @@
 #define RANDO_SECTION
 #endif
 
-struct TrapHeader;
+struct trap_header_t;
 
 typedef uint8_t *trap_pointer_t;
-typedef int (*trap_read_func_t)(const TrapHeader*, trap_pointer_t*,
+typedef int (*trap_read_func_t)(const struct trap_header_t*, trap_pointer_t*,
                                 uintptr_t*, void*);
 
 #pragma push_macro("SET_FIELD")
@@ -104,8 +104,7 @@ typedef enum {
 
 // Warning: relies on little-endianness
 #pragma pack(push, 1)
-struct RANDO_SECTION TrapHeader {
-public:
+struct RANDO_SECTION trap_header_t {
     union {
         uint8_t version;
         uint32_t flags;
@@ -153,12 +152,12 @@ public:
 #pragma pack(pop)
 
 static inline RANDO_SECTION
-int trap_header_has_flag(const TrapHeader *header, int flag) {
+int trap_header_has_flag(const struct trap_header_t *header, int flag) {
     return (header->flags & flag) != 0;
 }
 
 static inline RANDO_SECTION
-size_t trap_elements_in_symbol(const TrapHeader *header) {
+size_t trap_elements_in_symbol(const struct trap_header_t *header) {
     size_t elems = 1;
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
         elems++;
@@ -168,7 +167,7 @@ size_t trap_elements_in_symbol(const TrapHeader *header) {
 }
 
 static inline RANDO_SECTION
-uintptr_t trap_read_address(const TrapHeader *header,
+uintptr_t trap_read_address(const struct trap_header_t *header,
                             trap_pointer_t *trap_ptr) {
     uintptr_t addr = 0;
     if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
@@ -196,7 +195,7 @@ void trap_skip_vector(trap_pointer_t *trap_ptr) {
 }
 
 static inline RANDO_SECTION
-void trap_skip_vector(const TrapHeader *trap_header,
+void trap_skip_vector(const struct trap_header_t *trap_header,
                       trap_pointer_t *trap_ptr,
                       trap_read_func_t read_func) {
     uintptr_t address = 0;
@@ -207,7 +206,7 @@ void trap_skip_vector(const TrapHeader *trap_header,
 }
 
 #pragma pack(push, 1)
-struct RANDO_SECTION TrapReloc {
+struct RANDO_SECTION trap_reloc_t {
     uintptr_t address;
     size_t type;
     // FIXME: figure out a way to not store these in memory
@@ -218,11 +217,11 @@ struct RANDO_SECTION TrapReloc {
 #pragma pack(pop)
 
 static inline RANDO_SECTION
-int trap_read_reloc(const TrapHeader *header,
+int trap_read_reloc(const struct trap_header_t *header,
                     trap_pointer_t *trap_ptr,
                     uintptr_t *address,
                     void *data) {
-    TrapReloc *reloc = (TrapReloc*)data;
+    struct trap_reloc_t *reloc = (struct trap_reloc_t*)data;
     uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
     size_t curr_type = (size_t)trap_read_uleb128(trap_ptr);
     int end = (curr_delta == 0 && curr_type == 0);
@@ -246,7 +245,7 @@ int trap_read_reloc(const TrapHeader *header,
 }
 
 #pragma pack(push, 1)
-struct RANDO_SECTION TrapSymbol {
+struct RANDO_SECTION trap_symbol_t {
     uintptr_t address;
     uintptr_t alignment;
     size_t size;
@@ -254,11 +253,11 @@ struct RANDO_SECTION TrapSymbol {
 #pragma pack(pop)
 
 static inline RANDO_SECTION
-int trap_read_symbol(const TrapHeader *header,
+int trap_read_symbol(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      uintptr_t *address,
                      void *data) {
-    TrapSymbol *symbol = (TrapSymbol*)data;
+    struct trap_symbol_t *symbol = (struct trap_symbol_t*)data;
 
     // FIXME: would be faster to add curr_delta to m_address in advance
     // so this turns into a simple read from m_address
@@ -279,14 +278,14 @@ int trap_read_symbol(const TrapHeader *header,
 }
 
 static inline RANDO_SECTION
-int trap_read_header(const TrapHeader *header,
+int trap_read_header(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      uintptr_t *address,
                      void *data) {
     (void)address;
 
     // FIXME: assert that data == header
-    TrapHeader *headerw = (TrapHeader*)data;
+    struct trap_header_t *headerw = (struct trap_header_t*)data;
     uint32_t flags = *(uint32_t*)*trap_ptr;
     SET_FIELD(headerw, flags, flags);
     *trap_ptr += sizeof(uint32_t);
@@ -306,7 +305,7 @@ int trap_read_header(const TrapHeader *header,
 template<typename DataType>
 class RANDO_SECTION TrapIterator {
 public:
-    explicit TrapIterator(const TrapHeader *header,
+    explicit TrapIterator(const struct trap_header_t *header,
                           trap_pointer_t trap_ptr,
                           uintptr_t address,
                           const trap_read_func_t func)
@@ -338,7 +337,7 @@ public:
     }
 
 private:
-    const TrapHeader *m_header;
+    const struct trap_header_t *m_header;
     trap_pointer_t m_trap_ptr;
     uintptr_t m_address;
     const trap_read_func_t m_func;
@@ -346,14 +345,14 @@ private:
 
 class RANDO_SECTION TrapVector {
 public:
-    TrapVector(const TrapHeader *header, trap_pointer_t start,
+    TrapVector(const struct trap_header_t *header, trap_pointer_t start,
                trap_pointer_t end, uintptr_t address)
         : m_header(header), m_start(start),
           m_end(end), m_address(address) {}
 
 private:
     // Reader function to pass to TrapIterator
-    static int read_element(const TrapHeader *header, trap_pointer_t *trap_ptr,
+    static int read_element(const struct trap_header_t *header, trap_pointer_t *trap_ptr,
                             uintptr_t *address, void *data) {
         auto delta = trap_read_uleb128(trap_ptr);
         *address += delta;
@@ -376,7 +375,7 @@ public:
     }
 
 private:
-    const TrapHeader *m_header;
+    const struct trap_header_t *m_header;
     trap_pointer_t m_start, m_end;
     uintptr_t m_address;
 };
@@ -385,59 +384,59 @@ struct RANDO_SECTION TrapRelocVector {
 public:
     TrapRelocVector() = delete;
     TrapRelocVector(trap_pointer_t start, trap_pointer_t end,
-                    uintptr_t address, const TrapHeader *header)
+                    uintptr_t address, const struct trap_header_t *header)
         : m_start(start), m_end(end), m_address(address), m_header(header) {}
 
-    TrapIterator<TrapReloc> begin() {
-        return TrapIterator<TrapReloc>(m_header, m_start, m_address,
-                                       trap_read_reloc);
+    TrapIterator<trap_reloc_t> begin() {
+        return TrapIterator<trap_reloc_t>(m_header, m_start, m_address,
+                                          trap_read_reloc);
     }
 
-    TrapIterator<TrapReloc> end() {
+    TrapIterator<trap_reloc_t> end() {
         RANDO_ASSERT((m_end[0] == 0 && m_end[1] == 0) || m_start == m_end);
         // FIXME: use MAX_INT instead of 0???
-        return TrapIterator<TrapReloc>(m_header, m_end, 0,
-                                       trap_read_reloc);
+        return TrapIterator<trap_reloc_t>(m_header, m_end, 0,
+                                          trap_read_reloc);
     }
 
 private:
     trap_pointer_t m_start, m_end;
     uintptr_t m_address;
-    const TrapHeader *m_header;
+    const struct trap_header_t *m_header;
 };
 
 // TODO: maybe we can merge this with TrapVector (using templates???)
 class RANDO_SECTION TrapSymbolVector {
 public:
-    TrapSymbolVector(const TrapHeader *header, trap_pointer_t start, trap_pointer_t end, uintptr_t address)
+    TrapSymbolVector(const struct trap_header_t *header, trap_pointer_t start, trap_pointer_t end, uintptr_t address)
         : m_header(header), m_start(start), m_end(end), m_address(address) {}
 
-    TrapIterator<TrapSymbol> begin() {
-        return TrapIterator<TrapSymbol>(m_header, m_start, m_address,
-                                        trap_read_symbol);
+    TrapIterator<trap_symbol_t> begin() {
+        return TrapIterator<trap_symbol_t>(m_header, m_start, m_address,
+                                           trap_read_symbol);
     }
 
-    TrapIterator<TrapSymbol> end() {
+    TrapIterator<trap_symbol_t> end() {
         RANDO_ASSERT(m_end[0] == 0 || m_start == m_end);
         RANDO_ASSERT((!m_header->has_symbol_p2align() && !m_header->has_symbol_size()) ||
                      m_end[1] == 0);
         // FIXME: use MAX_INT instead of 0???
-        return TrapIterator<TrapSymbol>(m_header, m_end, 0,
-                                        trap_read_symbol);
+        return TrapIterator<trap_symbol_t>(m_header, m_end, 0,
+                                           trap_read_symbol);
     }
 
 private:
-    const TrapHeader *m_header;
+    const struct trap_header_t *m_header;
     trap_pointer_t m_start, m_end;
     uintptr_t m_address;
 };
 #endif // __cplusplus
 
 #pragma pack(push, 1)
-struct RANDO_SECTION TrapRecord {
-    const TrapHeader *header; // TODO: get rid of this
+struct RANDO_SECTION trap_record_t {
+    const struct trap_header_t *header; // TODO: get rid of this
     uintptr_t address;
-    TrapSymbol first_symbol;
+    struct trap_symbol_t first_symbol;
     size_t padding_ofs, padding_size;
     trap_pointer_t symbol_start, symbol_end;
     trap_pointer_t reloc_start, reloc_end;
@@ -466,13 +465,13 @@ struct RANDO_SECTION TrapRecord {
 #pragma pack(pop)
 
 static inline RANDO_SECTION
-int trap_read_record(const TrapHeader *header,
+int trap_read_record(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      uintptr_t *address,
                      void *data) {
     (void)address; // Unused, prevent warnings
 
-    TrapRecord *record = (TrapRecord*)data;
+    struct trap_record_t *record = (struct trap_record_t*)data;
     SET_FIELD(record, header, header);
     SET_FIELD(record, address, trap_read_address(header, trap_ptr));
     // Parse symbol vector
@@ -525,17 +524,17 @@ public:
         trap_read_header(&m_header, &tmp_trap_ptr, nullptr, &m_header);
     }
 
-    TrapIterator<TrapRecord> begin() const {
-        return TrapIterator<TrapRecord>(&m_header, m_header.record_start, 0,
-                                        trap_read_record);
+    TrapIterator<trap_record_t> begin() const {
+        return TrapIterator<trap_record_t>(&m_header, m_header.record_start, 0,
+                                           trap_read_record);
     }
 
-    TrapIterator<TrapRecord> end() const {
-        return TrapIterator<TrapRecord>(&m_header, m_trap_data + m_trap_size, 0,
-                                        trap_read_record);
+    TrapIterator<trap_record_t> end() const {
+        return TrapIterator<trap_record_t>(&m_header, m_trap_data + m_trap_size, 0,
+                                           trap_read_record);
     }
 
-    const TrapHeader *header() const {
+    const struct trap_header_t *header() const {
         return &m_header;
     }
 
@@ -550,7 +549,7 @@ public:
 private:
     trap_pointer_t m_trap_data;
     size_t m_trap_size;
-    TrapHeader m_header;
+    struct trap_header_t m_header;
 };
 #endif // __cplusplus
 

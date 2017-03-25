@@ -12,7 +12,7 @@
 
 #include <elf.h>
 
-os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
+os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
 	      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {

@@ -37,7 +37,7 @@
 #include <utility>
 
 class TrapInfo;
-class TrapReloc;
+struct trap_reloc_t;
 
 struct FunctionList;
 struct Function;
@@ -152,7 +152,7 @@ public:
               m_src_addr(addr), m_type(type),
               m_has_symbol_addr(false), m_symbol_addr(mod), m_addend(addend) { }
 
-        Relocation(const os::Module&, const TrapReloc&);
+        Relocation(const os::Module&, const trap_reloc_t&);
 
         Type get_type() const {
             return m_type;
