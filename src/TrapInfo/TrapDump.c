@@ -76,8 +76,9 @@ int main(int argc, const char *argv[]) {
         if (trap_header_has_flag(&header, TRAP_HAS_RECORD_RELOCS)) {
             struct trap_reloc_t reloc;
             uintptr_t rel_addr = record.address;
-            trap_ptr = record.reloc_start;
-            while (trap_read_reloc(&header, &trap_ptr, &rel_addr, &reloc)) {
+            trap_pointer_t rel_ptr = record.reloc_start;
+            while (rel_ptr < record.reloc_end &&
+                   trap_read_reloc(&header, &rel_ptr, &rel_addr, &reloc)) {
                 assert(rel_addr == reloc.address);
                 printf("  Rel[%ld]@%lx=%lx+%ld\n",
                        reloc.type, reloc.address,
