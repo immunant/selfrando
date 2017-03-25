@@ -222,8 +222,13 @@ int trap_read_reloc(const TrapHeader *header,
     TrapReloc *reloc = (TrapReloc*)data;
     uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
     size_t curr_type = (size_t)trap_read_uleb128(trap_ptr);
-    if (curr_delta == 0 && curr_type == 0)
+    if (curr_delta == 0 && curr_type == 0) {
+        SET_FIELD(reloc, address, 0);
+        SET_FIELD(reloc, type,    0);
+        SET_FIELD(reloc, symbol,  0);
+        SET_FIELD(reloc, addend,  0);
         return 0;
+    }
 
     trap_reloc_info_t extra_info = trap_reloc_info(curr_type);
     uintptr_t curr_symbol = 0;
@@ -235,9 +240,9 @@ int trap_read_reloc(const TrapHeader *header,
 
     *address += curr_delta;
     SET_FIELD(reloc, address, (*address));
-    SET_FIELD(reloc, type, curr_type);
-    SET_FIELD(reloc, symbol, curr_symbol);
-    SET_FIELD(reloc, addend, curr_addend);
+    SET_FIELD(reloc, type,    curr_type);
+    SET_FIELD(reloc, symbol,  curr_symbol);
+    SET_FIELD(reloc, addend,  curr_addend);
     return 1;
 }
 
@@ -265,13 +270,17 @@ int trap_read_symbol(const TrapHeader *header,
         curr_size = trap_read_uleb128(trap_ptr);
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
         curr_p2align = trap_read_uleb128(trap_ptr);
-    if (curr_delta == 0 && curr_size == 0 && curr_p2align == 0)
+    if (curr_delta == 0 && curr_size == 0 && curr_p2align == 0) {
+        SET_FIELD(symbol, address,   0);
+        SET_FIELD(symbol, alignment, 0);
+        SET_FIELD(symbol, size,      0);
         return 0;
+    }
 
     *address += curr_delta;
-    SET_FIELD(symbol, address, *address);
+    SET_FIELD(symbol, address,   *address);
     SET_FIELD(symbol, alignment, (uintptr_t(1) << curr_p2align));
-    SET_FIELD(symbol, size, (size_t)curr_size);
+    SET_FIELD(symbol, size,      (size_t)curr_size);
     return 1;
 }
 
