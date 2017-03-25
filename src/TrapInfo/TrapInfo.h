@@ -188,7 +188,7 @@ uintptr_t trap_read_address(const struct trap_header_t *header,
 }
 
 static inline RANDO_SECTION
-void trap_skip_vector(trap_pointer_t *trap_ptr) {
+void trap_skip_uleb128_vector(trap_pointer_t *trap_ptr) {
     while (**trap_ptr)
         (*trap_ptr)++;
     (*trap_ptr)++;
@@ -499,7 +499,7 @@ int trap_read_record(const struct trap_header_t *header,
     // Data references
     SET_FIELD(record, data_refs_start, *trap_ptr);
     if (header->has_data_refs()) {
-        trap_skip_vector(trap_ptr);
+        trap_skip_uleb128_vector(trap_ptr);
         SET_FIELD(record, data_refs_end, (*trap_ptr - 2));
     } else {
         SET_FIELD(record, data_refs_end, *trap_ptr);
