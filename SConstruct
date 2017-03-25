@@ -35,7 +35,7 @@ env = Environment(variables=vars,
                   #CXX = 'clang++')
 print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
-SUBDIRS = ['Support', 'RandoLib', 'TrapLinker']
+SUBDIRS = ['Support', 'RandoLib', 'TrapLinker', 'TrapInfo']
 OUTDIR = 'out' # TODO: make this into an option
 INSTALL_PATH = '%s/%s/bin' % (OUTDIR, env['TARGET_ARCH'])
 
