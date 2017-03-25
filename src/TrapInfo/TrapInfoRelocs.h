@@ -25,28 +25,28 @@ trap_reloc_info_t trap_reloc_info(unsigned type) {
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64
     switch (type) {
-    case R_X86_64_PC32:
-    case R_X86_64_PLT32:
-    case R_X86_64_GOTPC32:
-    case R_X86_64_GOTPCREL:
+    case  2:    // R_X86_64_PC32
+    case  3:    // R_X86_64_PLT32
+    case  9:    // R_X86_64_GOTPCREL
+    case 19:    // R_X86_64_TLSGD
+    case 20:    // R_X86_64_TLSLD
+    case 22:    // R_X86_64_GOTTPOFF
+    case 24:    // R_X86_64_PC64
+    case 26:    // R_X86_64_GOTPC32
+    case 28:    // R_X86_64_GOTPCREL64
+    case 29:    // R_X86_64_GOTPC64
+    case 34:    // R_X86_64_GOTPC32_TLSDESC
     // 32 bit signed PC relative offset to GOT
     // without REX prefix, relaxable.
-    case 41: // R_X86_64_GOTPCRELX
+    case 41:    // R_X86_64_GOTPCRELX
     // 32 bit signed PC relative offset to GOT
-    case 42: // R_X86_64_REX_GOTPCRELX
-    case R_X86_64_TLSGD:
-    case R_X86_64_TLSLD:
-    case R_X86_64_GOTTPOFF:
-    case R_X86_64_GOTPC32_TLSDESC:
-    case R_X86_64_PC64:
-    case R_X86_64_GOTPCREL64:
-    case R_X86_64_GOTPC64:
+    case 42:    // R_X86_64_REX_GOTPCRELX
         return TRAP_RELOC_ADDEND;
 
-    case R_X86_64_TPOFF32:
-    case R_X86_64_TPOFF64:
-    case R_X86_64_DTPOFF32:
-    case R_X86_64_DTPOFF64:
+    case 17:    // R_X86_64_DTPOFF64
+    case 18:    // R_X86_64_TPOFF64
+    case 21:    // R_X86_64_DTPOFF32
+    case 23:    // R_X86_64_TPOFF32
         return TRAP_RELOC_IGNORE;
     };
 #elif RANDOLIB_IS_ARM
