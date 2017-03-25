@@ -54,7 +54,7 @@ int main(int argc, const char *argv[]) {
         uintptr_t tmp_address = data.base_address;
         trap_read_record(&header, &trap_ptr, &tmp_address, &record);
         size_t first_ofs = record.first_symbol.address - record.address;
-        printf("Address: %08lx(sec+%ld)\n",
+        printf("Record@%lx(sec+%ld)\n",
                record.address, first_ofs);
 
         struct trap_symbol_t symbol;
