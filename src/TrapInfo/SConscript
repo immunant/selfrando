@@ -2,7 +2,7 @@ Import('env')
 
 trapinfo_env = env.Clone()
 trapinfo_env.Append(CPPPATH = ['../', './'])
-
+trapinfo_env.Append(LIBS = ['elf', 'z'])
 trapinfo_env.Append(LINKFLAGS = ['-static'])
 
 if 'LIBELF_PATH' in trapinfo_env:
@@ -11,7 +11,8 @@ if 'LIBELF_PATH' in trapinfo_env:
     trapinfo_env.Append(CPPPATH = [libelf_inc_path])
     trapinfo_env.Append(LIBPATH = [libelf_lib_path])
 
-trapinfo_env.Program('trapdump', ['TrapDump.c'])
+trapinfo_env.Program('trapdump', ['TrapDump.c',
+                                  '%s/ReadTrap.c' % env['PLATFORM']])
 
 files = [Glob('trapdump')]
 

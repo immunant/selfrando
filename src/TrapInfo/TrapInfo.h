@@ -483,6 +483,7 @@ int trap_read_record(const struct trap_header_t *header,
         trap_read_symbol(header, trap_ptr, &tmp_address,
                          &record->first_symbol);
         record->address -= record->first_symbol.address;
+        record->first_symbol.address += record->address;
     } else {
         trap_read_symbol(header, trap_ptr, &tmp_address, NULL);
     }
