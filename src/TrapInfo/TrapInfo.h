@@ -201,7 +201,7 @@ void trap_skip_vector(const struct trap_header_t *trap_header,
     uintptr_t address = 0;
     int cont = 0;
     do {
-        cont = (*read_func)(trap_header, trap_ptr, &address, nullptr);
+        cont = (*read_func)(trap_header, trap_ptr, &address, NULL);
     } while (cont);
 }
 
@@ -316,7 +316,7 @@ public:
 
     // Preincrement
     TrapIterator &operator++() {
-        (*m_func)(m_header, &m_trap_ptr, &m_address, nullptr);
+        (*m_func)(m_header, &m_trap_ptr, &m_address, NULL);
         return *this;
     }
 
@@ -484,7 +484,7 @@ int trap_read_record(const struct trap_header_t *header,
                          &record->first_symbol);
         record->address -= record->first_symbol.address;
     } else {
-        trap_read_symbol(header, trap_ptr, &tmp_address, nullptr);
+        trap_read_symbol(header, trap_ptr, &tmp_address, NULL);
     }
     trap_skip_vector(header, trap_ptr, trap_read_symbol);
     SET_FIELD(record, symbol_end, (*trap_ptr - trap_elements_in_symbol(header)));
@@ -521,7 +521,7 @@ public:
         m_trap_data = trap_data;
         m_trap_size = trap_size;
         auto tmp_trap_ptr = m_trap_data;
-        trap_read_header(&m_header, &tmp_trap_ptr, nullptr, &m_header);
+        trap_read_header(&m_header, &tmp_trap_ptr, NULL, &m_header);
     }
 
     TrapIterator<trap_record_t> begin() const {
