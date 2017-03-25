@@ -272,7 +272,7 @@ int trap_read_symbol(const struct trap_header_t *header,
     int end = (curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
     *address += curr_delta;
     SET_FIELD(symbol, address,   *address);
-    SET_FIELD(symbol, alignment, (uintptr_t(1) << curr_p2align));
+    SET_FIELD(symbol, alignment, ((uintptr_t)1 << curr_p2align));
     SET_FIELD(symbol, size,      (size_t)curr_size);
     return !end;
 }
