@@ -1,3 +1,6 @@
+
+import os
+
 Import('env')
 
 trapinfo_env = env.Clone()
@@ -6,8 +9,8 @@ trapinfo_env.Append(LIBS = ['elf', 'z'])
 trapinfo_env.Append(LINKFLAGS = ['-static'])
 
 if 'LIBELF_PATH' in trapinfo_env:
-    libelf_inc_path = path.join(trapinfo_env['LIBELF_PATH'], "include")
-    libelf_lib_path = path.join(trapinfo_env['LIBELF_PATH'], "lib")
+    libelf_inc_path = os.path.join(trapinfo_env['LIBELF_PATH'], "include")
+    libelf_lib_path = os.path.join(trapinfo_env['LIBELF_PATH'], "lib")
     trapinfo_env.Append(CPPPATH = [libelf_inc_path])
     trapinfo_env.Append(LIBPATH = [libelf_lib_path])
 
