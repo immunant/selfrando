@@ -53,7 +53,6 @@ int main(int argc, const char *argv[]) {
     while (trap_ptr < (data.data + data.size)) {
         uintptr_t tmp_address = data.base_address;
         trap_read_record(&header, &trap_ptr, &tmp_address, &record);
-        // FIXME: record addresses may be RVAs or GOT-relative
         size_t first_ofs = record.first_symbol.address - record.address;
         printf("Address: %08lx(sec+%ld)\n",
                record.address, first_ofs);
@@ -64,7 +63,6 @@ int main(int argc, const char *argv[]) {
         while (sym_ptr < record.symbol_end) {
             trap_read_symbol(&header, &sym_ptr, &sym_addr, &symbol);
             assert(sym_addr == symbol.address);
-            // FIXME: we sometimes read the wrong symbol.address
             printf("  Sym@%lx/%lx[%lx] align:%ld\n",
                    symbol.address - record.address,
                    symbol.address,
