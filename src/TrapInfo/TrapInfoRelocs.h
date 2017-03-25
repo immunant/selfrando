@@ -26,7 +26,7 @@ trap_reloc_info_t trap_reloc_info(unsigned type) {
 #elif RANDOLIB_IS_X86_64
     switch (type) {
     case  2:    // R_X86_64_PC32
-    case  3:    // R_X86_64_PLT32
+    case  4:    // R_X86_64_PLT32
     case  9:    // R_X86_64_GOTPCREL
     case 19:    // R_X86_64_TLSGD
     case 20:    // R_X86_64_TLSLD
