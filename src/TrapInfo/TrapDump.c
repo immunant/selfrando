@@ -42,7 +42,8 @@ int main(int argc, const char *argv[]) {
             assert(rel_addr == reloc.address);
             printf("Rel[%ld]@%lx=%lx+%ld\n",
                    reloc.type, reloc.address,
-                   reloc.symbol, reloc.addend);
+                   reloc.symbol ? (reloc.symbol + data.base_address) : 0,
+                   reloc.addend);
         }
     }
 
@@ -50,7 +51,8 @@ int main(int argc, const char *argv[]) {
     struct trap_record_t record;
     trap_ptr = header.record_start;
     while (trap_ptr < (data.data + data.size)) {
-        trap_read_record(&header, &trap_ptr, NULL, &record);
+        uintptr_t tmp_address = data.base_address;
+        trap_read_record(&header, &trap_ptr, &tmp_address, &record);
         // FIXME: record addresses may be RVAs or GOT-relative
         size_t first_ofs = record.first_symbol.address - record.address;
         printf("Address: %08lx(sec+%ld)\n",
@@ -79,7 +81,8 @@ int main(int argc, const char *argv[]) {
                 assert(rel_addr == reloc.address);
                 printf("  Rel[%ld]@%lx=%lx+%ld\n",
                        reloc.type, reloc.address,
-                       reloc.symbol, reloc.addend);
+                       reloc.symbol ? (reloc.symbol + data.base_address) : 0,
+                       reloc.addend);
             }
         }
 

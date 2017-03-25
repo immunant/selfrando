@@ -469,11 +469,12 @@ int trap_read_record(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      uintptr_t *address,
                      void *data) {
-    (void)address; // Unused, prevent warnings
-
     struct trap_record_t *record = (struct trap_record_t*)data;
+    uintptr_t base_address = *address;
+    uintptr_t record_address = trap_read_address(header, trap_ptr);
+    record_address += base_address;
     SET_FIELD(record, header, header);
-    SET_FIELD(record, address, trap_read_address(header, trap_ptr));
+    SET_FIELD(record, address, record_address);
     // Parse symbol vector
     SET_FIELD(record, symbol_start, *trap_ptr);
     // We include the first symbol in the symbol vector

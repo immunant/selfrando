@@ -47,7 +47,7 @@ struct trap_file_t *open_trap_file(const char *filename) {
     return res;
 }
 
-static Elf_Scn *find_txtrp_section(Elf *elf) {
+static Elf_Scn *find_section(Elf *elf, const char *needle) {
     size_t shstrndx;
     if (elf_getshdrstrndx(elf, &shstrndx) != 0)
         errx(EXIT_FAILURE, "Could not find string section in file");
@@ -61,17 +61,30 @@ static Elf_Scn *find_txtrp_section(Elf *elf) {
             errx(EXIT_FAILURE, "Cannot get section header");
 
         const char *scn_name = elf_strptr(elf, shstrndx, shdr.sh_name);
-        if (strcmp(scn_name, ".txtrp") == 0)
+        if (strcmp(scn_name, needle) == 0)
             return scn;
     }
     return NULL;
 }
 
 struct trap_data_t read_trap_data(struct trap_file_t *file) {
-    struct trap_data_t res = { NULL, 0 };
-    Elf_Scn *txtrp_scn = find_txtrp_section(file->elf);
+    struct trap_data_t res = { 0, NULL, 0 };
+    Elf_Scn *txtrp_scn = find_section(file->elf, ".txtrp");
     if (txtrp_scn == NULL)
         return res;
+
+    // FIXME: we should actually be reading .dynamic
+    // and getting the pointer from DT_PLTGOT
+    // (using the address of .got.plt works fine on x86,
+    //  but not on other architectures)
+    Elf_Scn *got_plt_scn = find_section(file->elf, ".got.plt");
+    if (got_plt_scn != NULL) {
+        GElf_Shdr shdr;
+        if (gelf_getshdr(got_plt_scn, &shdr) == NULL)
+            errx(EXIT_FAILURE, "Cannot get section header");
+
+        res.base_address = shdr.sh_addr;
+    }
 
     Elf_Data *data = elf_getdata(txtrp_scn, NULL);
     for (data = elf_getdata(txtrp_scn, NULL);

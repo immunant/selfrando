@@ -14,6 +14,7 @@
 struct trap_file_t;
 
 struct trap_data_t {
+    uintptr_t base_address;
     uint8_t *data;
     size_t size;
 };
