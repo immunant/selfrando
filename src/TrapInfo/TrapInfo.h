@@ -380,7 +380,7 @@ private:
     uintptr_t m_address;
 };
 
-struct RANDO_SECTION TrapRelocVector {
+class RANDO_SECTION TrapRelocVector {
 public:
     TrapRelocVector() = delete;
     TrapRelocVector(trap_pointer_t start, trap_pointer_t end,
