@@ -84,9 +84,9 @@ ptrdiff_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
     (*trap_ptr)++;
     shift += 7;
 
-    ptrdiff_t sign_bit = ptrdiff_t(1) << (shift - 1);
+    ptrdiff_t sign_bit = (ptrdiff_t)1 << (shift - 1);
     if ((res & sign_bit) != 0)
-        res |= -(ptrdiff_t(1) << shift);
+        res |= -((ptrdiff_t)1 << shift);
     return res;
 }
 
