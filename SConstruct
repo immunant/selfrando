@@ -62,8 +62,6 @@ defines['RANDOLIB_RNG_IS_%s' % env['RNG'].upper()] = 1
 env.Append(CPPDEFINES = defines)
 
 if env['PLATFORM'] == 'win32':
-    SUBDIRS.extend(['LibWrapper', 'LinkWrapper', 'TrapLib', 'TrapObj', 'WrapperCommon'])
-
     env.Append(CCFLAGS = '/EHsc') # C++ exception handling support
     env.Append(CCFLAGS = '/W3')   # Show lots of warnings
     env.Append(CCFLAGS = '/O2')   # Optimize the code
