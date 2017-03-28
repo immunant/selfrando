@@ -11,6 +11,7 @@
 .globl _TRaP_trap_begin
 .hidden _TRaP_trap_begin
 .type _TRaP_trap_begin, %object
+.align 4096
 _TRaP_trap_begin:
 .byte 0x01 // Version
 .byte 0xD1, 0x01, 0x00 // Flags

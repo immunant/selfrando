@@ -46,10 +46,10 @@ static const char kLinkerPathVariable[] = "SELFRANDO_ORIGINAL_LINKER";
 static char kLinkerIdScript[] = "/linker_id.sh";
 
 // FOR TESTING! TODO: figure out a better way to find this path
-static char kTrapHeader[] = "/trapheader.o";
-static char kTrapHeaderPage[] = "/trapheader_page.o";
-static char kTrapFooter[] = "/trapfooter.o";
-static char kTrapFooterPage[] = "/trapfooter_page.o";
+static char kTrapHeader[] = "/libtrapheader.a";
+static char kTrapHeaderPage[] = "/libtrapheader_page.a";
+static char kTrapFooter[] = "/libtrapfooter.a";
+static char kTrapFooterPage[] = "/libtrapfooter_page.a";
 static char kStaticSelfrando[] = "/libselfrando.a";
 static char kSelfrandoObject[] = "/selfrando_txtrp.o";
 static char kTrapScript[] = "/linker_script.ld";
@@ -868,7 +868,9 @@ std::vector<char*> ArgParser::create_new_invocation(
 #endif
 
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
+        m_args.emplace_back("--whole-archive", true);
         m_args.emplace(header_pos, trap_header.c_str(), true);
+        m_args.emplace_back("--no-whole-archive", true);
 
         m_args.emplace_back(strdup((std::string("-L") + randolib_install_path).c_str()), true);
         m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
@@ -880,10 +882,10 @@ std::vector<char*> ArgParser::create_new_invocation(
         } else {
             m_args.emplace_back("-lrandoentry_exec", true);
         }
-        m_args.emplace_back("--no-whole-archive", true);
         m_args.emplace_back(trap_script.c_str(), true);
         m_args.emplace_back(trap_got_script.c_str(), true);
         m_args.emplace_back(trap_footer.c_str(), true);
+        m_args.emplace_back("--no-whole-archive", true);
         if (m_static_selfrando && m_selfrando_txtrp_pages) {
             // WARNING: this must go after TrapFooter.o
             std::string selfrando_object = randolib_install_path + kSelfrandoObject;
