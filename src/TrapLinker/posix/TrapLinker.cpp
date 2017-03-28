@@ -868,9 +868,9 @@ std::vector<char*> ArgParser::create_new_invocation(
 #endif
 
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
-        m_args.emplace_back("--whole-archive", true);
+        m_args.emplace(header_pos, "--whole-archive", true);
         m_args.emplace(header_pos, trap_header.c_str(), true);
-        m_args.emplace_back("--no-whole-archive", true);
+        m_args.emplace(header_pos, "--no-whole-archive", true);
 
         m_args.emplace_back(strdup((std::string("-L") + randolib_install_path).c_str()), true);
         m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
