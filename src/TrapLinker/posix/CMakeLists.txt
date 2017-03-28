@@ -31,5 +31,15 @@ add_custom_command(
     COMMENT "Generate linker options table"
     )
 
+add_custom_command(TARGET traplinker
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld
+    COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld.bfd
+    COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld.gold
+    BYPRODUCTS ld ld.bfd ld.gold
+    VERBATIM
+    COMMENT "Creating ld symlinks"
+    )
+
 add_dependencies(traplinker randolib_support)
 # TODO: install the files + symlinks
