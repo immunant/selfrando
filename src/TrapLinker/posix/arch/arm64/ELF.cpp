@@ -6,7 +6,7 @@
  *
  */
 
-#include "Object.h"
+#include <Object.h>
 
 typedef struct {
     uint32_t insn;

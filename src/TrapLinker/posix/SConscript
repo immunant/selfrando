@@ -36,9 +36,15 @@ options_env = Environment(BUILDERS = {'GenerateOptions': GenerateOptions})
 options_env.GenerateOptions('LinkerOptions', ['LinkerOptions', 'IgnoredOptions'])
 
 traplinker_env = env.Clone()
-traplinker_env.Append(CPPPATH = ['../', './'])
+traplinker_env.Append(CPPPATH = ['#/src',
+                                 '#/src/TrapInfo',
+                                 '#/src/TrapLinker',
+                                 '#/src/TrapLinker/posix',
+                                 '#/src/Support',
+                                 '#/src/Support/posix',
+                                 '.'])
 traplinker_env.Append(LIBS = ['elf', 'randolib_support'])
-traplinker_env.Append(LIBPATH = ['../../Support'])
+traplinker_env.Append(LIBPATH = ['../../Support/posix'])
 
 traplinker_env.Append(LINKFLAGS = ['-static'])
 

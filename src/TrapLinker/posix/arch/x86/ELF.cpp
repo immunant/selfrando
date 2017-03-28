@@ -6,8 +6,8 @@
  *
  */
 
-#include "Object.h"
-#include "../Support/Debug.h"
+#include <Object.h>
+#include <Debug.h>
 
 typedef struct {
     uint8_t opcode;

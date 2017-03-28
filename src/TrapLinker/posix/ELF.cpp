@@ -6,11 +6,11 @@
  *
  */
 
-#include "Object.h"
-#include "../TrapInfo/TrapInfoRelocs.h"
-#include "../Support/Debug.h"
-#include "../Support/Filesystem.h"
-#include "../Support/Misc.h"
+#include <Object.h>
+#include <TrapInfoRelocs.h>
+#include <Debug.h>
+#include <Filesystem.h>
+#include <Misc.h>
 #include <algorithm>
 #include <unistd.h>
 

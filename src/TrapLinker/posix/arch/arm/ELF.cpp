@@ -6,8 +6,8 @@
  *
  */
 
-#include "Object.h"
-#include "../Support/Utility.h"
+#include <Object.h>
+#include <Utility.h>
 
 typedef struct {
     uint32_t insn;

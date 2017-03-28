@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "Trap.h"
-#include "../Support/Debug.h"
+#include <Trap.h>
+#include <Debug.h>
 
 #include <libelf.h>
 #include <gelf.h>

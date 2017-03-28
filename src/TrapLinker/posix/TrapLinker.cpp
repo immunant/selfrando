@@ -22,11 +22,11 @@
 #include <stack>
 #include <vector>
 
-#include "Trap.h"
-#include "Object.h"
-#include "../Support/Debug.h"
-#include "../Support/Filesystem.h"
-#include "../Support/Misc.h"
+#include <Trap.h>
+#include <Object.h>
+#include <Debug.h>
+#include <Filesystem.h>
+#include <Misc.h>
 
 namespace {
 
