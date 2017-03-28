@@ -1,0 +1,10 @@
+add_library(randolib_support
+    STATIC
+    Debug.cpp
+    Debug.h
+    Filesystem.cpp
+    Filesystem.h
+    Misc.cpp
+    Misc.h
+    Utility.h
+    ) 
