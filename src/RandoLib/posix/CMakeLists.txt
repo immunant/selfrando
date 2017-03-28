@@ -92,7 +92,7 @@ else()
     list(FIND ALL_ARCHES ${SR_ARCH} arch_idx)
     list(GET ALL_LDEMULS ${arch_idx} arch_ldemul)
     add_custom_target(selfrando_txtrp.o ALL
-        COMMAND ld -r -m ${arch_ldemul} -o selfrando_txtrp.o
+        COMMAND ${CMAKE_LINKER} -r -m ${arch_ldemul} -o selfrando_txtrp.o
             -T${CMAKE_CURRENT_SOURCE_DIR}/selfrando_txtrp.ld
             --whole-archive libselfrando_noprefix.a
         VERBATIM
