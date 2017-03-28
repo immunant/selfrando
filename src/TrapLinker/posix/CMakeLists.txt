@@ -42,4 +42,19 @@ add_custom_command(TARGET traplinker
     )
 
 add_dependencies(traplinker randolib_support)
-# TODO: install the files + symlinks
+
+install(TARGETS traplinker DESTINATION bin)
+install(PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/ld
+    ${CMAKE_CURRENT_BINARY_DIR}/ld.bfd
+    ${CMAKE_CURRENT_BINARY_DIR}/ld.gold
+    linker_id.sh
+    DESTINATION bin
+    )
+install(FILES
+    linker_script.ld
+    linker_script_got_only.ld
+    linker_script_got_plt.ld
+    provide_TRaP_end_page.ld
+    DESTINATION bin
+    )

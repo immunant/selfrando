@@ -76,6 +76,7 @@ if(BUILD_SHARED_LIBS)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++ -nostdlib")
     add_library(selfrando SHARED $<TARGET_OBJECTS:selfrando_objects>)
     target_link_libraries(selfrando PRIVATE dl)
+    install(TARGETS selfrando DESTINATION bin)
 else()
     add_library(selfrando_noprefix STATIC $<TARGET_OBJECTS:selfrando_objects>)
 
@@ -100,6 +101,14 @@ else()
 
     add_dependencies(libselfrando.a selfrando_noprefix)
     add_dependencies(selfrando_txtrp.o selfrando_noprefix)
+
+    install(TARGETS libselfrando.a selfrando_txtrp.o DESTINATION bin)
 endif()
 
-# TODO: install
+install(TARGETS
+    trapheader
+    trapheader_page
+    trapfooter
+    trapfooter_page
+    DESTINATION bin
+    )

@@ -13,4 +13,4 @@ if(UNIX)
 target_link_libraries(trapdump elf)
 endif()
 
-# TODO: install the files + symlinks
+install(TARGETS trapdump DESTINATION bin)
