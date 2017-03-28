@@ -102,7 +102,10 @@ else()
     add_dependencies(libselfrando.a selfrando_noprefix)
     add_dependencies(selfrando_txtrp.o selfrando_noprefix)
 
-    install(TARGETS libselfrando.a selfrando_txtrp.o DESTINATION bin)
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/libselfrando.a
+        ${CMAKE_CURRENT_BINARY_DIR}/selfrando_txtrp.o
+        DESTINATION bin)
 endif()
 
 install(TARGETS
