@@ -40,11 +40,9 @@ add_library(randoentry_so   STATIC ${entry_files} EntryPointSO.c)
 
 # Build the trapheader/footer objects
 add_library(trapheader      STATIC TrapHeader.S)
-add_library(trapheader_page STATIC TrapHeader.S)
+add_library(trapheader_page STATIC TrapHeaderPage.S)
 add_library(trapfooter      STATIC TrapFooter.S)
 add_library(trapfooter_page STATIC TrapFooterPage.S)
-target_compile_definitions(trapheader      PRIVATE -DTXTRP_ALIGNMENT=1)
-target_compile_definitions(trapheader_page PRIVATE -DTXTRP_ALIGNMENT=4096)
 
 add_library(selfrando_objects OBJECT
     ../RandoLib.cpp
