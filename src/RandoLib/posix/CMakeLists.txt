@@ -109,6 +109,8 @@ else()
 endif()
 
 install(TARGETS
+    randoentry_exec
+    randoentry_so
     trapheader
     trapheader_page
     trapfooter
