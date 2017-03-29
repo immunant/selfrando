@@ -16,8 +16,7 @@ add_executable(traplinker
     LinkerOptions.inc
     )
 
-# TODO: allow custom libelf path
-target_link_libraries(traplinker elf randolib_support)
+target_link_libraries(traplinker ${SR_LIBELF_LIB} randolib_support)
 target_compile_options(traplinker PRIVATE -static)
 
 add_custom_command(

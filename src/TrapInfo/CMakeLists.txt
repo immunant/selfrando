@@ -9,7 +9,7 @@ add_executable(trapdump
     )
 
 if(UNIX)
-target_link_libraries(trapdump elf)
+    target_link_libraries(trapdump ${SR_LIBELF_LIB})
 endif()
 
 install(TARGETS trapdump DESTINATION bin)
