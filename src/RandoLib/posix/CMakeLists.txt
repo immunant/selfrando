@@ -1,4 +1,6 @@
 
+cmake_policy(SET CMP0063 NEW)
+
 set(SR_RNG "urandom" CACHE STRING
     "Random number generator to use ('rand_r' or 'urandom')")
 
@@ -14,10 +16,12 @@ add_definitions(-DRANDOLIB_RNG_IS_${upper_rng}=1)
 # Make stack non-executable in assembly files
 add_compile_options(-Wa,--noexecstack)
 add_compile_options(-m${SR_ARCH_SIZE})
-add_compile_options(-fPIC)
-add_compile_options(-fvisibility=hidden)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,noexecstack")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_ASM_VISIBILITY_PRESET hidden)
 
 # Create the entry libraries
 set(entry_files
