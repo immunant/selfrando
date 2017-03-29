@@ -6,6 +6,8 @@ echo "Building for architecture: $SR_ARCH"
 
 BUILD_DIR=out/$SR_ARCH
 
+set -e
+
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 cmake ../.. -DCMAKE_INSTALL_PREFIX=`pwd` -DCMAKE_BUILD_TYPE=Release -DSR_ARCH=$SR_ARCH -DBUILD_SHARED_LIBS=1 -DSR_FORCE_INPLACE=1 -G Ninja $CMAKE_ARGS "$@"
