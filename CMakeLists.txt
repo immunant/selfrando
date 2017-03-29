@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.3)
 project(selfrando LANGUAGES C CXX ASM)
+set(CMAKE_CXX_STANDARD 11)
 
 set(SR_ARCH "x86_64" CACHE STRING "Target architectures")
 set(SR_DEBUG_LEVEL "0" CACHE STRING "Debugging level (0-10); set to 'env' to control via environment variable")
@@ -38,8 +39,6 @@ elseif(UNIX)
         -Wpointer-arith
         )
     
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
     if(LIBELF_PATH)
         include_directories(BEFORE ${LIBELF_PATH}/include)
         link_directories(${LIBELF_PATH}/lib)
