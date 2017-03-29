@@ -45,4 +45,9 @@ if(${write_layouts_idx} LESS 0)
 endif()
 add_definitions(-DRANDOLIB_WRITE_LAYOUTS=${write_layouts_idx})
 
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src/TrapInfo
+    )
+
 add_subdirectory(${SR_PLATFORM})

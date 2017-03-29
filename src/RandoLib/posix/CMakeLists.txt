@@ -11,11 +11,6 @@ endif()
 string(TOUPPER ${SR_RNG} upper_rng)
 add_definitions(-DRANDOLIB_RNG_IS_${upper_rng}=1)
 
-include_directories(
-    ${CMAKE_SOURCE_DIR}/src/TrapInfo
-    ${CMAKE_SOURCE_DIR}/src/RandoLib
-    )
-
 # Make stack non-executable in assembly files
 add_compile_options(-Wa,--noexecstack)
 add_compile_options(-m${SR_ARCH_SIZE})
