@@ -8,6 +8,7 @@ set(LIBELF_PATH "" CACHE PATH "Path to directory containing libelf.so (if not us
 
 set(ALL_ARCHES x86 x86_64 arm arm64)
 set(ARCH_SIZES 32 64 32 64)
+set_property(CACHE SR_ARCH PROPERTY STRINGS ${ALL_ARCHES})
 list(FIND ALL_ARCHES ${SR_ARCH} arch_idx)
 if(arch_idx LESS 0)
     message(FATAL_ERROR "Unknown architecture '${SR_ARCH}', "

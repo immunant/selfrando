@@ -12,8 +12,8 @@ set(SR_FORCE_INPLACE OFF CACHE BOOL
 set(SR_WRITE_LAYOUTS "no" CACHE STRING
     "After randomization, write layout files to /tmp/ (set to 'no', 'env' or 'always')")
 
-# TODO: notify cmake about the options, so they show up in the GUI
 set(ALLOWED_LOG default none console file system)
+set_property(CACHE SR_LOG PROPERTY STRINGS ${ALLOWED_LOG})
 list(FIND ALLOWED_LOG ${SR_LOG} log_idx)
 if(log_idx LESS 0)
     message(FATAL_ERROR "Unknown logging method: '${SR_LOG}'!")
@@ -37,8 +37,8 @@ if(SR_FORCE_INPLACE)
     add_definitions(-DRANDOLIB_FORCE_INPLACE=1)
 endif()
 
-# TODO: notify cmake about the options, so they show up in the GUI
 set(ALLOWED_WRITE_LAYOUTS no env always)
+set_property(CACHE SR_WRITE_LAYOUTS PROPERTY STRINGS ${ALLOWED_WRITE_LAYOUTS})
 list(FIND ALLOWED_WRITE_LAYOUTS ${SR_WRITE_LAYOUTS} write_layouts_idx)
 if(${write_layouts_idx} LESS 0)
     message(FATAL_ERROR "Unknown option for SR_WRITE_LAYOUTS: '${SR_WRITE_LAYOUTS}'!")

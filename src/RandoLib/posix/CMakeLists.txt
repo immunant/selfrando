@@ -2,8 +2,9 @@
 set(SR_RNG "urandom" CACHE STRING
     "Random number generator to use ('rand_r' or 'urandom')")
 
-set(ALL_RNGS rand_r urandom)
-list(FIND ALL_RNGS ${SR_RNG} rng_idx)
+set(ALLOWED_RNGS rand_r urandom)
+set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
+list(FIND ALLOWED_RNGS ${SR_RNG} rng_idx)
 if(${rng_idx} LESS 0)
     message(FATAL_ERROR "Unknown RNG '${SR_RNG}'!")
 endif()
