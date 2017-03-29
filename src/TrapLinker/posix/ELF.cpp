@@ -993,8 +993,7 @@ void ElfSymbolTable::finalize() {
         elf_flagshdr(m_section, ELF_C_SET, ELF_F_DIRTY);
     }
 
-    size_t num_new_globals = m_new_globals.size();
-    assert(m_new_globals_xindex.size() == num_new_globals && "Invalid new xindex size");
+    assert(m_new_globals_xindex.size() == m_new_globals.size() && "Invalid new xindex size");
     m_xindex_table.add_new(m_input_locals.size() + num_new_locals + m_input_globals.size(), m_new_globals_xindex);
     m_xindex_table.update();
 #if 0
