@@ -8,7 +8,6 @@ add_executable(trapdump
     TrapInfoRelocs.h
     )
 
-# TODO: allow custom libelf path
 if(UNIX)
 target_link_libraries(trapdump elf)
 endif()
