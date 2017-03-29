@@ -61,7 +61,7 @@ if("${SR_ARCH}" STREQUAL "arm")
     target_sources(selfrando_objects PRIVATE arm/UnwindStubs.c)
 endif()
 
-if(${SR_RNG} STREQUAL "urandom")
+if("${SR_RNG}" STREQUAL "urandom")
     target_sources(selfrando_objects PRIVATE util/rand_linux.cpp)
 endif()
 
