@@ -21,7 +21,6 @@ add_compile_options(-m${SR_ARCH_SIZE})
 add_compile_options(-fPIC)
 add_compile_options(-fvisibility=hidden)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden")
-
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,noexecstack")
 
 # Create the entry libraries
