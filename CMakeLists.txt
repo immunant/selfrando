@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.3)
 project(selfrando LANGUAGES C CXX ASM)
 
 set(SR_ARCH "x86_64" CACHE STRING "Target architectures")
