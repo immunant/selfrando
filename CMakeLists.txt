@@ -11,7 +11,7 @@ set(SR_DEBUG_LEVEL "0" CACHE STRING "Debugging level (0-10); set to 'env' to con
 set(ANDROID_NDK "" CACHE PATH "Android NDK directory (build libs for Android)")
 set(LIBELF_PATH "" CACHE PATH "Path to directory containing libelf.so (if not using system libelf)")
 
-if(${SR_BUILD_MODULES} STREQUAL "all")
+if("${SR_BUILD_MODULES}" STREQUAL "all")
     set(SR_BUILD_MODULES ${SR_ALL_MODULES})
 endif()
 foreach(module ${SR_BUILD_MODULES})
