@@ -50,6 +50,7 @@ string(TOUPPER "${SR_ARCH}" upper_arch)
 add_definitions(
     -DRANDOLIB_IS_${upper_platform}=1
     -DRANDOLIB_IS_${upper_arch}=1
+    -DRANDOLIB_ARCH="${SR_ARCH}"
     -DRANDOLIB_ARCH_SIZE=${SR_ARCH_SIZE}
     -DRANDOLIB_DEBUG_LEVEL=${SR_DEBUG_LEVEL}
     -DRANDOLIB_DEBUG_LEVEL_IS_ENV=${SR_DEBUG_LEVEL_IS_ENV}
