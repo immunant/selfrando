@@ -4,7 +4,7 @@
 SR_ARCH=${SR_ARCH:-x86_64}
 echo "Building for architecture: $SR_ARCH"
 
-SR_DIR=$(realpath $(dirname $0)/..)
+SR_DIR=$(readlink -f $(dirname $0)/..)
 BUILD_DIR=$SR_DIR/out/$SR_ARCH
 echo "Building in directory: $BUILD_DIR"
 
