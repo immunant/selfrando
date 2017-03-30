@@ -32,7 +32,6 @@ elseif(UNIX)
     
     add_compile_options(
         -fno-omit-frame-pointer
-        -g
         -Wall
         -Wextra
         -Wno-unused-parameter
