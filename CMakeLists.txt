@@ -37,14 +37,8 @@ elseif(UNIX)
         -Wno-unused-parameter
         -Wpointer-arith
         )
-    
-    if(LIBELF_PATH)
-        include_directories(BEFORE ${LIBELF_PATH}/include)
-        link_directories(${LIBELF_PATH}/lib)
-        set(SR_LIBELF_LIB ${LIBELF_PATH}/lib/libelf.a)
-    else()
-        set(SR_LIBELF_LIB elf)
-    endif()
+
+    find_library(SR_LIBELF_LIB elf PATHS ${LIBELF_PATH})
 endif()
 
 string(TOUPPER "${SR_PLATFORM}" upper_platform)
