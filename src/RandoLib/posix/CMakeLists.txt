@@ -85,6 +85,10 @@ else()
         COMMAND objcopy --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
         VERBATIM
         )
+    add_dependencies(libselfrando.a selfrando_noprefix)
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/libselfrando.a
+        DESTINATION bin/${SR_ARCH})
 
     # Build selfrando_txtrp.o with all the code in .txtrp
     # FIXME: is this list correct?
@@ -97,12 +101,9 @@ else()
             --whole-archive libselfrando_noprefix.a
         VERBATIM
         )
-
-    add_dependencies(libselfrando.a selfrando_noprefix)
     add_dependencies(selfrando_txtrp.o selfrando_noprefix)
-
+    # FIXME: also install into arch-specific subdirectory
     install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/libselfrando.a
         ${CMAKE_CURRENT_BINARY_DIR}/selfrando_txtrp.o
         DESTINATION bin)
 endif()
