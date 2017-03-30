@@ -38,7 +38,11 @@ elseif(UNIX)
         -Wpointer-arith
         )
 
-    find_library(SR_LIBELF_LIB elf PATHS ${LIBELF_PATH})
+    find_library(SR_LIBELF_LIB
+        elf
+        HINTS "${LIBELF_PATH}"
+        PATH_SUFFIXES bin lib
+        )
 endif()
 
 string(TOUPPER "${SR_PLATFORM}" upper_platform)
