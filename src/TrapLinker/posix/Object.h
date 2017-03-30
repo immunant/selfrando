@@ -8,12 +8,14 @@
 
 #pragma once
 
-#include <Trap.h>
 #include <Debug.h>
 
 #include <libelf.h>
 #include <gelf.h>
 
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <list>
@@ -22,18 +24,32 @@
 #include <utility>
 #include <vector>
 
+template<size_t arch_size>
+struct TargetInfo;
 
-#if RANDOLIB_ARCH_SIZE == 32
-typedef Elf32_Rel TargetElf_Rel;
-typedef Elf32_Rela TargetElf_Rela;
-typedef Elf32_Sym TargetElf_Sym;
-typedef Elf32_Addr TargetElf_Addr;
-#else
-typedef Elf64_Rel TargetElf_Rel;
-typedef Elf64_Rela TargetElf_Rela;
-typedef Elf64_Sym TargetElf_Sym;
-typedef Elf64_Addr TargetElf_Addr;
-#endif
+template<>
+struct TargetInfo<32> {
+    typedef uint32_t Pointer;
+    typedef int32_t Offset;
+    typedef int32_t PtrDiff;
+
+    typedef Elf32_Rel Elf_Rel;
+    typedef Elf32_Rela Elf_Rela;
+    typedef Elf32_Sym Elf_Sym;
+    typedef Elf32_Addr Elf_Addr;
+};
+
+template<>
+struct TargetInfo<64> {
+    typedef uint64_t Pointer;
+    typedef int64_t Offset;
+    typedef int64_t PtrDiff;
+
+    typedef Elf64_Rel Elf_Rel;
+    typedef Elf64_Rela Elf_Rela;
+    typedef Elf64_Sym Elf_Sym;
+    typedef Elf64_Addr Elf_Addr;
+};
 
 typedef size_t Elf_SectionIndex;
 
@@ -182,7 +198,7 @@ public:
             }
         }
 
-        TargetElf_Sym *get() {
+        TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym *get() {
             switch (m_source) {
             case INPUT_LOCAL:
                 return &m_symtab->m_input_locals[m_index];
@@ -246,8 +262,8 @@ public:
     SymbolRef add_section_symbol(Elf_SectionIndex section_index);
 
 private:
-    static TargetElf_Sym target_sym_from_gelf(const GElf_Sym &sym) {
-        TargetElf_Sym new_symbol;
+    static TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym target_sym_from_gelf(const GElf_Sym &sym) {
+        TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym new_symbol;
         new_symbol.st_name  = sym.st_name;
         new_symbol.st_info  = sym.st_info;
         new_symbol.st_other = sym.st_other;
@@ -260,7 +276,7 @@ private:
     void find_symtab();
     void read_symbols();
 
-    SymbolRef add_symbol(TargetElf_Sym symbol, uint32_t xindex);
+    SymbolRef add_symbol(TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym symbol, uint32_t xindex);
     void update_symbol_references();
 
 private:
@@ -274,22 +290,22 @@ private:
     std::vector<Elf_Scn*> m_rel_sections;
     std::vector<Elf_Scn*> m_rela_sections;
 
-    std::vector<TargetElf_Sym> m_input_locals;
-    std::vector<TargetElf_Sym> m_input_globals;
-    std::vector<TargetElf_Sym> m_new_locals;
-    std::vector<TargetElf_Sym> m_new_globals;
+    std::vector<TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym> m_input_locals;
+    std::vector<TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym> m_input_globals;
+    std::vector<TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym> m_new_locals;
+    std::vector<TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym> m_new_globals;
     std::vector<uint32_t> m_new_locals_xindex;
     std::vector<uint32_t> m_new_globals_xindex;
 };
 
 #pragma pack(1)
 struct TrapSymbol {
-    TargetOff offset;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset;
     ElfSymbolTable::SymbolRef symbol;
-    TargetOff p2align;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset p2align;
     size_t size;
 
-    TrapSymbol(TargetOff offset, ElfSymbolTable::SymbolRef symbol, TargetOff p2align,
+    TrapSymbol(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, ElfSymbolTable::SymbolRef symbol, TargetInfo<RANDOLIB_ARCH_SIZE>::Offset p2align,
                size_t size = 0)
         : offset(offset), symbol(symbol), p2align(p2align), size(size) {}
 
@@ -299,17 +315,17 @@ struct TrapSymbol {
 };
 
 struct ElfReloc {
-    TargetOff offset;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset;
     uint32_t type;
     // FIXME: figure out a way to not store these in memory
     // when they're not needed
     ElfSymbolTable::SymbolRef symbol;
-    TargetPtrDiff addend;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff addend;
 
     ElfReloc() = delete;
-    ElfReloc(TargetOff offset, uint32_t type,
+    ElfReloc(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, uint32_t type,
               ElfSymbolTable::SymbolRef symbol = ElfSymbolTable::SymbolRef(),
-              TargetPtrDiff addend = 0)
+              TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff addend = 0)
         : offset(offset), type(type), symbol(symbol), addend(addend) { }
 
     bool operator <(const ElfReloc &other) const {
@@ -388,17 +404,17 @@ public:
                          DataBuffer buffer,
                          Elf_Type data_type = ELF_T_BYTE);
 
-    bool add_int32_section_patch(uint32_t shndx, TargetOff offset,
+    bool add_int32_section_patch(uint32_t shndx, TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset,
                                  uint32_t mask, uint32_t value);
 
     // FIXME: we have two versions of this function: one that takes
     // a section index, and one that takes a section pointer.
     // We need both of them. However, elf_ndxscn is potentially slow,
     // so it might be worth optimizing these.
-    TargetOff add_data(uint32_t shndx, void* data, size_t size, unsigned align = 1,
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset add_data(uint32_t shndx, void* data, size_t size, unsigned align = 1,
                        Elf_Type data_type = ELF_T_BYTE);
 
-    TargetOff add_data(Elf_Scn *section, void* data, size_t size, unsigned align = 1,
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset add_data(Elf_Scn *section, void* data, size_t size, unsigned align = 1,
                        Elf_Type data_type = ELF_T_BYTE) {
         return add_data(elf_ndxscn(section), data, size, align, data_type);
     }
@@ -547,9 +563,9 @@ private:
     /// New sections to be added when we write this object back
     std::vector<std::pair<GElf_Shdr, DataBuffer> > m_new_sections;
 
-    std::map<size_t, TargetOff> m_section_sizes;
+    std::map<size_t, TargetInfo<RANDOLIB_ARCH_SIZE>::Offset> m_section_sizes;
 
-    std::map<uint32_t, std::map<TargetOff, std::pair<uint32_t, uint32_t>>> m_section_patches;
+    std::map<uint32_t, std::map<TargetInfo<RANDOLIB_ARCH_SIZE>::Offset, std::pair<uint32_t, uint32_t>>> m_section_patches;
 
     std::vector<DataBuffer> m_replacement_data;
 
@@ -587,7 +603,7 @@ namespace Target {
     bool check_rel_for_stubs(ElfObject &object, RelType *relocation, ptrdiff_t addend,
                              uint32_t shndx, TrapRecordBuilder &builder);
 
-    TargetPtrDiff read_reloc(char* data, ElfReloc &reloc);
+    TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff read_reloc(char* data, ElfReloc &reloc);
 };
 
 class TrampolineBuilder {
@@ -631,7 +647,7 @@ public:
         m_new_section_symbol = new_symbol;
     }
 
-    void set_section_p2align(TargetOff section_p2align) {
+    void set_section_p2align(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset section_p2align) {
         m_section_p2align = section_p2align;
     }
 
@@ -643,7 +659,7 @@ public:
         return m_section_symbol;
     }
 
-    TargetOff section_p2align() const {
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset section_p2align() const {
         return m_section_p2align;
     }
 
@@ -669,20 +685,20 @@ public:
         return m_reloc_section_ndx;
     }
 
-    void mark_symbol(TargetOff offset, ElfSymbolTable::SymbolRef symbol,
-                     TargetOff p2align, size_t size);
+    void mark_symbol(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, ElfSymbolTable::SymbolRef symbol,
+                     TargetInfo<RANDOLIB_ARCH_SIZE>::Offset p2align, size_t size);
 
-    void mark_relocation(TargetOff offset, uint32_t type,
+    void mark_relocation(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, uint32_t type,
                          ElfSymbolTable::SymbolRef symbol);
 
-    void mark_relocation(TargetOff offset, uint32_t type,
+    void mark_relocation(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, uint32_t type,
                          ElfSymbolTable::SymbolRef symbol,
-                         TargetPtrDiff addend);
+                         TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff addend);
 
-    void mark_data_ref(TargetOff offset);
+    void mark_data_ref(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset);
 
-    void mark_padding_offset(TargetOff offset);
-    void mark_padding_size(TargetOff size);
+    void mark_padding_offset(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset);
+    void mark_padding_size(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset size);
 
     bool can_ignore_section() const {
         return !m_has_func_symbols && m_relocs.empty();
@@ -701,7 +717,7 @@ public:
     void read_reloc_addends(Elf_Scn *section);
 
     void build_trap_data(const ElfSymbolTable &symbol_table);
-    void write_reloc(const ElfReloc &reloc, TargetOff prev_offset,
+    void write_reloc(const ElfReloc &reloc, TargetInfo<RANDOLIB_ARCH_SIZE>::Offset prev_offset,
                      const ElfSymbolTable &symbol_table);
 
     std::pair<void*, size_t> get_trap_data() const {
@@ -716,8 +732,8 @@ public:
     friend std::ostream& operator<<(std::ostream &os, const TrapRecordBuilder &builder);
 
 private:
-    void push_back_uleb128(TargetOff x);
-    void push_back_sleb128(TargetPtrDiff x);
+    void push_back_uleb128(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset x);
+    void push_back_sleb128(TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff x);
 
     template<typename IntType>
     void push_back_int(IntType x) {
@@ -727,7 +743,7 @@ private:
     }
 
     ElfSymbolTable::SymbolRef m_section_symbol;
-    TargetOff m_section_p2align;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset m_section_p2align;
     bool m_new_section_symbol;
     bool m_has_func_symbols;
 
@@ -739,10 +755,10 @@ private:
     std::vector<TrapSymbol> m_symbols;
     std::vector<ElfReloc> m_relocs;
     std::vector<size_t> m_addendless_relocs;
-    std::vector<TargetOff> m_data_refs;
+    std::vector<TargetInfo<RANDOLIB_ARCH_SIZE>::Offset> m_data_refs;
 
-    TargetOff m_padding_offset;
-    TargetOff m_padding_size;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset m_padding_offset;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset m_padding_size;
 
     bool m_include_sizes;
 

@@ -22,7 +22,6 @@
 #include <stack>
 #include <vector>
 
-#include <Trap.h>
 #include <Object.h>
 #include <Debug.h>
 #include <Filesystem.h>

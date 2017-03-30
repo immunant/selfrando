@@ -502,7 +502,7 @@ void ElfObject::add_anchor_reloc(Elf_Scn *section,
         Error::printf("Error getting section header: %s\n", elf_errmsg(-1));
 
     auto section_ndx = elf_ndxscn(section);
-    TargetElf_Addr reloc_offset = (header.sh_size == 0) ? 0 : (header.sh_size - 1);
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Addr reloc_offset = (header.sh_size == 0) ? 0 : (header.sh_size - 1);
     ElfReloc reloc(reloc_offset, R_ARCH_NONE, section_symbol, 0);
     Target::add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
 }
@@ -541,7 +541,7 @@ unsigned ElfObject::add_section(std::string name, GElf_Shdr header,
     return m_num_sections++;
 }
 
-bool ElfObject::add_int32_section_patch(uint32_t shndx, TargetOff offset,
+bool ElfObject::add_int32_section_patch(uint32_t shndx, TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset,
                                         uint32_t mask, uint32_t value) {
     auto &pair = m_section_patches[shndx][offset];
     pair.first |= mask;
@@ -550,7 +550,7 @@ bool ElfObject::add_int32_section_patch(uint32_t shndx, TargetOff offset,
     return true;
 }
 
-TargetOff ElfObject::add_data(uint32_t shndx, void* data, size_t size, unsigned align,
+TargetInfo<RANDOLIB_ARCH_SIZE>::Offset ElfObject::add_data(uint32_t shndx, void* data, size_t size, unsigned align,
                               Elf_Type data_type) {
     assert(size > 0 && "Adding empty data buffer");
     Debug::printf<10>("Adding new data to section %u\n", shndx);
@@ -567,8 +567,8 @@ TargetOff ElfObject::add_data(uint32_t shndx, void* data, size_t size, unsigned 
     elf_flagdata(new_data, ELF_C_SET, ELF_F_DIRTY);
 
     // Update the section sizes
-    TargetOff &section_size = m_section_sizes[shndx];
-    TargetOff this_off = section_size;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset &section_size = m_section_sizes[shndx];
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset this_off = section_size;
     auto rem = this_off % align;
     if (rem > 0)
         this_off += align - rem;
@@ -845,8 +845,8 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
                                                          GElf_Addr new_value,
                                                          Elf_SectionIndex section_index,
                                                          size_t new_size) {
-    TargetElf_Sym *old_symbol = symbol.get();
-    TargetElf_Sym new_symbol = *old_symbol;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym *old_symbol = symbol.get();
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym new_symbol = *old_symbol;
 
     // Add new symbol by appending "$orig" to the original symbol name.
     std::string sym_name = m_string_table->get_string(old_symbol->st_name);
@@ -879,7 +879,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::mark_symbol(std::string orig_symbol_na
     for (auto &symbol : m_input_locals) {
         if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
             Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
-            TargetElf_Sym new_symbol = symbol;
+            TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym new_symbol = symbol;
             uint32_t new_sym_xindex = m_xindex_table.get(sym_idx);
             new_symbol.st_name = m_string_table->add_string(symbol_name);
             new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
@@ -891,7 +891,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::mark_symbol(std::string orig_symbol_na
     for (auto &symbol : m_input_globals) {
         if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
             Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
-            TargetElf_Sym new_symbol = symbol;
+            TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym new_symbol = symbol;
             uint32_t new_sym_xindex = m_xindex_table.get(sym_idx);
             new_symbol.st_name = m_string_table->add_string(symbol_name);
             new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
@@ -905,7 +905,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::mark_symbol(std::string orig_symbol_na
 
 ElfSymbolTable::SymbolRef ElfSymbolTable::add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
                                                            std::string name, size_t size) {
-    TargetElf_Sym symbol;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym symbol;
     uint32_t xindex;
     symbol.st_name = m_string_table->add_string(name);
     symbol.st_info = GELF_ST_INFO(STB_LOCAL, STT_OBJECT);
@@ -923,7 +923,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::add_local_symbol(GElf_Addr address, El
 }
 
 ElfSymbolTable::SymbolRef ElfSymbolTable::add_section_symbol(Elf_SectionIndex section_index) {
-    TargetElf_Sym symbol;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym symbol;
     uint32_t xindex;
     symbol.st_name = 0;
     symbol.st_info = GELF_ST_INFO(STB_LOCAL, STT_SECTION);
@@ -940,7 +940,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::add_section_symbol(Elf_SectionIndex se
     return add_symbol(symbol, xindex);
 }
 
-ElfSymbolTable::SymbolRef ElfSymbolTable::add_symbol(TargetElf_Sym symbol, uint32_t xindex) {
+ElfSymbolTable::SymbolRef ElfSymbolTable::add_symbol(TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym symbol, uint32_t xindex) {
     assert(!m_finalized && "Attempted to add new symbol to finalized symbol table");
     if (GELF_ST_BIND(symbol.st_info) == STB_LOCAL) {
         m_new_locals.push_back(symbol);
@@ -964,7 +964,7 @@ void ElfSymbolTable::finalize() {
         m_new_globals.empty())
         return;
 
-    std::vector<TargetElf_Sym> new_data;
+    std::vector<TargetInfo<RANDOLIB_ARCH_SIZE>::Elf_Sym> new_data;
     new_data.insert(new_data.end(), m_input_locals.begin(), m_input_locals.end());
     new_data.insert(new_data.end(), m_new_locals.begin(), m_new_locals.end());
     new_data.insert(new_data.end(), m_input_globals.begin(), m_input_globals.end());
@@ -1183,12 +1183,12 @@ ElfSymbolTable::SymbolMapping TrampolineBuilder::build_trampolines(const Target:
 }
 
 
-void TrapRecordBuilder::mark_symbol(TargetOff offset, ElfSymbolTable::SymbolRef symbol,
-                                    TargetOff p2align, size_t size) {
+void TrapRecordBuilder::mark_symbol(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, ElfSymbolTable::SymbolRef symbol,
+                                    TargetInfo<RANDOLIB_ARCH_SIZE>::Offset p2align, size_t size) {
     m_symbols.push_back(TrapSymbol(offset, symbol, p2align, size));
 }
 
-void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
+void TrapRecordBuilder::mark_relocation(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol) {
     auto extra_info = trap_reloc_info(type);
     if (extra_info & TRAP_RELOC_IGNORE)
@@ -1198,24 +1198,24 @@ void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
     m_relocs.push_back(ElfReloc(offset, type, symbol));
 }
 
-void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
+void TrapRecordBuilder::mark_relocation(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol,
-                                        TargetPtrDiff addend) {
+                                        TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff addend) {
     auto extra_info = trap_reloc_info(type);
     if (extra_info & TRAP_RELOC_IGNORE)
         return;
     m_relocs.push_back(ElfReloc(offset, type, symbol, addend));
 }
 
-void TrapRecordBuilder::mark_data_ref(TargetOff offset) {
+void TrapRecordBuilder::mark_data_ref(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset) {
     m_data_refs.push_back(offset);
 }
 
-void TrapRecordBuilder::mark_padding_offset(TargetOff offset) {
+void TrapRecordBuilder::mark_padding_offset(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset offset) {
     m_padding_offset = offset;
 }
 
-void TrapRecordBuilder::mark_padding_size(TargetOff size) {
+void TrapRecordBuilder::mark_padding_size(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset size) {
     m_padding_size = size;
 }
 
@@ -1268,14 +1268,14 @@ void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
     m_addendless_relocs.clear();
 }
 
-void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, TargetOff prev_offset,
+void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, TargetInfo<RANDOLIB_ARCH_SIZE>::Offset prev_offset,
                                     const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Writing reloc at offset: %u\n", reloc.offset);
     // Offset
     push_back_uleb128(reloc.offset - prev_offset);
     // Type
     push_back_uleb128(reloc.type);
-    TargetPtrDiff trap_addend = reloc.addend;
+    TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff trap_addend = reloc.addend;
     if (trap_reloc_info(reloc.type) & TRAP_RELOC_SYMBOL) {
         // Symbol
         ElfReloc reloc(m_data.size(), R_ARCH_SYMBOL, reloc.symbol, 0);
@@ -1306,7 +1306,7 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Adding first trap symbol at %u\n", m_symbols[0].offset);
 
     // FirstSymAddr
-    m_data.insert(m_data.end(), sizeof(TargetPtrDiff), 0);
+    m_data.insert(m_data.end(), sizeof(TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff), 0);
     ElfReloc symbol_reloc(0, R_ARCH_SYMBOL, m_symbols[0].symbol, 0);
     Target::add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
 
@@ -1345,7 +1345,7 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     push_back_uleb128(m_padding_size);
 }
 
-void TrapRecordBuilder::push_back_uleb128(TargetOff x) {
+void TrapRecordBuilder::push_back_uleb128(TargetInfo<RANDOLIB_ARCH_SIZE>::Offset x) {
     if (x == 0) {
         m_data.push_back(0);
         return;
@@ -1358,7 +1358,7 @@ void TrapRecordBuilder::push_back_uleb128(TargetOff x) {
     m_data.push_back(static_cast<uint8_t>(x));
 }
 
-void TrapRecordBuilder::push_back_sleb128(TargetPtrDiff x) {
+void TrapRecordBuilder::push_back_sleb128(TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff x) {
     if (x == 0) {
         m_data.push_back(0);
         return;
@@ -1366,7 +1366,7 @@ void TrapRecordBuilder::push_back_sleb128(TargetPtrDiff x) {
     bool more = true;
     while (more) {
         static_assert((-1 >> 1) == -1, "Compiler with support for arithmetic right shift is required");
-        TargetPtrDiff byte = (x & 0x7F);
+        TargetInfo<RANDOLIB_ARCH_SIZE>::PtrDiff byte = (x & 0x7F);
         x >>= 7;
         if (x ==  0 && (byte & 0x40) == 0)
             more = false;

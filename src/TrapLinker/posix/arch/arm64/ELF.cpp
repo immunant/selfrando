@@ -47,18 +47,18 @@ Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
     GElf_Shdr rel_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     rel_header.sh_type = SHT_RELA;
     rel_header.sh_flags = SHF_INFO_LINK;
-    rel_header.sh_entsize = sizeof(TargetElf_Rela);
+    rel_header.sh_entsize = sizeof(TargetInfo<64>::Elf_Rela);
     rel_header.sh_link = symtab_shndx;
     rel_header.sh_info = shndx;
-    rel_header.sh_addralign = sizeof(TargetPtr);
+    rel_header.sh_addralign = sizeof(TargetInfo<64>::Pointer);
     return object.add_section(".rela" + section_name, rel_header,
                               ElfObject::DataBuffer::get_empty_buffer(),
                               ELF_T_RELA);
 }
 
 void Target::add_reloc_to_buffer(Elf_RelocBuffer &buffer,
-                                 TargetElf_Addr r_offset, TargetElf_Addr r_info, TargetPtrDiff *r_addend) {
-    TargetElf_Rela reloc = {r_offset, r_info, 0};
+                                 TargetInfo<64>::Elf_Addr r_offset, TargetInfo<64>::Elf_Addr r_info, TargetInfo<64>::PtrDiff *r_addend) {
+    TargetInfo<64>::Elf_Rela reloc = {r_offset, r_info, 0};
     if (r_addend != nullptr) {
         reloc.r_addend = *r_addend;
         *r_addend = 0;
@@ -72,7 +72,7 @@ void Target::add_reloc_to_buffer(Elf_RelocBuffer &buffer,
 void Target::add_reloc_buffer_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
                                          const Elf_RelocBuffer &relocs) {
     object.add_data(reloc_shndx, const_cast<char*>(relocs.data()),
-                    relocs.size(), sizeof(TargetPtr), ELF_T_RELA);
+                    relocs.size(), sizeof(TargetInfo<64>::Pointer), ELF_T_RELA);
 }
 
 template<typename RelType>
@@ -114,6 +114,6 @@ bool Target::check_rel_for_stubs<GElf_Rela>(ElfObject &object, GElf_Rela *reloca
 
 
 // TODO: Implement any weird code relocs
-TargetPtrDiff Target::read_reloc(char* data, TrapReloc &reloc) {
-  return *reinterpret_cast<TargetPtrDiff*>(data);
+TargetInfo<64>::PtrDiff Target::read_reloc(char* data, TrapReloc &reloc) {
+  return *reinterpret_cast<TargetInfo<64>::PtrDiff*>(data);
 }
