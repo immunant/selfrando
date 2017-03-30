@@ -45,9 +45,7 @@ add_library(trapfooter_page STATIC TrapFooterPage.S)
 
 add_library(selfrando_objects OBJECT
     ../RandoLib.cpp
-    ../OS.h
     OSImpl.cpp
-    OSImpl.h
     ../util/hash_32a.c
     ../util/strtol.c
     ../util/qsort.c

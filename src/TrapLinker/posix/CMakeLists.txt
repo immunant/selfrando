@@ -12,7 +12,6 @@ add_executable(traplinker
     ELF.cpp
     TrapLinker.cpp
     arch/${SR_ARCH}/ELF.cpp
-    Object.h
     LinkerOptions.inc
     )
 
