@@ -39,7 +39,7 @@ elseif(UNIX)
         )
 
     find_library(SR_LIBELF_LIB
-        elf
+        libelf.a
         HINTS "${LIBELF_PATH}"
         PATH_SUFFIXES bin lib
         )
