@@ -861,6 +861,7 @@ std::vector<char*> ArgParser::create_new_invocation(
         // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
+        m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
         m_args.emplace(header_pos, "--whole-archive", true);
         if (m_selfrando_txtrp_pages) {
             m_args.emplace_back("-ltrapheader_page", true);
