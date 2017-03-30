@@ -2,10 +2,22 @@ cmake_minimum_required(VERSION 3.3)
 project(selfrando LANGUAGES C CXX ASM)
 set(CMAKE_CXX_STANDARD 11)
 
+set(SR_ALL_MODULES "TrapLinker;RandoLib;TrapDump")
+set(SR_BUILD_MODULES "all" CACHE STRING "Selfrando modules to build \
+(Semicolon-separated list of modules, e.g. ${SR_ALL_MODULES}, or 'all'")
+
 set(SR_ARCH "x86_64" CACHE STRING "Target architectures")
 set(SR_DEBUG_LEVEL "0" CACHE STRING "Debugging level (0-10); set to 'env' to control via environment variable")
 set(ANDROID_NDK "" CACHE PATH "Android NDK directory (build libs for Android)")
 set(LIBELF_PATH "" CACHE PATH "Path to directory containing libelf.so (if not using system libelf)")
+
+if(${SR_BUILD_MODULES} STREQUAL "all")
+    set(SR_BUILD_MODULES ${SR_ALL_MODULES})
+endif()
+foreach(module ${SR_BUILD_MODULES})
+    string(TOUPPER "${module}" upper_module)
+    set(SR_BUILD_MODULE_${upper_module} 1)
+endforeach()
 
 set(ALL_ARCHES x86 x86_64 arm arm64)
 set(ARCH_SIZES 32 64 32 64)
