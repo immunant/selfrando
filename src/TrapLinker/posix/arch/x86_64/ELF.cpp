@@ -45,12 +45,12 @@ size_t TrampolineBuilder::trampoline_size() const {
 void TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
 }
 
-static std::vector<TargetInfo<64>::Elf_Rela> build_relas(const Elf_RelocBuffer &relocs) {
-    std::vector<TargetInfo<64>::Elf_Rela> relas;
+static std::vector<Elf64_Rela> build_relas(const Elf_RelocBuffer &relocs) {
+    std::vector<Elf64_Rela> relas;
     for (auto &reloc : relocs) {
         uint64_t rela_info = ELF64_R_INFO(reloc.symbol.get_final_index(), reloc.type);
         assert(reloc.offset >= 0 && "Casting negative value to unsigned int");
-        relas.push_back({ static_cast<TargetInfo<64>::Elf_Addr>(reloc.offset), rela_info, reloc.addend });
+        relas.push_back({ static_cast<GElf_Addr>(reloc.offset), rela_info, reloc.addend });
     }
     return relas;
 }
@@ -64,13 +64,13 @@ Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
     GElf_Shdr rel_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     rel_header.sh_type = SHT_RELA;
     rel_header.sh_flags = SHF_INFO_LINK;
-    rel_header.sh_entsize = sizeof(TargetInfo<64>::Elf_Rela);
+    rel_header.sh_entsize = sizeof(Elf64_Rela);
     rel_header.sh_link = symtab_shndx;
     rel_header.sh_info = shndx;
-    rel_header.sh_addralign = sizeof(TargetInfo<64>::Pointer);
-    std::vector<TargetInfo<64>::Elf_Rela> relas = build_relas(relocs);
+    rel_header.sh_addralign = sizeof(uint64_t);
+    std::vector<Elf64_Rela> relas = build_relas(relocs);
     return object.add_section(".rela" + section_name, rel_header,
-                              ElfObject::DataBuffer(relas, sizeof(TargetInfo<64>::Pointer)),
+                              ElfObject::DataBuffer(relas, sizeof(uint64_t)),
                               ELF_T_RELA);
 }
 
@@ -81,9 +81,9 @@ void Target::add_reloc_to_buffer(Elf_RelocBuffer &buffer, ElfReloc *reloc) {
 
 void Target::add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
                                    const Elf_RelocBuffer &relocs) {
-    std::vector<TargetInfo<64>::Elf_Rela> relas = build_relas(relocs);
+    std::vector<Elf64_Rela> relas = build_relas(relocs);
     object.add_data(reloc_shndx, reinterpret_cast<char*>(relas.data()),
-                    relas.size() * sizeof(TargetInfo<64>::Elf_Rela), sizeof(TargetInfo<64>::Pointer), ELF_T_RELA);
+                    relas.size() * sizeof(Elf64_Rela), sizeof(uint64_t), ELF_T_RELA);
 }
 
 template<typename RelType>
@@ -101,6 +101,6 @@ bool Target::check_rel_for_stubs<GElf_Rela>(ElfObject &object, GElf_Rela *reloca
                                             uint32_t shndx, TrapRecordBuilder &builder);
 
 // TODO: Implement any weird code relocs
-TargetInfo<64>::PtrDiff Target::read_reloc(char* data, ElfReloc &reloc) {
-  return *reinterpret_cast<TargetInfo<64>::PtrDiff*>(data);
+Elf_Offset Target::read_reloc(char* data, ElfReloc &reloc) {
+  return *reinterpret_cast<Elf_Offset*>(data);
 }
