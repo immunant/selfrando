@@ -1333,7 +1333,7 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
             trap_addend = 0;
         }
         Target::add_reloc_to_buffer(m_reloc_data, &reloc);
-        push_back_int(reloc.addend, symbol_table.object()->get_target_info()->addr_size);
+        push_back_int(reloc.addend, symbol_table.object()->get_target_info()->addr_size / 8);
     }
     if (trap_reloc_info(reloc.type) & TRAP_RELOC_ADDEND) {
         // Addend
@@ -1353,7 +1353,7 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Adding first trap symbol at %u\n", m_symbols[0].offset);
 
     // FirstSymAddr
-    m_data.insert(m_data.end(), symbol_table.object()->get_target_info()->addr_size, 0);
+    m_data.insert(m_data.end(), symbol_table.object()->get_target_info()->addr_size / 8, 0);
     ElfReloc symbol_reloc(0,
                           symbol_table.object()->get_target_info()->symbol_reloc,
                           m_symbols[0].symbol, 0);
