@@ -9,7 +9,7 @@
 #include <OS.h>
 #include <RandoLib.h>
 #include <TrapInfo.h>
-#include "../Support/Utility.h"
+#include <Utility.h>
 
 #include "RelocTypes.h"
 

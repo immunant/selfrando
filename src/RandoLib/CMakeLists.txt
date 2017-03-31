@@ -48,6 +48,7 @@ add_definitions(-DRANDOLIB_WRITE_LAYOUTS=${write_layouts_idx})
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src/TrapInfo
+    ${CMAKE_SOURCE_DIR}/src/Support/posix
     )
 
 add_subdirectory(${SR_PLATFORM})
