@@ -309,7 +309,7 @@ int main(int argc, char* argv[]) {
     std::vector<char*> invocation = wrapper.process(argc, argv);
 
     int linker_status;
-    if (!Misc::exec_child(invocation.data(), &linker_status))
+    if (!Misc::exec_child(invocation.data(), &linker_status, false))
         Error::printf("Linker execution failed: %s\n", strerror(errno));
 
     if(linker_status)
@@ -847,7 +847,7 @@ std::vector<char*> ArgParser::create_new_invocation(
                                    const_cast<char*>(m_args.begin()->arg.c_str()),
                                    nullptr };
         int linker_id_status = 0;
-        if (!Misc::exec_child(linker_id_args, &linker_id_status))
+        if (!Misc::exec_child(linker_id_args, &linker_id_status, true))
             Error::printf("Linker ID script execution failed: %s\n", strerror(errno));
 
         int linker_type = WEXITSTATUS(linker_id_status);

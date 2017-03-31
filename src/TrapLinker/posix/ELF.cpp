@@ -640,7 +640,7 @@ bool ElfObject::update_archive(std::vector<std::string> object_files, std::strin
 
     ar_invocation.push_back(nullptr);
 
-    if (!Misc::exec_child(ar_invocation.data(), nullptr))
+    if (!Misc::exec_child(ar_invocation.data(), nullptr, true))
         Error::printf("Could not exec ar\n");
 
     // free dup'ed strings
