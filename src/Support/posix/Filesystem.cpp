@@ -50,7 +50,7 @@ std::string Filesystem::get_temp_filename(std::string filename_tag) {
 
 std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_tag) {
     std::string temp_filename = get_temp_filename(filename_tag);
-    int fd = open(temp_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    int fd = open(temp_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1)
         Error::printf("Could not create temporary file: %s", temp_filename.data());
 
