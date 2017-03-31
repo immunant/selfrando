@@ -226,7 +226,7 @@ int trap_read_reloc(const struct trap_header_t *header,
     size_t curr_type = (size_t)trap_read_uleb128(trap_ptr);
     int end = (curr_delta == 0 && curr_type == 0);
 
-    trap_reloc_info_t extra_info = trap_reloc_info(curr_type);
+    int extra_info = trap_reloc_info(curr_type);
     uintptr_t curr_symbol = 0;
     ptrdiff_t curr_addend = 0;
     if (!end) {
