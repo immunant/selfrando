@@ -254,9 +254,10 @@ bool ElfObject::create_trap_info_impl() {
                     auto sym_ref = symbol_table.get_input_symbol_ref(sym_idx);
                     switch (GELF_ST_TYPE(symbol.st_info)) {
                     case STT_FUNC:
-#if RANDOLIB_IS_ARM
                     case STT_ARM_TFUNC: // Marks Thumb functions on ARM
-#endif
+                        // FIXME: we should figure out what happens
+                        // if we get STT_ARM_TFUNC on a non-ARM architecture
+                        //
                         //section_builders[sym_shndx]
                         //    .mark_symbol(symbol.st_value, i, 1, symbol.st_size);
                         section_builders[sym_shndx].set_has_func_symbols();
