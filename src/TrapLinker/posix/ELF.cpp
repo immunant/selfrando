@@ -106,10 +106,11 @@ bool ElfObject::parse() {
     return true;
 }
 
-std::string ElfObject::create_trap_info() {
+std::tuple<std::string, uint16_t> ElfObject::create_trap_info() {
     if (!parse())
         Error::printf("Could not parse ELF file %s\n", m_filename.c_str());
 
+    uint16_t elf_machine = EM_NONE;
     if (is_archive()) {
         Elf_Cmd cmd = ELF_C_READ;
         Elf *archive_elf = m_elf;
@@ -118,6 +119,15 @@ std::string ElfObject::create_trap_info() {
             get_elf_header(); // Re-read the ELF header since needs_trap_info() uses it
             if (!parse())
                 Error::printf("Could not parse ELF archive %s\n", m_filename.c_str());
+            if (is_object()) {
+                auto new_machine = m_ehdr.e_machine;
+                if (elf_machine == EM_NONE && new_machine != EM_NONE) {
+                    elf_machine = new_machine;
+                } else if (new_machine != elf_machine) {
+                    Error::printf("Incompatible machine types:%hd and %hd\n",
+                                  elf_machine, new_machine);
+                }
+            }
             if (needs_trap_info()) {
                 Elf *cur_elf = m_elf;
                 auto temp_file = Filesystem::create_temp_file("traplink");
@@ -144,12 +154,12 @@ std::string ElfObject::create_trap_info() {
         update_archive(object_files, archive_filename);
         for (auto filename : object_files)
             Filesystem::remove(filename);
-        return archive_filename;
+        return std::make_tuple(archive_filename, elf_machine);
     } else {
         if (create_trap_info_impl()) {
             update_file();
         }
-        return m_filename;
+        return std::make_tuple(m_filename, m_ehdr.e_machine);
     }
 }
 

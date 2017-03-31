@@ -327,7 +327,7 @@ public:
         return m_num_sections;
     }
 
-    std::string create_trap_info();
+    std::tuple<std::string, uint16_t> create_trap_info();
 
     void* data();
 

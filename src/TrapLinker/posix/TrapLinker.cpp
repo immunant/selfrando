@@ -57,6 +57,13 @@ static const char *kExecSections[][2] = {
 };
 #endif
 
+static const std::unordered_map<uint16_t, const char*> kELFMachineNames = {
+    { EM_386,       "x86"    },
+    { EM_X86_64,    "x86_64" },
+    { EM_ARM,       "arm"    },
+    { EM_AARCH64,   "arm64"  },
+};
+
 class ArgParser {
 public:
     ArgParser(int argc, char* argv[]) : m_argc(argc), m_argv(argv),
@@ -82,7 +89,8 @@ public:
 
     void change_option(std::string option, std::string value, bool single_arg);
 
-    std::vector<char*> create_new_invocation(std::map<std::string, std::string> input_file_mapping);
+    std::vector<char*> create_new_invocation(std::map<std::string, std::string> input_file_mapping,
+                                             uint16_t elf_machine);
 
     std::pair<std::string, std::string> get_entry_point_names();
 
@@ -290,6 +298,7 @@ private:
     std::pair<std::string, std::string> m_entry_points;
     std::map<std::string, std::string> m_rewritten_inputs;
     std::vector<std::string> m_temp_files;
+    uint16_t m_elf_machine = EM_NONE;
 };
 
 } // end namespace
@@ -341,7 +350,8 @@ std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
         }
     }
 
-    std::vector<char*> linker_invocation = Args.create_new_invocation(m_rewritten_inputs);
+    std::vector<char*> linker_invocation =
+        Args.create_new_invocation(m_rewritten_inputs, m_elf_machine);
 
     Debug::printf<2>("Invoking linker: ");
     for (char* s : linker_invocation) {
@@ -387,10 +397,20 @@ void LinkWrapper::rewrite_file(std::string input_filename,
         ElfObject obj(temp_file, m_entry_points);
         if (obj.needs_trap_info()) {
             Debug::printf<1>("Creating trap info for temp file: %s\n", temp_file.second.c_str());
-            std::string rewritten_file = obj.create_trap_info();
+            std::string rewritten_file;
+            uint16_t file_machine;
+            std::tie(rewritten_file, file_machine) = obj.create_trap_info();
             m_rewritten_inputs[input_filename] = rewritten_file;
             if (rewritten_file != temp_file.second)
                 m_temp_files.push_back(rewritten_file);
+
+            // Update the machine type
+            if (m_elf_machine == EM_NONE && file_machine != EM_NONE) {
+                m_elf_machine = file_machine;
+            } else if (file_machine != m_elf_machine) {
+                Error::printf("Incompatible machine types:%hd and %hd\n",
+                              m_elf_machine, file_machine);
+            }
         }
     } else if (type == LINKER_SCRIPT) {
         Debug::printf<2>("Parsing linker script %s\n", temp_file.second.c_str());
@@ -795,7 +815,8 @@ static std::string find_install_path() {
 }
 
 std::vector<char*> ArgParser::create_new_invocation(
-    std::map<std::string, std::string> input_file_mapping) {
+    std::map<std::string, std::string> input_file_mapping,
+    uint16_t elf_machine) {
 
     if (is_linker_replacement()) {
         char *executable_path;
@@ -841,28 +862,27 @@ std::vector<char*> ArgParser::create_new_invocation(
         std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
 
         std::string trap_got_script = randolib_install_path;
-#if RANDOLIB_IS_ARM
-        // On ARM, both linkers always omit .got.plt
-        trap_got_script += kTrapGOTOnlyScript;
-#else
-        // On x86/ARM64, the following things happen:
-        // 1) gold always emits both .got and .got.plt
-        // 2) ld.bfd omits .got.plt for relro+now builds
-        if (linker_type != LD_BFD ||
-            (m_z_keywords.count("relro") == 0 ||
-             m_z_keywords.count("now") == 0)) {
-            trap_got_script += kTrapGOTPLTScript;
-        } else {
+        if (elf_machine == EM_ARM) {
+            // On ARM, both linkers always omit .got.plt
             trap_got_script += kTrapGOTOnlyScript;
+        } else {
+            // On x86/ARM64, the following things happen:
+            // 1) gold always emits both .got and .got.plt
+            // 2) ld.bfd omits .got.plt for relro+now builds
+            if (linker_type != LD_BFD ||
+                (m_z_keywords.count("relro") == 0 ||
+                 m_z_keywords.count("now") == 0)) {
+                trap_got_script += kTrapGOTPLTScript;
+            } else {
+                trap_got_script += kTrapGOTOnlyScript;
+            }
         }
-#endif
 
         // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
-#ifdef RANDOLIB_ARCH
-        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path + "/" RANDOLIB_ARCH).c_str()), true);
-#endif
+        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
+                                           "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
         m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
         m_args.emplace(header_pos, "--whole-archive", true);
         if (m_selfrando_txtrp_pages) {
