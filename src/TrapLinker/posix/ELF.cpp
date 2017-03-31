@@ -17,7 +17,7 @@
 #include <libelf.h>
 #include <gelf.h>
 
-const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::info_for_targets = {
+const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTargets = {
     { EM_386, {
         .none_reloc      = R_386_NONE,
         .symbol_reloc    = R_386_GOTOFF,

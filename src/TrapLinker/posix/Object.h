@@ -476,7 +476,7 @@ public:
     }
 
 private:
-    static const std::unordered_map<uint16_t, TargetInfo> info_for_targets;
+    static const std::unordered_map<uint16_t, TargetInfo> kInfoForTargets;
 
     GElf_Ehdr* get_elf_header() {
         if (elf_kind(m_elf) != ELF_K_ELF)
@@ -485,7 +485,7 @@ private:
             std::cerr << "Could not get ELF header: " << elf_errmsg(-1) << '\n';
             return nullptr;
         }
-        m_target_info = &info_for_targets.at(m_ehdr.e_machine);
+        m_target_info = &kInfoForTargets.at(m_ehdr.e_machine);
         return &m_ehdr;
     }
 
