@@ -178,7 +178,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
             for (auto sym : trap_entry.symbols()) {
                 auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
 #if RANDOLIB_IS_ARM
-                if ((uint32_t) start_addr & 1 == 1) {
+                if (((uint32_t) start_addr & 1) == 1) {
                     // This is a thumb function that actually starts one byte earlier
                     start_addr--;
                 }
