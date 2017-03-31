@@ -21,6 +21,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -82,6 +83,10 @@ public:
         if (m_input_locals.empty() && m_input_globals.empty())
             return true;
         return false;
+    }
+
+    const ElfObject *object() const {
+        return &m_object;
     }
 
 public:
@@ -242,34 +247,7 @@ private:
     SymbolRef add_symbol(GElf_Sym symbol, uint32_t xindex);
     void update_symbol_references();
 
-    void add_target_symbol(std::vector<uint8_t> *buf,
-                           const GElf_Sym &sym) {
-        if (RANDOLIB_ARCH_SIZE == 32) {
-            Elf32_Sym new_sym;
-            new_sym.st_name = sym.st_name;
-            new_sym.st_value = sym.st_value;
-            new_sym.st_size = sym.st_size;
-            new_sym.st_info = sym.st_info;
-            new_sym.st_other = sym.st_other;
-            new_sym.st_shndx = sym.st_shndx;
-            auto new_sym_buf = reinterpret_cast<uint8_t*>(&new_sym);
-            buf->insert(buf->end(),
-                        new_sym_buf,
-                        new_sym_buf + sizeof(new_sym));
-        } else {
-            Elf64_Sym new_sym;
-            new_sym.st_name = sym.st_name;
-            new_sym.st_value = sym.st_value;
-            new_sym.st_size = sym.st_size;
-            new_sym.st_info = sym.st_info;
-            new_sym.st_other = sym.st_other;
-            new_sym.st_shndx = sym.st_shndx;
-            auto new_sym_buf = reinterpret_cast<uint8_t*>(&new_sym);
-            buf->insert(buf->end(),
-                        new_sym_buf,
-                        new_sym_buf + sizeof(new_sym));
-         }
-    }
+    void add_target_symbol(std::vector<uint8_t> *buf, const GElf_Sym &sym);
 
 private:
     bool m_finalized;
@@ -484,7 +462,21 @@ public:
         return elf_kind(m_elf) == ELF_K_AR;
     }
 
+    struct TargetInfo {
+        uint32_t none_reloc;
+        uint32_t symbol_reloc;
+        Elf_Offset min_p2align;
+        Elf_Offset padding_p2align;
+        size_t addr_size;
+    };
+
+    const TargetInfo *get_target_info() const {
+        return m_target_info;
+    }
+
 private:
+    static const std::unordered_map<uint16_t, TargetInfo> info_for_targets;
+
     GElf_Ehdr* get_elf_header() {
         if (elf_kind(m_elf) != ELF_K_ELF)
             return nullptr;
@@ -492,6 +484,7 @@ private:
             std::cerr << "Could not get ELF header: " << elf_errmsg(-1) << '\n';
             return nullptr;
         }
+        m_target_info = &info_for_targets.at(m_ehdr.e_machine);
         return &m_ehdr;
     }
 
@@ -564,6 +557,8 @@ private:
     std::map<Elf_SectionIndex, ElfStringTable> m_string_tables;
 
     std::map<Elf_SectionIndex, Elf_RelocBuffer> m_section_relocs;
+
+    const TargetInfo *m_target_info;
 };
 
 namespace Target {
@@ -728,7 +723,7 @@ private:
     void push_back_sleb128(Elf_Offset x);
 
     template<typename IntType>
-    void push_back_int(IntType x, int max_bytes) {
+    void push_back_int(IntType x, size_t max_bytes) {
       for (size_t i = 0; i < sizeof(IntType) && i < max_bytes; ++i) {
           m_data.push_back(static_cast<uint8_t>((x >> i*8) & 0xff));
       }
