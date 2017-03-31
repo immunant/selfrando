@@ -471,6 +471,7 @@ public:
     };
 
     const TargetInfo *get_target_info() const {
+        assert(m_target_info != nullptr);
         return m_target_info;
     }
 
