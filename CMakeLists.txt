@@ -50,6 +50,9 @@ elseif(UNIX)
         -Wpointer-arith
         )
 
+    if (LIBELF_PATH)
+        include_directories(${LIBELF_PATH} ${LIBELF_PATH}/include)
+    endif()
     find_library(SR_LIBELF_LIB
         libelf.a
         HINTS "${LIBELF_PATH}"
