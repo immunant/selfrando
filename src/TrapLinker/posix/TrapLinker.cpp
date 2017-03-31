@@ -839,7 +839,8 @@ std::vector<char*> ArgParser::create_new_invocation(
         m_enabled = false;
 
     // If TRaP mode is enabled, add all the arguments
-    if (is_trap_enabled()) {
+    // If we couldn't determine the ELF machine, do not add TRaP info
+    if (is_trap_enabled() && elf_machine != EM_NONE) {
         // Determine which linker we're running
         std::string randolib_install_path = find_install_path();
         std::string linker_id_script = randolib_install_path + kLinkerIdScript;
@@ -881,9 +882,8 @@ std::vector<char*> ArgParser::create_new_invocation(
         // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
-        if (elf_machine != EM_NONE)
-            m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
-                                               "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
+        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
+                                           "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
         m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
         m_args.emplace(header_pos, "--whole-archive", true);
         if (m_selfrando_txtrp_pages) {
