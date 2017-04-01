@@ -20,7 +20,7 @@ foreach(module ${SR_BUILD_MODULES})
 endforeach()
 
 set(ALL_ARCHES x86 x86_64 arm arm64)
-set(ARCH_SIZES 32 64 32 64)
+set(ARCH_SIZES 32  64     32  64)
 set_property(CACHE SR_ARCH PROPERTY STRINGS ${ALL_ARCHES})
 list(FIND ALL_ARCHES ${SR_ARCH} arch_idx)
 if(arch_idx LESS 0)
