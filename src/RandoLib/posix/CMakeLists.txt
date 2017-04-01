@@ -16,6 +16,10 @@ add_definitions(-DRANDOLIB_RNG_IS_${upper_rng}=1)
 if (SR_BUILD_MODULE_RANDOLIB)
     # Make stack non-executable in assembly files
     add_compile_options(-Wa,--noexecstack)
+
+    # We don't want to depend on memset/memcpy/the rest
+    add_compile_options(-minline-all-stringops)
+
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,noexecstack")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
