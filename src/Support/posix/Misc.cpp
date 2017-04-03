@@ -46,7 +46,8 @@ bool Misc::exec_child(char *args[], int *status, bool quiet) {
         if (waitpid(pid, &wait_status, 0) == -1)
             return false;
 
-        *status = WEXITSTATUS(wait_status);
+        if (status != nullptr)
+            *status = WEXITSTATUS(wait_status);
         return true;
     }
 }
