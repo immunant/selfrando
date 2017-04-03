@@ -308,12 +308,12 @@ int main(int argc, char* argv[]) {
 
     std::vector<char*> invocation = wrapper.process(argc, argv);
 
-    int linker_status;
+    int linker_status = -1;
     if (!Misc::exec_child(invocation.data(), &linker_status, false))
         Error::printf("Linker execution failed: %s\n", strerror(errno));
 
     if(linker_status)
-        Error::printf("Linker execution failed: %s\n", strerror(linker_status));
+        Error::printf("Linker execution failed, status: %d\n", linker_status);
 
     for (auto s : invocation)
         free(s);
