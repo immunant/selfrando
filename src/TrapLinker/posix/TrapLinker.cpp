@@ -318,7 +318,7 @@ int main(int argc, char* argv[]) {
     for (auto s : invocation)
         free(s);
 
-    return 0;
+    return linker_status;
 }
 
 LinkWrapper::~LinkWrapper() {
