@@ -847,11 +847,9 @@ std::vector<char*> ArgParser::create_new_invocation(
         char *linker_id_args[] = { const_cast<char*>(linker_id_script.c_str()),
                                    const_cast<char*>(m_args.begin()->arg.c_str()),
                                    nullptr };
-        int linker_id_status = 0;
-        if (!Misc::exec_child(linker_id_args, &linker_id_status, true))
+        int linker_type = 0;
+        if (!Misc::exec_child(linker_id_args, &linker_type, true))
             Error::printf("Linker ID script execution failed: %s\n", strerror(errno));
-
-        int linker_type = WEXITSTATUS(linker_id_status);
         Debug::printf<2>("Linker type: %d\n", linker_type);
 
         // Add both -init and --entry, since we don't know
