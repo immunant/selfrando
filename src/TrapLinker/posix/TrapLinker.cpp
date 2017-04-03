@@ -879,23 +879,25 @@ std::vector<char*> ArgParser::create_new_invocation(
 
         // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
+        m_args.emplace(header_pos, "--push-state", true);
+        m_args.emplace(header_pos, "--whole-archive", true);
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
                                            "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
         m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
-        m_args.emplace(header_pos, "--whole-archive", true);
         if (m_selfrando_txtrp_pages) {
             m_args.emplace(header_pos, "-ltrapheader_page", true);
         } else {
             m_args.emplace(header_pos, "-ltrapheader", true);
         }
-        m_args.emplace(header_pos, "--no-whole-archive", true);
+        m_args.emplace(header_pos, "--pop-state", true);
 
         // Add other arguments to the end
+        m_args.emplace_back("--push-state", true);
+        m_args.emplace_back("--whole-archive", true);
         m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
         m_args.emplace_back(strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
         m_args.emplace_back(strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
-        m_args.emplace_back("--whole-archive", true);
         if (m_shared) {
             m_args.emplace_back("-lrandoentry_so", true);
         } else {
@@ -904,16 +906,17 @@ std::vector<char*> ArgParser::create_new_invocation(
         m_args.emplace_back(trap_script.c_str(), true);
         m_args.emplace_back(trap_got_script.c_str(), true);
         m_args.emplace_back("-ltrapfooter", true);
-        m_args.emplace_back("--no-whole-archive", true);
+        m_args.emplace_back("--pop-state", true);
         if (m_static_selfrando && m_selfrando_txtrp_pages) {
             // WARNING: this must go after TrapFooter.o
             std::string selfrando_object = randolib_install_path + kSelfrandoObject;
             m_args.emplace_back(selfrando_object.c_str(), true);
             m_args.emplace_back("-ltrapfooter_page", true);
         } else if (m_static_selfrando) {
+            m_args.emplace_back("--push-state", true);
             m_args.emplace_back("--whole-archive", true);
             m_args.emplace_back("-l:libselfrando.a", true);
-            m_args.emplace_back("--no-whole-archive", true);
+            m_args.emplace_back("--pop-state", true);
             m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         } else {
             m_args.emplace_back("-l:libselfrando.so", true);
