@@ -921,6 +921,7 @@ std::vector<char*> ArgParser::create_new_invocation(
             m_args.emplace_back("-l:libselfrando.so", true);
             m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         }
+        m_args.emplace_back("-ldl", true);
     }
 
     std::vector<char*> new_args;
