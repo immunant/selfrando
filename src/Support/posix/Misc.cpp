@@ -42,9 +42,11 @@ bool Misc::exec_child(char *args[], int *status, bool quiet) {
             return false;
 
         // Wait for child to finish
-        if (waitpid(pid, status, 0) == -1)
+        int wait_status = 0;
+        if (waitpid(pid, &wait_status, 0) == -1)
             return false;
 
+        *status = WEXITSTATUS(wait_status);
         return true;
     }
 }
