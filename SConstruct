@@ -52,8 +52,8 @@ defines = {
     'RANDOLIB_DEBUG_LEVEL': decode_debug_level(env['DEBUG_LEVEL']),
     'RANDOLIB_DEBUG_LEVEL_IS_ENV': 1 if env['DEBUG_LEVEL'] == 'env' else 0,
     'RANDOLIB_FORCE_INPLACE': 1 if env['FORCE_INPLACE'] else 0,
-    'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']]
-    'RANDOLIB_DELETE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['DELETE_LAYOUTS']]
+    'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']],
+    'RANDOLIB_DELETE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['DELETE_LAYOUTS']],
 }
 defines['RANDOLIB_IS_%s' % env['PLATFORM'].upper()] = 1
 defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1
