@@ -17,6 +17,8 @@ vars.Add('DEBUG_SEED', 'Fixed seed to use for debugging', False) # We need to us
 vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertion) if in-place randomization would fail', 0))
 vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files to /tmp/',
                       'no', allowed_values=('no', 'env', 'always')))
+vars.Add(EnumVariable('DELETE_LAYOUTS', 'Delete the layout file on process exit',
+                      'always', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('RNG', 'Random number generator to use',
                       'urandom', allowed_values=('rand_r', 'urandom')))
 
@@ -51,6 +53,7 @@ defines = {
     'RANDOLIB_DEBUG_LEVEL_IS_ENV': 1 if env['DEBUG_LEVEL'] == 'env' else 0,
     'RANDOLIB_FORCE_INPLACE': 1 if env['FORCE_INPLACE'] else 0,
     'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']]
+    'RANDOLIB_DELETE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['DELETE_LAYOUTS']]
 }
 defines['RANDOLIB_IS_%s' % env['PLATFORM'].upper()] = 1
 defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1

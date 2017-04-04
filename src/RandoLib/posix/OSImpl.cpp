@@ -35,6 +35,7 @@ int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
 void *_TRaP_libc_mmap(void*, size_t, int, int, int, off_t);
 int _TRaP_libc_munmap(void*, size_t);
 int _TRaP_libc_mprotect(const void*, size_t, int);
+int _TRaP_libc_unlinkat(int, const char*, int);
 
 void _TRaP_rand_close_fd(void);
 }
@@ -227,12 +228,22 @@ static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...
 }
 
 RANDO_SECTION File API::OpenLayoutFile(bool write) {
-    os::Pid pid = API::GetPid();
     char filename[32];
-    build_pid_filename(filename, "/tmp/%d.mlf", pid);
+    build_pid_filename(filename, "/tmp/%d.mlf", API::GetPid());
     return API::OpenFile(filename, write, true);
 }
-#endif
+
+#if RANDOLIB_DELETE_LAYOUTS > 0
+extern "C"
+RANDO_PUBLIC
+RANDO_SECTION void _TRaP_Linux_delete_layout_file(void) {
+    // TODO: don't delete if disabled via environment variable
+    char filename[32];
+    build_pid_filename(filename, "/tmp/%d.mlf", API::GetPid());
+    _TRaP_libc_unlinkat(AT_FDCWD, filename, 0);
+}
+#endif // RANDOLIB_DELETE_LAYOUTS
+#endif // RANDOLIB_WRITE_LAYOUTS
 
 RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
     RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module

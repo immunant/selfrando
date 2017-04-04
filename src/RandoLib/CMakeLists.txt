@@ -11,6 +11,8 @@ set(SR_FORCE_INPLACE OFF CACHE BOOL
     "Terminate execution (via failed assertion) if in-place randomization would fail")
 set(SR_WRITE_LAYOUTS "no" CACHE STRING
     "After randomization, write layout files to /tmp/ (set to 'no', 'env' or 'always')")
+set(SR_DELETE_LAYOUTS "always" CACHE STRING
+    "Delete the layout file on process exit (set to 'no', 'env' or 'always')")
 
 set(ALLOWED_LOG default none console file system)
 set_property(CACHE SR_LOG PROPERTY STRINGS ${ALLOWED_LOG})
@@ -44,6 +46,13 @@ if(${write_layouts_idx} LESS 0)
     message(FATAL_ERROR "Unknown option for SR_WRITE_LAYOUTS: '${SR_WRITE_LAYOUTS}'!")
 endif()
 add_definitions(-DRANDOLIB_WRITE_LAYOUTS=${write_layouts_idx})
+
+set_property(CACHE SR_DELETE_LAYOUTS PROPERTY STRINGS ${ALLOWED_WRITE_LAYOUTS})
+list(FIND ALLOWED_WRITE_LAYOUTS ${SR_DELETE_LAYOUTS} delete_layouts_idx)
+if(${delete_layouts_idx} LESS 0)
+    message(FATAL_ERROR "Unknown option for SR_DELETE_LAYOUTS: '${SR_DELETE_LAYOUTS}'!")
+endif()
+add_definitions(-DRANDOLIB_DELETE_LAYOUTS=${delete_layouts_idx})
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}

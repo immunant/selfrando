@@ -6,6 +6,7 @@ target_sources(selfrando_objects
     bionic/arch-arm64/syscalls/write.S
     bionic/arch-arm64/syscalls/lseek.S
     bionic/arch-arm64/syscalls/___close.S
+    bionic/arch-arm64/syscalls/unlinkat.S
     bionic/arch-arm64/syscalls/mmap.S
     bionic/arch-arm64/syscalls/mprotect.S
     bionic/arch-arm64/syscalls/munmap.S
