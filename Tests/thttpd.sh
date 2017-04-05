@@ -27,11 +27,11 @@ cd thttpd-2.27
 SED_EXPR="s/^CCOPT =\s*\@V_CCOPT\@$/CCOPT = \t\@V_CCOPT\@ \$(CC_ADDN_OPT)/g"
 sed --in-place -e "$SED_EXPR" Makefile.in
 
-CFLAGS="-ffunction-sections"
+CFLAGS="-ffunction-sections -fPIC"
 LDFLAGS="-B$SELFRANDO_BIN -Wl,-rpath,$SELFRANDO_BIN -Wl,--gc-sections" 
 CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" ./configure --quiet --host="i686-pc-linux-gnu" 
 
-make CCOPT="-w" --quiet -j$NUM_PROCS STATICFLAG= CC_ADDN_OPT="$CFLAGS"
+make CCOPT="-w" --quiet -j$NUM_PROCS STATICFLAG= CC_ADDN_OPT="$CFLAGS" thttpd
 
 start-stop-daemon --start --name thttpd --quiet --exec $PWD/thttpd -- -p 8080 -l /dev/null
 ab -d -q -n 10000 -c 10 http://localhost:8080/
