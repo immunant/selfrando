@@ -26,7 +26,7 @@ NUM_PROCS=`nproc --all`
 
 cd $LUA_HOME
 sed --in-place -e 's/^CC=/CC?=/g' ./src/Makefile
-MYCFLAGS="-ffunction-sections"
+MYCFLAGS="-ffunction-sections -fPIC"
 MYLDFLAGS="-B$SELFRANDO_BIN -Wl,-rpath,$SELFRANDO_BIN -Wl,--gc-sections" 
 make linux -j$NUM_PROCS MYCFLAGS="$MYCFLAGS" MYLDFLAGS="$MYLDFLAGS"
 
