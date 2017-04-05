@@ -64,6 +64,8 @@ static const std::unordered_map<uint16_t, const char*> kELFMachineNames = {
     { EM_AARCH64,   "arm64"  },
 };
 
+typedef std::tuple<std::vector<char*>, bool> LinkerInvocation;
+
 class ArgParser {
 public:
     ArgParser(int argc, char* argv[]) : m_argc(argc), m_argv(argv),
@@ -93,8 +95,8 @@ public:
 
     void change_option(std::string option, std::string value, bool single_arg);
 
-    std::vector<char*> create_new_invocation(std::map<std::string, std::string> input_file_mapping,
-                                             uint16_t elf_machine);
+    LinkerInvocation create_new_invocation(std::map<std::string, std::string> input_file_mapping,
+                                           uint16_t elf_machine);
 
     std::pair<std::string, std::string> get_entry_point_names();
 
@@ -291,7 +293,7 @@ private:
 class LinkWrapper {
 public:
     ~LinkWrapper();
-    std::vector<char*> process(int argc, char *argv[]);
+    LinkerInvocation process(int argc, char *argv[]);
 
     std::string output_file() const {
         return m_output_file;
@@ -315,25 +317,29 @@ private:
 int main(int argc, char* argv[]) {
     LinkWrapper wrapper;
 
-    std::vector<char*> invocation = wrapper.process(argc, argv);
+    auto invocation = wrapper.process(argc, argv);
+    auto &linker_args = std::get<0>(invocation);
 
     int linker_status = -1;
-    if (!Misc::exec_child(invocation.data(), &linker_status, false))
+    if (!Misc::exec_child(linker_args.data(), &linker_status, false))
         Error::printf("Linker execution failed: %s\n", strerror(errno));
 
     if(linker_status) {
         Error::printf("Linker execution failed, status: %d\n", linker_status);
     } else {
-        auto output_file = wrapper.output_file();
-        auto has_copy_relocs = ElfObject::has_copy_relocs(output_file.c_str());
-        if (has_copy_relocs) {
-            Error::printf("Output file '%s' has COPY relocations and might not run correctly; "
-                          "to fix, recompile with -fPIC\n", output_file.c_str());
-            linker_status = 1;
+        auto emitted_trap_info = std::get<1>(invocation);
+        if (emitted_trap_info) {
+            auto output_file = wrapper.output_file();
+            auto has_copy_relocs = ElfObject::has_copy_relocs(output_file.c_str());
+            if (has_copy_relocs) {
+                Error::printf("Output file '%s' has COPY relocations and might not run correctly; "
+                              "to fix, recompile with -fPIC\n", output_file.c_str());
+                linker_status = 1;
+            }
         }
     }
 
-    for (auto s : invocation)
+    for (auto s : linker_args)
         free(s);
 
     return linker_status;
@@ -346,7 +352,7 @@ LinkWrapper::~LinkWrapper() {
 #endif
 }
 
-std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
+LinkerInvocation LinkWrapper::process(int argc, char* argv[]) {
     Debug::printf<3>("Temp dir: %s\n", m_temp_dir.c_str());
 
     ArgParser Args(argc, argv);
@@ -369,16 +375,16 @@ std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
         }
     }
 
-    std::vector<char*> linker_invocation =
+    auto linker_invocation =
         Args.create_new_invocation(m_rewritten_inputs, m_elf_machine);
 
     Debug::printf<2>("Invoking linker: ");
-    for (char* s : linker_invocation) {
+    for (char* s : std::get<0>(linker_invocation)) {
         Debug::printf<2>("%s ", s);
     }
     Debug::printf<2>("\n");
 
-    linker_invocation.push_back(0);
+    std::get<0>(linker_invocation).push_back(0);
 
     return linker_invocation;
 }
@@ -833,7 +839,7 @@ static std::string find_install_path() {
     return path;
 }
 
-std::vector<char*> ArgParser::create_new_invocation(
+LinkerInvocation ArgParser::create_new_invocation(
     std::map<std::string, std::string> input_file_mapping,
     uint16_t elf_machine) {
 
@@ -939,6 +945,8 @@ std::vector<char*> ArgParser::create_new_invocation(
             m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         }
         m_args.emplace_back("-ldl", true);
+    } else {
+        m_enabled = false;
     }
 
     std::vector<char*> new_args;
@@ -966,7 +974,7 @@ std::vector<char*> ArgParser::create_new_invocation(
             }
         }
     }
-    return new_args;
+    return std::make_tuple(new_args, m_enabled);
 }
 
 bool ArgParser::is_linker_replacement() {
