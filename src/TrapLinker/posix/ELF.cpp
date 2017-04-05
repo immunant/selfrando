@@ -12,6 +12,8 @@
 #include <Filesystem.h>
 #include <Misc.h>
 #include <algorithm>
+
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <libelf.h>
@@ -21,6 +23,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
     { EM_386, {
         .none_reloc      = R_386_NONE,
         .symbol_reloc    = R_386_GOTOFF,
+        .copy_reloc      = R_386_COPY,
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 32,
@@ -29,6 +32,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
     { EM_X86_64, {
         .none_reloc      = R_X86_64_NONE,
         .symbol_reloc    = R_X86_64_GOTOFF64,
+        .copy_reloc      = R_X86_64_COPY,
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 64,
@@ -37,6 +41,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
     { EM_ARM, {
         .none_reloc      = R_ARM_NONE,
         .symbol_reloc    = R_ARM_GOTOFF,
+        .copy_reloc      = R_ARM_COPY,
         .min_p2align     = 0,
         .padding_p2align = 1,
         .addr_size       = 32,
@@ -45,6 +50,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
     { EM_AARCH64, {
         .none_reloc      = R_AARCH64_NONE,
         .symbol_reloc    = R_AARCH64_PREL64,
+        .copy_reloc      = R_AARCH64_COPY,
         .min_p2align     = 0,
         .padding_p2align = 2,
         .addr_size       = 64,
@@ -778,6 +784,76 @@ void* ElfObject::data() {
 ElfObject::~ElfObject() {
     if (m_elf)
         elf_end(m_elf);
+}
+
+bool ElfObject::has_copy_relocs(const char *filename) {
+    bool found_copy_relocs = false;
+    int fd;
+    Elf *elf;
+    Elf_Scn *cur_section = nullptr;
+    GElf_Ehdr ehdr;
+    const TargetInfo *target_info;
+
+    fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        Error::printf("Could not open output file: %s\n", filename);
+        goto ret;
+    }
+
+    elf = elf_begin(fd, ELF_C_READ, nullptr);
+    if (elf == nullptr) {
+        Error::printf("Could not open output file: %s\n", filename);
+        goto close_file;
+    }
+    if (elf_kind(elf) != ELF_K_ELF) {
+        Error::printf("Output file not ELF: %s\n", filename);
+        goto close_elf;
+    }
+    if (gelf_getehdr(elf, &ehdr) == nullptr) {
+        Error::printf("Could not get ELF header: %s\n", elf_errmsg(-1));
+        goto close_elf;
+    }
+    target_info = &kInfoForTargets.at(ehdr.e_machine);
+
+    // Scan all relocation sections looking for R_xxx_COPY relocs
+    while (!found_copy_relocs &&
+           (cur_section = elf_nextscn(elf, cur_section)) != nullptr) {
+        GElf_Shdr shdr;
+        if (gelf_getshdr(cur_section, &shdr) == nullptr) {
+            Error::printf("Could not parse section header: %s\n", elf_errmsg(-1));
+            goto close_elf;
+        }
+        if (shdr.sh_type == SHT_REL || shdr.sh_type == SHT_RELA) {
+            Elf_Data *data = nullptr;
+            while (!found_copy_relocs &&
+                   (data = elf_getdata(cur_section, data)) != nullptr) {
+                if (shdr.sh_type == SHT_REL) {
+                    GElf_Rel rel;
+                    for (unsigned i = 0; gelf_getrel(data, i, &rel) != nullptr; ++i) {
+                        if (GELF_R_TYPE(rel.r_info) == target_info->copy_reloc) {
+                            found_copy_relocs = true;
+                            break;
+                        }
+                    }
+                } else {
+                    GElf_Rela rel;
+                    for (unsigned i = 0; gelf_getrela(data, i, &rel) != nullptr; ++i) {
+                        if (GELF_R_TYPE(rel.r_info) == target_info->copy_reloc) {
+                            found_copy_relocs = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+close_elf:
+    elf_end(elf);
+close_file:
+    close(fd);
+ret:
+    return found_copy_relocs;
 }
 
 void ElfStringTable::initialize(Elf_Scn *section) {

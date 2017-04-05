@@ -465,6 +465,7 @@ public:
     struct TargetInfo {
         uint32_t none_reloc;
         uint32_t symbol_reloc;
+        uint32_t copy_reloc;
         Elf_Offset min_p2align;
         Elf_Offset padding_p2align;
         size_t addr_size;
@@ -474,6 +475,9 @@ public:
         assert(m_target_info != nullptr);
         return m_target_info;
     }
+
+public:
+    static bool has_copy_relocs(const char *filename);
 
 private:
     static const std::unordered_map<uint16_t, TargetInfo> kInfoForTargets;

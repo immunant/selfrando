@@ -87,6 +87,10 @@ public:
         return m_input_files;
     }
 
+    std::string output_file() const {
+        return m_output_file;
+    }
+
     void change_option(std::string option, std::string value, bool single_arg);
 
     std::vector<char*> create_new_invocation(std::map<std::string, std::string> input_file_mapping,
@@ -289,6 +293,10 @@ public:
     ~LinkWrapper();
     std::vector<char*> process(int argc, char *argv[]);
 
+    std::string output_file() const {
+        return m_output_file;
+    }
+
 private:
     void rewrite_file(std::string input_filename,
                       bool whole_archive,
@@ -299,6 +307,7 @@ private:
     std::map<std::string, std::string> m_rewritten_inputs;
     std::vector<std::string> m_temp_files;
     uint16_t m_elf_machine = EM_NONE;
+    std::string m_output_file;
 };
 
 } // end namespace
@@ -312,8 +321,17 @@ int main(int argc, char* argv[]) {
     if (!Misc::exec_child(invocation.data(), &linker_status, false))
         Error::printf("Linker execution failed: %s\n", strerror(errno));
 
-    if(linker_status)
+    if(linker_status) {
         Error::printf("Linker execution failed, status: %d\n", linker_status);
+    } else {
+        auto output_file = wrapper.output_file();
+        auto has_copy_relocs = ElfObject::has_copy_relocs(output_file.c_str());
+        if (has_copy_relocs) {
+            Error::printf("Output file '%s' has COPY relocations and might not run correctly; "
+                          "to fix, recompile with -fPIC\n", output_file.c_str());
+            linker_status = 1;
+        }
+    }
 
     for (auto s : invocation)
         free(s);
@@ -342,6 +360,7 @@ std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
     }
 
     m_entry_points = Args.get_entry_point_names();
+    m_output_file = Args.output_file();
 
     // rewrite all input objects
     if (Args.is_trap_enabled()) {
