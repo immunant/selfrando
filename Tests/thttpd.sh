@@ -27,7 +27,7 @@ cd thttpd-2.27
 SED_EXPR="s/^CCOPT =\s*\@V_CCOPT\@$/CCOPT = \t\@V_CCOPT\@ \$(CC_ADDN_OPT)/g"
 sed --in-place -e "$SED_EXPR" Makefile.in
 
-CFLAGS="-ffunction-sections"
+CFLAGS="-ffunction-sections -fPIC"
 LDFLAGS="-B$SELFRANDO_BIN -Wl,-rpath,$SELFRANDO_BIN -Wl,--gc-sections" 
 CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" ./configure --quiet --host="i686-pc-linux-gnu" 
 
