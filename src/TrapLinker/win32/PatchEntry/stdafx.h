@@ -15,7 +15,6 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <cassert>
 #include <vector>
 #include <map>
 #include <unordered_map>
