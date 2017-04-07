@@ -101,3 +101,4 @@
 --traplinker-enable             handle_traplinker_enable
 --traplinker-static-selfrando   handle_static_selfrando
 --traplinker-selfrando-txtrp-pages    handle_selfrando_txtrp_pages
+--traplinker-no-libs            handle_traplinker_no_libs

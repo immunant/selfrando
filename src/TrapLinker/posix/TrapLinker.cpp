@@ -74,6 +74,7 @@ public:
     ArgParser(int argc, char* argv[]) : m_argc(argc), m_argv(argv),
                                         m_enabled(true), m_static_selfrando(false),
                                         m_selfrando_txtrp_pages(false),
+                                        m_add_selfrando_libs(true),
                                         m_relocatable(false),
                                         m_shared(false), m_static(false),
                                         m_whole_archive(false) {
@@ -142,6 +143,7 @@ private:
     int handle_traplinker_enable(int i, const std::string &arg_key);
     int handle_static_selfrando(int i, const std::string &arg_key);
     int handle_selfrando_txtrp_pages(int i, const std::string &arg_key);
+    int handle_traplinker_no_libs(int i, const std::string &arg_key);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -192,6 +194,7 @@ private:
     bool m_enabled;
     bool m_static_selfrando;
     bool m_selfrando_txtrp_pages;
+    bool m_add_selfrando_libs;
 
     bool m_relocatable;
     bool m_shared;
@@ -880,36 +883,13 @@ LinkerInvocation ArgParser::create_new_invocation(
             Error::printf("Linker ID script execution failed: %s\n", strerror(errno));
         Debug::printf<2>("Linker type: %d\n", linker_type);
 
-        // Add both -init and --entry, since we don't know
-        // which and in what order will be called
-        change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
-        change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
-
-        std::string trap_script = randolib_install_path + kTrapScript;
-        std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
-
-        std::string trap_got_script = randolib_install_path;
-        if (elf_machine == EM_ARM) {
-            // On ARM, both linkers always omit .got.plt
-            trap_got_script += kTrapGOTOnlyScript;
-        } else {
-            // On x86/ARM64, the following things happen:
-            // 1) gold always emits both .got and .got.plt
-            // 2) ld.bfd omits .got.plt for relro+now builds
-            if (linker_type != LD_BFD ||
-                (m_z_keywords.count("relro") == 0 ||
-                 m_z_keywords.count("now") == 0)) {
-                trap_got_script += kTrapGOTPLTScript;
-            } else {
-                trap_got_script += kTrapGOTOnlyScript;
-            }
-        }
-
         // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
                                            "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
+
+        // Add the files that mark the start of .txtrp
         m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
         m_args.emplace(header_pos, "--whole-archive", true);
         if (m_selfrando_txtrp_pages) {
@@ -920,34 +900,66 @@ LinkerInvocation ArgParser::create_new_invocation(
         m_args.emplace(header_pos, "--no-whole-archive", true);
 
         // Add other arguments to the end
-        m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
-        m_args.emplace_back(strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
-        m_args.emplace_back(strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
-        m_args.emplace_back("--whole-archive", true);
-        if (m_shared) {
-            m_args.emplace_back("-lrandoentry_so", true);
-        } else {
-            m_args.emplace_back("-lrandoentry_exec", true);
-        }
-        m_args.emplace_back(trap_script.c_str(), true);
-        m_args.emplace_back(trap_got_script.c_str(), true);
-        m_args.emplace_back("-ltrapfooter", true);
-        m_args.emplace_back("--no-whole-archive", true);
-        if (m_static_selfrando && m_selfrando_txtrp_pages) {
-            // WARNING: this must go after TrapFooter.o
-            std::string selfrando_object = randolib_install_path + kSelfrandoObject;
-            m_args.emplace_back(selfrando_object.c_str(), true);
-            m_args.emplace_back("-ltrapfooter_page", true);
-        } else if (m_static_selfrando) {
+        // First, add the selfrando libs (if enabled)
+        if (m_add_selfrando_libs) {
+            // Add both -init and --entry, since we don't know
+            // which and in what order will be called
+            change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
+            change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
+
+            std::string trap_script = randolib_install_path + kTrapScript;
+            std::string trap_got_script = randolib_install_path;
+            if (elf_machine == EM_ARM) {
+                // On ARM, both linkers always omit .got.plt
+                trap_got_script += kTrapGOTOnlyScript;
+            } else {
+                // On x86/ARM64, the following things happen:
+                // 1) gold always emits both .got and .got.plt
+                // 2) ld.bfd omits .got.plt for relro+now builds
+                if (linker_type != LD_BFD ||
+                    (m_z_keywords.count("relro") == 0 ||
+                     m_z_keywords.count("now") == 0)) {
+                    trap_got_script += kTrapGOTPLTScript;
+                } else {
+                    trap_got_script += kTrapGOTOnlyScript;
+                }
+            }
+
+            m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
+            m_args.emplace_back(strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
+            m_args.emplace_back(strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
             m_args.emplace_back("--whole-archive", true);
-            m_args.emplace_back("-l:libselfrando.a", true);
+            if (m_shared) {
+                m_args.emplace_back("-lrandoentry_so", true);
+            } else {
+                m_args.emplace_back("-lrandoentry_exec", true);
+            }
+            m_args.emplace_back(trap_script.c_str(), true);
+            m_args.emplace_back(trap_got_script.c_str(), true);
+            m_args.emplace_back("-ltrapfooter", true);
             m_args.emplace_back("--no-whole-archive", true);
-            m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
+            if (m_static_selfrando && m_selfrando_txtrp_pages) {
+                // WARNING: this must go after TrapFooter.o
+                std::string selfrando_object = randolib_install_path + kSelfrandoObject;
+                m_args.emplace_back(selfrando_object.c_str(), true);
+            } else if (m_static_selfrando) {
+                m_args.emplace_back("--whole-archive", true);
+                m_args.emplace_back("-l:libselfrando.a", true);
+                m_args.emplace_back("--no-whole-archive", true);
+            } else {
+                m_args.emplace_back("-l:libselfrando.so", true);
+            }
+            m_args.emplace_back("-ldl", true);
+
+        }
+
+        // Add the files that mark the end of .txtrp
+        if (m_static_selfrando && m_selfrando_txtrp_pages) {
+            m_args.emplace_back("-ltrapfooter_page", true);
         } else {
-            m_args.emplace_back("-l:libselfrando.so", true);
+            std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
             m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         }
-        m_args.emplace_back("-ldl", true);
     } else {
         m_enabled = false;
     }
@@ -1177,6 +1189,11 @@ int ArgParser::handle_static_selfrando(int i, const std::string &arg_key) {
 
 int ArgParser::handle_selfrando_txtrp_pages(int i, const std::string &arg_key) {
     m_selfrando_txtrp_pages = true;
+    return 0;
+}
+
+int ArgParser::handle_traplinker_no_libs(int i, const std::string &arg_key) {
+    m_add_selfrando_libs = false;
     return 0;
 }
 
