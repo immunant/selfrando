@@ -327,7 +327,7 @@ public:
         return m_num_sections;
     }
 
-    std::tuple<std::string, uint16_t> create_trap_info();
+    std::tuple<std::string, uint16_t> create_trap_info(bool emit_textramp);
 
     void* data();
 
@@ -503,7 +503,7 @@ private:
         return m_section_header_strings->get_string(section_header.sh_name);
     }
 
-    bool create_trap_info_impl();
+    bool create_trap_info_impl(bool emit_textramp);
     void add_anchor_reloc(Elf_Scn *section,
                           Elf_SectionIndex symtab_section_ndx,
                           ElfSymbolTable::SymbolRef section_symbol,

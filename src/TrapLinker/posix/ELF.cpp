@@ -118,7 +118,7 @@ bool ElfObject::parse() {
     return true;
 }
 
-std::tuple<std::string, uint16_t> ElfObject::create_trap_info() {
+std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp) {
     if (!parse())
         Error::printf("Could not parse ELF file %s\n", m_filename.c_str());
 
@@ -147,7 +147,7 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info() {
                 m_elf = write_new_file(temp_file.first);
                 if (!parse())
                     Error::printf("Could not parse ELF archive %s\n", m_filename.c_str());
-                if (create_trap_info_impl()) {
+                if (create_trap_info_impl(emit_textramp)) {
                     update_file();
                 }
                 elf_end(m_elf);
@@ -168,7 +168,7 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info() {
             Filesystem::remove(filename);
         return std::make_tuple(archive_filename, elf_machine);
     } else {
-        if (create_trap_info_impl()) {
+        if (create_trap_info_impl(emit_textramp)) {
             update_file();
         }
         return std::make_tuple(m_filename, m_ehdr.e_machine);
@@ -188,7 +188,7 @@ static inline bool is_text_section(std::string &name) {
            is_prefix(".gnu.linkonce.t", name);
 }
 
-bool ElfObject::create_trap_info_impl() {
+bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     Debug::printf<5>("Creating trap info\n");
     std::map<uint32_t, TrapRecordBuilder> section_builders;
     Target::EntrySymbols entry_symbols;
@@ -409,7 +409,7 @@ bool ElfObject::create_trap_info_impl() {
 
     // Need to create trampolines before modifying the symbol table while adding
     // txtrp
-    if (!entry_symbols.empty()) {
+    if (!entry_symbols.empty() && emit_textramp) {
         TrampolineBuilder tramp_builder(*this, symbol_table);
         ElfSymbolTable::SymbolMapping symbol_mapping =
             tramp_builder.build_trampolines(entry_symbols);
