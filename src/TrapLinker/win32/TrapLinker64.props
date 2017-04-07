@@ -12,6 +12,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
