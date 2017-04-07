@@ -630,11 +630,11 @@ static inline bool is_script_string_char(char ch, bool first) {
     case '~':
     case '[':
     case '*':
+    case '-':
         return true;
 
     case ']':
     case '?':
-    case '-':
     case '=':
     case '+':
     case ':':
