@@ -137,3 +137,4 @@
 -allow-shlib-undefined ignore_arg
 -wrap ignore_long_arg_with_value
 -force-exe-suffix ignore_arg
+-nostdlib ignore_arg
