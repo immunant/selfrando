@@ -613,7 +613,7 @@ void LinkerScript::parse_sections() {
     chomp_whitespace();
 }
 
-static inline bool is_script_string_char(char ch) {
+static inline bool is_script_string_char(char ch, bool first) {
     switch (ch) {
     // Alphanumerics
     case 'a' ... 'z':
@@ -629,12 +629,16 @@ static inline bool is_script_string_char(char ch) {
     case '\\':
     case '~':
     case '[':
-    case ']':
     case '*':
+        return true;
+
+    case ']':
     case '?':
     case '-':
+    case '=':
+    case '+':
     case ':':
-        return true;
+        return !first;
 
     default:
         return false;
@@ -656,11 +660,13 @@ std::pair<std::string, unsigned> LinkerScript::parse_string() {
             s += c;
         }
     } else {
+        bool first = true;
         file_offset = ftell(m_file);
         while ((c = getc(m_file)) != EOF) {
-            if (!is_script_string_char(c))
+            if (!is_script_string_char(c, first))
                 break;
             s += c;
+            first = false;
         }
         if (c != EOF)
             ungetc(c, m_file);
