@@ -19,6 +19,9 @@
 #include <libelf.h>
 #include <gelf.h>
 
+#ifdef EM_AARCH64
+static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
+#endif
 const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTargets = {
     { EM_386, {
         .none_reloc      = R_386_NONE,
@@ -47,10 +50,13 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .addr_size       = 32,
         }
     },
-    { EM_AARCH64, {
-        .none_reloc      = R_AARCH64_NONE,
-        .symbol_reloc    = R_AARCH64_PREL64,
-        .copy_reloc      = R_AARCH64_COPY,
+    // AArch4 information
+    // we encode the values numerically here, since
+    // old versions of elf.h don't have the #define's
+    { 183, {                                 // EM_AARCH64
+        .none_reloc      = 0,                // R_AARCH64_NONE
+        .symbol_reloc    = 260,              // R_AARCH64_PREL64
+        .copy_reloc      = 1024,             // R_AARCH64_COPY
         .min_p2align     = 0,
         .padding_p2align = 2,
         .addr_size       = 64,

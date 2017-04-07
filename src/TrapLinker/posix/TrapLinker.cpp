@@ -57,11 +57,14 @@ static const char *kExecSections[][2] = {
 };
 #endif
 
+#ifdef EM_AARCH64
+static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
+#endif
 static const std::unordered_map<uint16_t, const char*> kELFMachineNames = {
     { EM_386,       "x86"    },
     { EM_X86_64,    "x86_64" },
     { EM_ARM,       "arm"    },
-    { EM_AARCH64,   "arm64"  },
+    { 183,          "arm64"  }, // EM_AARCH64 == 183
 };
 
 typedef std::tuple<std::vector<char*>, bool> LinkerInvocation;
