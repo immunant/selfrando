@@ -67,7 +67,7 @@ static const std::unordered_map<uint16_t, const char*> kELFMachineNames = {
     { 183,          "arm64"  }, // EM_AARCH64 == 183
 };
 
-typedef std::tuple<std::vector<char*>, bool> LinkerInvocation;
+typedef std::tuple<std::vector<char*>, bool, bool> LinkerInvocation;
 
 class ArgParser {
 public:
@@ -76,6 +76,7 @@ public:
                                         m_selfrando_txtrp_pages(false),
                                         m_add_selfrando_libs(true),
                                         m_emit_textramp(true),
+                                        m_pic_warning(true),
                                         m_relocatable(false),
                                         m_shared(false), m_static(false),
                                         m_whole_archive(false) {
@@ -150,6 +151,7 @@ private:
     int handle_selfrando_txtrp_pages(int i, const std::string &arg_key);
     int handle_traplinker_no_libs(int i, const std::string &arg_key);
     int handle_traplinker_no_textramp(int i, const std::string &arg_key);
+    int handle_traplinker_no_pic_warning(int i, const std::string &arg_key);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -202,6 +204,7 @@ private:
     bool m_selfrando_txtrp_pages;
     bool m_add_selfrando_libs;
     bool m_emit_textramp;
+    bool m_pic_warning;
 
     bool m_relocatable;
     bool m_shared;
@@ -341,7 +344,8 @@ int main(int argc, char* argv[]) {
         Error::printf("Linker execution failed, status: %d\n", linker_status);
     } else {
         auto emitted_trap_info = std::get<1>(invocation);
-        if (emitted_trap_info) {
+        auto pic_warning = std::get<2>(invocation);
+        if (emitted_trap_info && pic_warning) {
             auto output_file = wrapper.output_file();
             auto has_copy_relocs = ElfObject::has_copy_relocs(output_file.c_str());
             if (has_copy_relocs) {
@@ -1004,7 +1008,7 @@ LinkerInvocation ArgParser::create_new_invocation(
             }
         }
     }
-    return std::make_tuple(new_args, m_enabled);
+    return std::make_tuple(new_args, m_enabled, m_pic_warning);
 }
 
 bool ArgParser::is_linker_replacement() {
@@ -1214,6 +1218,11 @@ int ArgParser::handle_traplinker_no_libs(int i, const std::string &arg_key) {
 
 int ArgParser::handle_traplinker_no_textramp(int i, const std::string &arg_key) {
     m_emit_textramp = false;
+    return 0;
+}
+
+int ArgParser::handle_traplinker_no_pic_warning(int i, const std::string &arg_key) {
+    m_pic_warning = false;
     return 0;
 }
 

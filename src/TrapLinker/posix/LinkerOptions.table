@@ -103,3 +103,4 @@
 --traplinker-selfrando-txtrp-pages    handle_selfrando_txtrp_pages
 --traplinker-no-libs            handle_traplinker_no_libs
 --traplinker-no-textramp        handle_traplinker_no_textramp
+--traplinker-no-pic-warning     handle_traplinker_no_pic_warning
