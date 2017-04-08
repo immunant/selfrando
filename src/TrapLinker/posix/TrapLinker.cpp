@@ -968,7 +968,9 @@ LinkerInvocation ArgParser::create_new_invocation(
 
         // Add the files that mark the end of .txtrp
         if (m_static_selfrando && m_selfrando_txtrp_pages) {
+            m_args.emplace_back("--whole-archive", true);
             m_args.emplace_back("-ltrapfooter_page", true);
+            m_args.emplace_back("--no-whole-archive", true);
         } else {
             std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
             m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
