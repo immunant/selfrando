@@ -11,4 +11,4 @@ set -ue
 CMD="$(basename "$0")"
 CC1P="$(which $(gcc -print-prog-name="$CMD"))"
 
-exec "$CC1P" "$@" -ffunction-sections -fdata-sections
+exec "$CC1P" "$@" -ffunction-sections -fdata-sections -fPIC

@@ -13,4 +13,4 @@ exec 2> >(tee -a /tmp/tc.log >&2)
 CC1P="$(which $(gcc -print-prog-name=cc1))"
 
 set -x
-exec "$CC1P" "$@" -ffunction-sections -fdata-sections
+exec "$CC1P" "$@" -ffunction-sections -fdata-sections -fPIC

@@ -12,4 +12,4 @@ TC_PATH="$(dirname "$0")"
 CMD="$(basename "$0")"
 export PATH="$(echo $PATH | sed -E 's/^[^:]+://')"
 
-exec "$CMD" "$@" -B"$TC_PATH" -ffunction-sections -fdata-sections
+exec "$CMD" "$@" -B"$TC_PATH" -ffunction-sections -fdata-sections -fPIC
