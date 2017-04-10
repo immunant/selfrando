@@ -8,7 +8,11 @@
 
 set -ue
 
-SR_PATH=$(readlink -f "$(dirname "$0")/../../out/x86_64/bin")
-GOLD="$(which $(gcc -print-prog-name=ld.gold))"
+TC_PATH="$(dirname "$0")"
+SR_PATH=$(readlink -f "$TC_PATH/../../out/x86_64/bin")
+source $TC_PATH/functions.sh
 
-"$SR_PATH/ld.gold" -rpath "$SR_PATH" --traplinker-original-linker "$GOLD" "$@"
+WRAPPER=`basename $0`
+ORIG_LD=`find_original`
+
+"$SR_PATH/$WRAPPER" -rpath "$SR_PATH" --traplinker-original-linker "$ORIG_LD" "$@"
