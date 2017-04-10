@@ -292,7 +292,8 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
                     case STT_OBJECT:
                     case STT_SECTION:
                         if (symbol.st_value == 0 &&
-                            GELF_ST_BIND(symbol.st_info) != STB_WEAK) {
+                            GELF_ST_BIND(symbol.st_info) != STB_WEAK &&
+                            symbol.st_other != STV_PROTECTED) {
                             // Symbol marks start of section
                             section_builders[sym_shndx].set_section_symbol(sym_ref);
                         }
