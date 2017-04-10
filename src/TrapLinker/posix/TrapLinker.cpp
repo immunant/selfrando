@@ -923,6 +923,16 @@ LinkerInvocation ArgParser::create_new_invocation(
             // which and in what order will be called
             change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
             change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
+            m_args.emplace(header_pos, strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
+            m_args.emplace(header_pos, strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
+            m_args.emplace(header_pos, strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
+            m_args.emplace(header_pos, "--whole-archive", true);
+            if (m_shared) {
+                m_args.emplace(header_pos, "-lrandoentry_so", true);
+            } else {
+                m_args.emplace(header_pos, "-lrandoentry_exec", true);
+            }
+            m_args.emplace(header_pos, "--no-whole-archive", true);
 
             std::string trap_script = randolib_install_path + kTrapScript;
             std::string trap_got_script = randolib_install_path;
@@ -941,16 +951,7 @@ LinkerInvocation ArgParser::create_new_invocation(
                     trap_got_script += kTrapGOTOnlyScript;
                 }
             }
-
-            m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
-            m_args.emplace_back(strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
-            m_args.emplace_back(strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
             m_args.emplace_back("--whole-archive", true);
-            if (m_shared) {
-                m_args.emplace_back("-lrandoentry_so", true);
-            } else {
-                m_args.emplace_back("-lrandoentry_exec", true);
-            }
             m_args.emplace_back(trap_script.c_str(), true);
             m_args.emplace_back(trap_got_script.c_str(), true);
             m_args.emplace_back("-ltrapfooter", true);
@@ -967,7 +968,6 @@ LinkerInvocation ArgParser::create_new_invocation(
                 m_args.emplace_back("-l:libselfrando.so", true);
             }
             m_args.emplace_back("-ldl", true);
-
         }
 
         // Add the files that mark the end of .txtrp
