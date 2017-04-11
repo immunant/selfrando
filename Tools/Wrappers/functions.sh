@@ -1,14 +1,16 @@
 find_original() {
-    local WRAPPER=`basename $0`
-    local AFTER_WRAPPER=false
+    local wrapper=`basename $0`
+    local after_wrapper=false
+    local pathvar
+    local orig_path
 
-    IFS=: read -ra PATHVAR <<< "$PATH";
-    for PATHELEM in "${PATHVAR[@]}"; do
-        ORIG_BINARY="$PATHELEM/$WRAPPER"
-        if [[ "$ORIG_BINARY" -ef "$0" ]]; then
-            AFTER_WRAPPER=true
-        elif $AFTER_WRAPPER && [[ -x "$ORIG_BINARY" ]]; then
-            echo "$ORIG_BINARY"
+    IFS=: read -ra pathvar <<< "$PATH";
+    for orig_path in "${pathvar[@]}"; do
+        local orig_binary="$orig_path/$wrapper"
+        if [[ "$orig_binary" -ef "$0" ]]; then
+            after_wrapper=true
+        elif $after_wrapper && [[ -x "$orig_binary" ]]; then
+            echo "$orig_binary"
             break
         fi
     done
@@ -16,6 +18,6 @@ find_original() {
 }
 
 run_original() {
-    ORIG_BINARY=`find_original`
-    exec "$ORIG_BINARY" "$@"
+    local orig_binary=`find_original`
+    exec "$orig_binary" "$@"
 }
