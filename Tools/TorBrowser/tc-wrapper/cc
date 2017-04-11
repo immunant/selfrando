@@ -11,8 +11,7 @@ set -ue
 exec 2> >(tee -a /tmp/tc.log >&2)
 
 TC_PATH="$(dirname "$0")"
-CMD="$(basename "$0")"
-export PATH="$(echo $PATH | sed -E 's/^[^:]+://')"
+source $TC_PATH/functions.sh
 
 set -x
-exec "$CMD" "$@" -B"$TC_PATH"
+run_original -B"$TC_PATH" -ffunction-sections -fdata-sections -fPIC "$@"
