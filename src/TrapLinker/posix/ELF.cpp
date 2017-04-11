@@ -177,15 +177,20 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
 
 template<size_t len>
 static inline bool is_prefix(const char (&prefix)[len],
-                             std::string &str) {
+                             const std::string &str) {
     // len includes the NULL terminator, so we need to exclude it
     return str.substr(0, len - 1) == prefix;
 }
 
-static inline bool is_text_section(std::string &name) {
+static inline bool is_text_section(const std::string &name) {
     return is_prefix(".text", name) ||
            is_prefix(".stub", name) ||
            is_prefix(".gnu.linkonce.t", name);
+}
+
+static inline bool is_ctors_section(const std::string &name) {
+    return is_prefix(".ctors", name) ||
+           is_prefix(".dtors", name);
 }
 
 bool ElfObject::create_trap_info_impl(bool emit_textramp) {
@@ -472,13 +477,36 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         if (builder.in_group())
             trap_section_header.sh_flags |= SHF_GROUP;
 
-        int trap_section_ndx = add_section(".txtrp", trap_section_header,
+        int trap_section_ndx = add_section(".txtrp", &trap_section_header,
                                            DataBuffer(builder.get_trap_data(), 1));
         auto trap_section_symbol = symbol_table.add_section_symbol(trap_section_ndx);
-        add_anchor_reloc(cur_section,
-                         symbol_table.section_index(),
-                         trap_section_symbol,
-                         builder.symbols_size());
+        if (is_ctors_section(name)) {
+            // We need to implement a small hack to get around a restriction
+            // in ld.bfd: .ctors/.dtors can only have exactly as many
+            // relocations as words inside (one relocation per pointer),
+            // so we can't add our anchor relocation directly there;
+            // instead, we create a corresponding .init section and put the
+            // anchor there, which is fine from a GC point since both .init
+            // and .ctors/.dtors are gc roots
+            GElf_Shdr fake_init_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            fake_init_header.sh_type = SHT_PROGBITS;
+            fake_init_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+            uint8_t nop = 0x90;
+            int fake_init_section_ndx = add_section(".init",
+                                                    &fake_init_header,
+                                                    DataBuffer(&nop, 1, 1));
+            add_anchor_reloc(&fake_init_header,
+                             fake_init_section_ndx,
+                             symbol_table.section_index(),
+                             trap_section_symbol,
+                             builder.symbols_size());
+        } else {
+            add_anchor_reloc(&header,
+                             section_ndx,
+                             symbol_table.section_index(),
+                             trap_section_symbol,
+                             builder.symbols_size());
+        }
 
         // Add a reloc section for the txtrp
         auto &trap_relocs = builder.get_trap_reloc_data();
@@ -528,16 +556,12 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     return true;
 }
 
-void ElfObject::add_anchor_reloc(Elf_Scn *section,
+void ElfObject::add_anchor_reloc(const GElf_Shdr *header,
+                                 Elf_SectionIndex section_ndx,
                                  Elf_SectionIndex symtab_section_ndx,
                                  ElfSymbolTable::SymbolRef section_symbol,
                                  size_t function_count) {
-    GElf_Shdr header;
-    if (!gelf_getshdr(section, &header))
-        Error::printf("Error getting section header: %s\n", elf_errmsg(-1));
-
-    auto section_ndx = elf_ndxscn(section);
-    GElf_Addr reloc_offset = (header.sh_size == 0) ? 0 : (header.sh_size - 1);
+    GElf_Addr reloc_offset = (header->sh_size == 0) ? 0 : (header->sh_size - 1);
     ElfReloc reloc(reloc_offset, m_target_info->none_reloc, section_symbol, 0);
     Target::add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
 }
@@ -552,12 +576,13 @@ ElfStringTable *ElfObject::get_string_table(Elf_SectionIndex section_index) {
     return &(m_string_tables[section_index]);
 }
 
-unsigned ElfObject::add_section(std::string name, GElf_Shdr header,
+unsigned ElfObject::add_section(std::string name,
+                                GElf_Shdr *header,
                                 DataBuffer buffer,
                                 Elf_Type data_type) {
     assert(buffer.size > 0 && "Adding empty data buffer");
     // Add a section name
-    header.sh_name = m_section_header_strings->add_string(name);
+    header->sh_name = m_section_header_strings->add_string(name);
 
     Elf_Scn *section = elf_newscn(m_elf);
 
@@ -569,7 +594,7 @@ unsigned ElfObject::add_section(std::string name, GElf_Shdr header,
     elf_data->d_align = buffer.align;
     elf_data->d_type = data_type;
 
-    if (!gelf_update_shdr(section, &header))
+    if (!gelf_update_shdr(section, header))
         Error::printf("Error writing new section header: %s\n", elf_errmsg(-1));
     elf_flagshdr(section, ELF_C_SET, ELF_F_DIRTY);
 
@@ -1283,7 +1308,7 @@ void ElfSymbolTable::XindexTable::update() {
         xindex_section_header.sh_type = SHT_SYMTAB_SHNDX;
         xindex_section_header.sh_link = m_symtab_index;
         xindex_section_header.sh_entsize = sizeof(uint32_t);
-        m_object.add_section(".symtab_shndx", xindex_section_header,
+        m_object.add_section(".symtab_shndx", &xindex_section_header,
                              ElfObject::DataBuffer(m_xindex_table, 4));
     } else {
         // Replace the section contents (even if all zeroes)
@@ -1297,7 +1322,7 @@ ElfSymbolTable::SymbolMapping TrampolineBuilder::build_trampolines(const Target:
     tramp_section_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
     tramp_section_header.sh_addralign = 2;
     unsigned tramp_section_index =
-        m_object.add_section(".textramp", tramp_section_header,
+        m_object.add_section(".textramp", &tramp_section_header,
                              create_trampoline_data(entry_symbols));
 
     ElfSymbolTable::SymbolMapping symbol_index_mapping;

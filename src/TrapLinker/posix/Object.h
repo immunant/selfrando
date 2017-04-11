@@ -370,7 +370,8 @@ public:
     ElfStringTable *get_string_table(Elf_SectionIndex section_index);
 
     /// Returns the index of the new section
-    unsigned add_section(std::string name, GElf_Shdr header,
+    unsigned add_section(std::string name,
+                         GElf_Shdr *header,
                          DataBuffer buffer,
                          Elf_Type data_type = ELF_T_BYTE);
 
@@ -504,7 +505,8 @@ private:
     }
 
     bool create_trap_info_impl(bool emit_textramp);
-    void add_anchor_reloc(Elf_Scn *section,
+    void add_anchor_reloc(const GElf_Shdr *header,
+                          Elf_SectionIndex section_ndx,
                           Elf_SectionIndex symtab_section_ndx,
                           ElfSymbolTable::SymbolRef section_symbol,
                           size_t function_count);

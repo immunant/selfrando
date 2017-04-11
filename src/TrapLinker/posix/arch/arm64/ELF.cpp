@@ -51,7 +51,7 @@ Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
     rel_header.sh_link = symtab_shndx;
     rel_header.sh_info = shndx;
     rel_header.sh_addralign = sizeof(uint64_t);
-    return object.add_section(".rela" + section_name, rel_header,
+    return object.add_section(".rela" + section_name, &rel_header,
                               ElfObject::DataBuffer::get_empty_buffer(),
                               ELF_T_RELA);
 }

@@ -69,7 +69,7 @@ Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
     rel_header.sh_info = shndx;
     rel_header.sh_addralign = sizeof(uint64_t);
     std::vector<Elf64_Rela> relas = build_relas(relocs);
-    return object.add_section(".rela" + section_name, rel_header,
+    return object.add_section(".rela" + section_name, &rel_header,
                               ElfObject::DataBuffer(relas, sizeof(uint64_t)),
                               ELF_T_RELA);
 }
