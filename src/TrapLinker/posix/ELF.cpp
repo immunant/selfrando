@@ -965,12 +965,13 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     old_symbol->st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
 
     // Replace original symbol with wrapper
-    uint32_t new_sym_xindex = m_xindex_table.get(symbol.get_input_index());
+    uint32_t new_sym_xindex;
     if (section_index >= SHN_LORESERVE) {
         new_symbol.st_shndx = SHN_XINDEX;
-        m_xindex_table.set(symbol.get_input_index(), section_index);
+        new_sym_xindex = section_index;
     } else {
         new_symbol.st_shndx = section_index;
+        new_sym_xindex = 0;
     }
     new_symbol.st_value = new_value;
     new_symbol.st_size  = new_size;
