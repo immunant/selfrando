@@ -964,7 +964,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     old_symbol->st_name = m_string_table->add_string(sym_name_orig);
     old_symbol->st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
 
-    // Replace original symbol with wrapper
+    // Add new symbol for wrapper
     uint32_t new_sym_xindex;
     if (section_index >= SHN_LORESERVE) {
         new_symbol.st_shndx = SHN_XINDEX;
