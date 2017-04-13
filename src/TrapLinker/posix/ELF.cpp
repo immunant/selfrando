@@ -191,7 +191,6 @@ static inline bool is_text_section(std::string &name) {
 bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     Debug::printf<5>("Creating trap info\n");
     std::map<uint32_t, TrapRecordBuilder> section_builders;
-    Target::EntrySymbols entry_symbols;
 
     ElfSymbolTable symbol_table(m_elf, *this);
     if (symbol_table.empty()) {
@@ -285,7 +284,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
                         section_builders[sym_shndx].set_has_func_symbols();
                         if (needs_trampoline(symbol)) {
                             // needs an entry trampoline
-                            entry_symbols.push_back(sym_ref);
+                            section_builders[sym_shndx].add_entry_symbol(sym_ref);
                         }
                     // Fall-through
                     case STT_NOTYPE:
@@ -408,14 +407,6 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         }
     }
 
-    // Need to create trampolines before modifying the symbol table while adding
-    // txtrp
-    if (!entry_symbols.empty() && emit_textramp) {
-        TrampolineBuilder tramp_builder(*this, symbol_table);
-        tramp_builder.build_trampolines(entry_symbols);
-        m_modified = true;
-    }
-
     std::vector<uint32_t> txtrp_sections;
     for (auto &I : section_builders) {
         m_modified = true;
@@ -482,6 +473,13 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         assert(!trap_relocs.empty() && "No relocations inside TRaP info");
         add_section_relocs(trap_section_ndx, trap_relocs);
 
+        // Build trampolines for this section
+        Elf_SectionIndex tramp_section_ndx = 0;
+        if (emit_textramp) {
+            TrampolineBuilder tramp_builder(*this, symbol_table);
+            tramp_section_ndx = tramp_builder.build_trampolines(builder.entry_symbols());
+        }
+
         // FIXME: if we create a new group, it should go at the beginning of
         // the file
         if (builder.in_group()) {
@@ -490,9 +488,12 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             auto group_shndx = builder.group_section_ndx();
             Debug::printf<10>("Adding %d to group section %d\n",
                               trap_section_ndx, group_shndx);
-            int32_t group_elems[] = { trap_section_ndx };
+            std::vector<int32_t> group_elems = { trap_section_ndx };
+            if (tramp_section_ndx != 0)
+                group_elems.push_back(tramp_section_ndx);
             // FIXME: what ELF_T_xxx is a SHT_GROUP section???
-            add_data(group_shndx, reinterpret_cast<void*>(group_elems), sizeof(group_elems), 1);
+            add_data(group_shndx, reinterpret_cast<void*>(group_elems.data()),
+                     sizeof(int32_t) * group_elems.size(), 1);
         }
     }
 
@@ -1299,12 +1300,15 @@ void ElfSymbolTable::XindexTable::update() {
     }
 }
 
-void TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+Elf_SectionIndex TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+    if (entry_symbols.empty())
+        return 0;
+
     GElf_Shdr tramp_section_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     tramp_section_header.sh_type = SHT_PROGBITS;
     tramp_section_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
     tramp_section_header.sh_addralign = 2;
-    unsigned tramp_section_index =
+    Elf_SectionIndex tramp_section_index =
         m_object.add_section(".textramp", tramp_section_header,
                              create_trampoline_data(entry_symbols));
 
@@ -1321,6 +1325,7 @@ void TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symb
 
     if (!m_trampoline_relocs.empty())
         m_object.add_section_relocs(tramp_section_index, m_trampoline_relocs);
+    return tramp_section_index;
 }
 
 

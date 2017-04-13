@@ -598,7 +598,7 @@ public:
         : m_object(object), m_symbol_table(symbol_table) { }
 
     // Build the trampoline instructions.
-    void build_trampolines(const Target::EntrySymbols &entry_symbols);
+    Elf_SectionIndex build_trampolines(const Target::EntrySymbols &entry_symbols);
 
 private:
     ElfObject::DataBuffer create_trampoline_data(const Target::EntrySymbols &entry_symbols);
@@ -638,6 +638,14 @@ public:
 
     void set_has_func_symbols() {
         m_has_func_symbols = true;
+    }
+
+    void add_entry_symbol(ElfSymbolTable::SymbolRef symbol) {
+        m_entry_symbols.push_back(symbol);
+    }
+
+    const Target::EntrySymbols &entry_symbols() const {
+        return m_entry_symbols;
     }
 
     ElfSymbolTable::SymbolRef section_symbol() const {
@@ -729,6 +737,7 @@ private:
     Elf_Offset m_section_p2align;
     bool m_new_section_symbol;
     bool m_has_func_symbols;
+    Target::EntrySymbols m_entry_symbols;
 
     bool m_in_group;
     Elf_SectionIndex m_group_section_ndx;
