@@ -220,8 +220,6 @@ public:
         friend class ElfSymbolTable;
     };
 
-    typedef std::map<SymbolRef, SymbolRef> SymbolMapping;
-
     SymbolRef get_input_symbol_ref(size_t idx) {
         if (idx >= m_input_locals.size())
             return SymbolRef(this, SymbolRef::INPUT_GLOBAL,
@@ -233,7 +231,7 @@ public:
                              Elf_SectionIndex section_index,
                              size_t new_size);
 
-    SymbolRef mark_symbol(std::string symbol_name, std::string new_name);
+    void mark_symbol(std::string symbol_name, std::string new_name);
 
     SymbolRef add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
                                std::string name, size_t size = 0);
@@ -569,10 +567,6 @@ private:
 namespace Target {
     typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
 
-    ElfSymbolTable::SymbolMapping
-    create_trampolines(ElfObject &object, ElfSymbolTable &symbol_table,
-                       const EntrySymbols &entry_symbols);
-
     // Create an empty .rel.XXX section
     Elf_SectionIndex create_reloc_section(ElfObject &object,
                                           const std::string &section_name,
@@ -603,9 +597,8 @@ public:
     TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
         : m_object(object), m_symbol_table(symbol_table) { }
 
-    // Build the trampoline instructions. Returns a map from old symbol index to
-    // new symbol index for original versions of wrapped functions
-    ElfSymbolTable::SymbolMapping build_trampolines(const Target::EntrySymbols &entry_symbols);
+    // Build the trampoline instructions.
+    void build_trampolines(const Target::EntrySymbols &entry_symbols);
 
 private:
     ElfObject::DataBuffer create_trampoline_data(const Target::EntrySymbols &entry_symbols);
@@ -703,8 +696,6 @@ public:
     size_t symbols_size() const {
         return m_symbols.size();
     }
-
-    void update_symbol_indices(ElfSymbolTable::SymbolMapping &symbol_mapping);
 
     void read_reloc_addends(Elf_Scn *section);
 
