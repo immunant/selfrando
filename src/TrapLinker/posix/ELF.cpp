@@ -196,7 +196,6 @@ static inline bool is_ctors_section(const std::string &name) {
 bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     Debug::printf<5>("Creating trap info\n");
     std::map<uint32_t, TrapRecordBuilder> section_builders;
-    Target::EntrySymbols entry_symbols;
 
     ElfSymbolTable symbol_table(m_elf, *this);
     if (symbol_table.empty()) {
@@ -290,7 +289,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
                         section_builders[sym_shndx].set_has_func_symbols();
                         if (needs_trampoline(symbol)) {
                             // needs an entry trampoline
-                            entry_symbols.push_back(sym_ref);
+                            section_builders[sym_shndx].add_entry_symbol(sym_ref);
                         }
                     // Fall-through
                     case STT_NOTYPE:
@@ -413,17 +412,6 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         }
     }
 
-    // Need to create trampolines before modifying the symbol table while adding
-    // txtrp
-    if (!entry_symbols.empty() && emit_textramp) {
-        TrampolineBuilder tramp_builder(*this, symbol_table);
-        ElfSymbolTable::SymbolMapping symbol_mapping =
-            tramp_builder.build_trampolines(entry_symbols);
-        for (auto &I : section_builders)
-            I.second.update_symbol_indices(symbol_mapping);
-        m_modified = true;
-    }
-
     std::vector<uint32_t> txtrp_sections;
     for (auto &I : section_builders) {
         m_modified = true;
@@ -513,6 +501,13 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         assert(!trap_relocs.empty() && "No relocations inside TRaP info");
         add_section_relocs(trap_section_ndx, trap_relocs);
 
+        // Build trampolines for this section
+        Elf_SectionIndex tramp_section_ndx = 0;
+        if (emit_textramp) {
+            TrampolineBuilder tramp_builder(*this, symbol_table);
+            tramp_section_ndx = tramp_builder.build_trampolines(builder.entry_symbols());
+        }
+
         // FIXME: if we create a new group, it should go at the beginning of
         // the file
         if (builder.in_group()) {
@@ -521,9 +516,12 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             auto group_shndx = builder.group_section_ndx();
             Debug::printf<10>("Adding %d to group section %d\n",
                               trap_section_ndx, group_shndx);
-            int32_t group_elems[] = { trap_section_ndx };
+            std::vector<int32_t> group_elems = { trap_section_ndx };
+            if (tramp_section_ndx != 0)
+                group_elems.push_back(tramp_section_ndx);
             // FIXME: what ELF_T_xxx is a SHT_GROUP section???
-            add_data(group_shndx, reinterpret_cast<void*>(group_elems), sizeof(group_elems), 1);
+            add_data(group_shndx, reinterpret_cast<void*>(group_elems.data()),
+                     sizeof(int32_t) * group_elems.size(), 1);
         }
     }
 
@@ -978,7 +976,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     GElf_Sym *old_symbol = symbol.get();
     GElf_Sym new_symbol = *old_symbol;
 
-    // Add new symbol by appending "$orig" to the original symbol name.
+    // Rename new symbol by appending "$orig" to the original symbol name.
     std::string sym_name = m_string_table->get_string(old_symbol->st_name);
     std::string sym_name_orig(sym_name);
     std::size_t pos = sym_name.find('@');
@@ -988,25 +986,26 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     else
       sym_name_orig += "$orig";
 
-    new_symbol.st_name = m_string_table->add_string(sym_name_orig);
-    new_symbol.st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
+    old_symbol->st_name = m_string_table->add_string(sym_name_orig);
+    old_symbol->st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
 
-    // Replace original symbol with wrapper
-    uint32_t new_sym_xindex = m_xindex_table.get(symbol.get_input_index());
+    // Add new symbol for wrapper
+    uint32_t new_sym_xindex;
     if (section_index >= SHN_LORESERVE) {
-        old_symbol->st_shndx = SHN_XINDEX;
-        m_xindex_table.set(symbol.get_input_index(), section_index);
+        new_symbol.st_shndx = SHN_XINDEX;
+        new_sym_xindex = section_index;
     } else {
-        old_symbol->st_shndx = section_index;
+        new_symbol.st_shndx = section_index;
+        new_sym_xindex = 0;
     }
-    old_symbol->st_value = new_value;
-    old_symbol->st_size  = new_size;
+    new_symbol.st_value = new_value;
+    new_symbol.st_size  = new_size;
     return add_symbol(new_symbol, new_sym_xindex);
 }
 
-ElfSymbolTable::SymbolRef ElfSymbolTable::mark_symbol(std::string orig_symbol_name, std::string symbol_name) {
-    size_t sym_idx = 0;
-    for (auto &symbol : m_input_locals) {
+void ElfSymbolTable::mark_symbol(std::string orig_symbol_name, std::string symbol_name) {
+    auto check_symbol = [this, &orig_symbol_name, &symbol_name]
+            (const GElf_Sym &symbol, size_t sym_idx){
         if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
             Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
             GElf_Sym new_symbol = symbol;
@@ -1014,23 +1013,34 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::mark_symbol(std::string orig_symbol_na
             new_symbol.st_name = m_string_table->add_string(symbol_name);
             new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
             new_symbol.st_other = STV_HIDDEN;
-            return add_symbol(new_symbol, new_sym_xindex);
+            add_symbol(new_symbol, new_sym_xindex);
+            return true;
         }
+        return false;
+    };
+
+
+    size_t sym_idx = 0;
+    for (auto &symbol : m_input_locals) {
+        if (check_symbol(symbol, sym_idx))
+            return;
+        sym_idx++;
+    }
+    for (auto &symbol : m_new_locals) {
+        if (check_symbol(symbol, sym_idx))
+            return;
         sym_idx++;
     }
     for (auto &symbol : m_input_globals) {
-        if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
-            Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
-            GElf_Sym new_symbol = symbol;
-            uint32_t new_sym_xindex = m_xindex_table.get(sym_idx);
-            new_symbol.st_name = m_string_table->add_string(symbol_name);
-            new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
-            new_symbol.st_other = STV_HIDDEN;
-            return add_symbol(new_symbol, new_sym_xindex);
-        }
+        if (check_symbol(symbol, sym_idx))
+            return;
         sym_idx++;
     }
-    return SymbolRef();
+    for (auto &symbol : m_new_globals) {
+        if (check_symbol(symbol, sym_idx))
+            return;
+        sym_idx++;
+    }
 }
 
 ElfSymbolTable::SymbolRef ElfSymbolTable::add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
@@ -1316,25 +1326,24 @@ void ElfSymbolTable::XindexTable::update() {
     }
 }
 
-ElfSymbolTable::SymbolMapping TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+Elf_SectionIndex TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+    if (entry_symbols.empty())
+        return 0;
+
     GElf_Shdr tramp_section_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     tramp_section_header.sh_type = SHT_PROGBITS;
     tramp_section_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
     tramp_section_header.sh_addralign = 2;
-    unsigned tramp_section_index =
+    Elf_SectionIndex tramp_section_index =
         m_object.add_section(".textramp", &tramp_section_header,
                              create_trampoline_data(entry_symbols));
 
-    ElfSymbolTable::SymbolMapping symbol_index_mapping;
     for (auto trampoline : m_trampoline_offsets) {
         auto old_symbol_index = trampoline.first;
         GElf_Addr tramp_offset = trampoline.second;
-        auto new_symbol_index =
-            m_symbol_table.replace_symbol(old_symbol_index, tramp_offset,
-                                          tramp_section_index, trampoline_size());
-        symbol_index_mapping[old_symbol_index] = new_symbol_index;
-
-        add_reloc(new_symbol_index, tramp_offset);
+        m_symbol_table.replace_symbol(old_symbol_index, tramp_offset,
+                                      tramp_section_index, trampoline_size());
+        add_reloc(old_symbol_index, tramp_offset);
     }
 
     // Allow target to do any special stuff to the new section
@@ -1342,8 +1351,7 @@ ElfSymbolTable::SymbolMapping TrampolineBuilder::build_trampolines(const Target:
 
     if (!m_trampoline_relocs.empty())
         m_object.add_section_relocs(tramp_section_index, m_trampoline_relocs);
-
-    return symbol_index_mapping;
+    return tramp_section_index;
 }
 
 
@@ -1381,15 +1389,6 @@ void TrapRecordBuilder::mark_padding_offset(Elf_Offset offset) {
 
 void TrapRecordBuilder::mark_padding_size(Elf_Offset size) {
     m_padding_size = size;
-}
-
-void TrapRecordBuilder::update_symbol_indices(ElfSymbolTable::SymbolMapping &symbol_mapping) {
-    for (auto &sym : m_symbols) {
-        auto I = symbol_mapping.find(sym.symbol);
-        if (I != symbol_mapping.end()) {
-            sym.symbol = I->second;
-        }
-    }
 }
 
 void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {

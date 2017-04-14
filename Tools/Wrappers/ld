@@ -9,10 +9,14 @@
 set -ue
 
 TC_PATH="$(dirname "$0")"
-SR_PATH=$(readlink -f "$TC_PATH/../../out/x86_64/bin")
+: ${TRAPLINKER_SR_ARCH:="x86_64"}        # only set if unset
+: ${TRAPLINKER_SR_PATH:=$(readlink -f "$TC_PATH/../../out/$TRAPLINKER_SR_ARCH/bin")}
 source $TC_PATH/functions.sh
 
 WRAPPER=`basename $0`
-ORIG_LD=`find_original`
-
-"$SR_PATH/$WRAPPER" -rpath "$SR_PATH" --traplinker-original-linker "$ORIG_LD" "$@"
+: ${TRAPLINKER_ORIG_LD:=`find_original`} # only set if unset
+: ${TRAPLINKER_EXTRA_LDFLAGS:=}          # same as above
+"$TRAPLINKER_SR_PATH/$WRAPPER" -rpath "$TRAPLINKER_SR_PATH" \
+    -rpath "$TRAPLINKER_SR_PATH/$TRAPLINKER_SR_ARCH" \
+    --traplinker-original-linker "$TRAPLINKER_ORIG_LD" \
+    $TRAPLINKER_EXTRA_LDFLAGS "$@"

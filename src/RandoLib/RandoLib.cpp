@@ -286,7 +286,7 @@ void ExecSectionProcessor::IterateFunctionGaps(GapPredicate pred) {
     auto last_addr = m_exec_section.start().to_ptr();
     for (size_t i = 0; i < m_functions.num_funcs; i++) {
         if (m_functions[i].is_gap)
-            return; // We're currently adding gaps, and we reached the first one
+            break; // We're currently adding gaps, and we reached the first one
         RANDO_ASSERT(m_functions[i].undiv_start >= last_addr);
         if (m_functions[i].undiv_start > last_addr)
             pred(last_addr, m_functions[i].undiv_start);
