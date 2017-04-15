@@ -67,7 +67,7 @@ elseif(UNIX)
             URL_HASH MD5=52adfa40758d0d39e5d5c57689bf38d6
             CONFIGURE_COMMAND ${LIBELF_PATH}/src/sr_libelf_build/configure --quiet --prefix=${LIBELF_PATH}
             BUILD_COMMAND make --quiet -j${NUM_PROCS}
-            INSTALL_COMMAND make install
+            INSTALL_COMMAND make --quiet install
             BUILD_BYPRODUCTS ${LIBELF_PATH}/src/sr_libelf_build-build/libelf/libelf.a
             )
 
