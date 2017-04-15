@@ -10,6 +10,7 @@ set(SR_ARCH "x86_64" CACHE STRING "Target architectures")
 set(SR_DEBUG_LEVEL "0" CACHE STRING "Debugging level (0-10); set to 'env' to control via environment variable")
 set(ANDROID_NDK "" CACHE PATH "Android NDK directory (build libs for Android)")
 set(LIBELF_PATH "" CACHE PATH "Path to directory containing libelf.so (if not using system libelf)")
+set(SR_BUILD_LIBELF OFF CACHE BOOL "Build our own libelf as part of the build process")
 
 if("${SR_BUILD_MODULES}" STREQUAL "all")
     set(SR_BUILD_MODULES ${SR_ALL_MODULES})
@@ -50,14 +51,43 @@ elseif(UNIX)
         -Wpointer-arith
         )
 
-    if (LIBELF_PATH)
+    if (SR_BUILD_LIBELF)
+        # Get the number of processors to pass to make -j
+        include(ProcessorCount)
+        ProcessorCount(NUM_PROCS)
+        if (NOT NUM_PROCS)
+            set(NUM_PROCS 1)
+        endif()
+
+        set(LIBELF_PATH ${CMAKE_BINARY_DIR}/libelf)
+        include(ExternalProject)
+        ExternalProject_Add(sr_libelf_build
+            PREFIX ${LIBELF_PATH}
+            URL https://sourceware.org/elfutils/ftp/0.168/elfutils-0.168.tar.bz2
+            URL_HASH MD5=52adfa40758d0d39e5d5c57689bf38d6
+            CONFIGURE_COMMAND ${LIBELF_PATH}/src/sr_libelf_build/configure --quiet --prefix=${LIBELF_PATH}
+            BUILD_COMMAND make --quiet -j${NUM_PROCS}
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${LIBELF_PATH}/src/sr_libelf_build-build/libelf/libelf.a
+            )
+
+        # Can't use find_library() here since it's not compatible with
+        # ExternalProject, so add libelf.a as an imported library
         include_directories(${LIBELF_PATH} ${LIBELF_PATH}/include)
+        add_library(sr_libelf STATIC IMPORTED)
+        set_target_properties(sr_libelf PROPERTIES IMPORTED_LOCATION ${LIBELF_PATH}/src/sr_libelf_build-build/libelf/libelf.a)
+        add_dependencies(sr_libelf sr_libelf_build)
+        set(SR_LIBELF_LIB sr_libelf)
+    else()
+        if (LIBELF_PATH)
+            include_directories(${LIBELF_PATH} ${LIBELF_PATH}/include)
+        endif()
+        find_library(SR_LIBELF_LIB
+            libelf.a
+            HINTS "${LIBELF_PATH}"
+            PATH_SUFFIXES bin lib
+            )
     endif()
-    find_library(SR_LIBELF_LIB
-        libelf.a
-        HINTS "${LIBELF_PATH}"
-        PATH_SUFFIXES bin lib
-        )
 endif()
 
 string(TOUPPER "${SR_PLATFORM}" upper_platform)
