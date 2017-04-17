@@ -308,7 +308,7 @@ public:
     ElfObject(std::pair<int, std::string> temp_file,
               std::pair<std::string, std::string> entry_points)
         : m_fd(temp_file.first), m_filename(temp_file.second),
-          m_elf(nullptr), m_parsed(false), m_modified(false),
+          m_elf(nullptr), m_parsed(false),
           m_entry_points(entry_points) {
         m_elf = elf_begin(m_fd, ELF_C_RDWR, nullptr);
         get_elf_header();
@@ -502,6 +502,11 @@ private:
         return m_section_header_strings->get_string(section_header.sh_name);
     }
 
+    typedef std::map<uint32_t, TrapRecordBuilder> SectionBuilderMap;
+
+    SectionBuilderMap create_section_builders(ElfSymbolTable *symbol_table);
+    void prune_section_builders(SectionBuilderMap *section_builders);
+
     bool create_trap_info_impl(bool emit_textramp);
     void add_anchor_reloc(const GElf_Shdr *header,
                           Elf_SectionIndex section_ndx,
@@ -532,9 +537,6 @@ private:
 
     /// Has parse() been called on this object?
     bool m_parsed;
-
-    /// Have we modified this ELF file?
-    bool m_modified;
 
     /// Current ELF header
     GElf_Ehdr m_ehdr;

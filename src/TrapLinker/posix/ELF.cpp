@@ -193,23 +193,16 @@ static inline bool is_ctors_section(const std::string &name) {
            is_prefix(".dtors", name);
 }
 
-bool ElfObject::create_trap_info_impl(bool emit_textramp) {
-    Debug::printf<5>("Creating trap info\n");
-    std::map<uint32_t, TrapRecordBuilder> section_builders;
-
-    ElfSymbolTable symbol_table(m_elf, *this);
-    if (symbol_table.empty()) {
-        Debug::printf<2>("Did not find a symbol table, quitting early\n");
-        return false;
-    }
-
+ElfObject::SectionBuilderMap
+ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
+    SectionBuilderMap section_builders;
     Elf_Scn *cur_section = nullptr;
     while ((cur_section = elf_nextscn(m_elf, cur_section)) != nullptr) {
         GElf_Shdr section_header;
         auto cur_shndx = elf_ndxscn(cur_section);
         if (gelf_getshdr(cur_section, &section_header) == nullptr) {
             Error::printf("Could not parse section header: %s\n", elf_errmsg(-1));
-            return false;
+            return SectionBuilderMap{};
         }
         m_section_sizes[cur_shndx] = section_header.sh_size;
 
@@ -233,7 +226,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
-                    auto symbol_ref = symbol_table.get_input_symbol_ref(symbol_idx);
+                    auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref);
                 }
@@ -257,7 +250,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
-                    auto symbol_ref = symbol_table.get_input_symbol_ref(symbol_idx);
+                    auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref, relocation.r_addend);
                 }
@@ -270,14 +263,14 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Sym symbol;
                 for (unsigned i = 0; gelf_getsym(data, i, &symbol) != nullptr; ++i, ++sym_idx) {
-                    uint32_t sym_shndx = symbol_table.xindex_table().translate_shndx(sym_idx, symbol.st_shndx);
+                    uint32_t sym_shndx = symbol_table->xindex_table().translate_shndx(sym_idx, symbol.st_shndx);
                     if (sym_shndx == 0 || sym_shndx >= m_num_sections)
                         continue;
 
                     // FIXME: if we have multiple Elf_Data structures
                     // per single SHT_SYMTAB section, then
                     // are the 'i' symbol indices correct???
-                    auto sym_ref = symbol_table.get_input_symbol_ref(sym_idx);
+                    auto sym_ref = symbol_table->get_input_symbol_ref(sym_idx);
                     switch (GELF_ST_TYPE(symbol.st_info)) {
                     case STT_FUNC:
                     case STT_ARM_TFUNC: // Marks Thumb functions on ARM
@@ -331,31 +324,30 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         case SHT_PROGBITS:
             if (get_section_name(cur_section).compare(0, 8, ".txtrp") == 0) {
                 // Error::printf("This object already contains trap info in section %s\n", get_section_name(cur_section).c_str());
-                return false;
+                return SectionBuilderMap{};
             }
             section_builders[cur_shndx].set_section_p2align(ffs(section_header.sh_addralign) - 1);
             break;
         }
     }
+    return section_builders;
+}
 
-    if (section_builders.empty()) {
-        Debug::printf<2>("Did not find any interesting sections, quitting early\n");
-        return false;
-    }
-
+void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_builders) {
     // Iterate over the section builders to eliminate the builders
     // that aren't getting trap info.
-    for (auto I = section_builders.begin(), E = section_builders.end(); I != E; ) {
+    for (auto I = section_builders->begin(), E = section_builders->end();
+         I != E; ) {
         auto section_ndx = I->first;
         auto &builder = I->second;
 
         if (builder.can_ignore_section()) {
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
 
         // If this is not a SHF_ALLOC section, ignore it
-        cur_section = elf_getscn(m_elf, section_ndx);
+        auto *cur_section = elf_getscn(m_elf, section_ndx);
         GElf_Shdr header;
         if (!gelf_getshdr(cur_section, &header)) {
             Debug::printf<6>("Section index: %d\n", section_ndx);
@@ -363,7 +355,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         }
         if ((header.sh_flags & SHF_ALLOC) == 0) {
             Debug::printf<10>("Skipping non-ALLOC section %d\n", section_ndx);
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
         auto section_name = m_section_header_strings->get_string(header.sh_name);
@@ -373,59 +365,58 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             // doesn't like
             // FIXME: we don't actually want to do this
             Debug::printf<10>("Skipping .eh_frame section %d\n", section_ndx);
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
         if (header.sh_type == SHT_ARM_EXIDX) {
             Debug::printf<10>("Skipping .ARM.exidx section %d\n", section_ndx);
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
         ++I;
     }
+}
 
-    // Iterate over the section builders to make sure that we have a start
-    // symbol for each section we're emitting trap info for. Doing this early
-    // so that we can flush new locals once instead of twice.
+bool ElfObject::create_trap_info_impl(bool emit_textramp) {
+    Debug::printf<5>("Creating trap info\n");
+
+    ElfSymbolTable symbol_table(m_elf, *this);
+    if (symbol_table.empty()) {
+        Debug::printf<2>("Did not find a symbol table, quitting early\n");
+        return false;
+    }
+
+    auto section_builders = create_section_builders(&symbol_table);
+    prune_section_builders(&section_builders);
+    if (section_builders.empty()) {
+        Debug::printf<2>("Did not find any interesting sections, quitting early\n");
+        return false;
+    }
+
     for (auto &I : section_builders) {
         auto section_ndx = I.first;
         auto &builder = I.second;
+
+        auto cur_section = elf_getscn(m_elf, section_ndx);
+        GElf_Shdr header;
+        if (!gelf_getshdr(cur_section, &header))
+            Error::printf("Error getting new section header: %s\n", elf_errmsg(-1));
 
         // If the architecture has a minimum alignment, set it here
         if (builder.section_p2align() < m_target_info->min_p2align)
             builder.set_section_p2align(m_target_info->min_p2align);
 
-        // If we get to here we're actually emitting trap info for this section
+        // Make sure that each section has at least one TRaP symbol
         if (builder.symbols_empty()) {
-            // We really only want this for sections that contain no functions
-            // but do contain relocations we want to handle
             if (!builder.section_symbol().is_valid()) {
                 auto new_section_symbol = symbol_table.add_section_symbol(section_ndx);
                 Debug::printf<6>("%d is new section symbol for section %d\n",
                                  new_section_symbol, section_ndx);
                 builder.set_section_symbol(new_section_symbol, true);
-                m_modified = true;
             }
-
             builder.mark_symbol(0, builder.section_symbol(),
                                 builder.section_p2align(), 0);
         }
-    }
-
-    std::vector<uint32_t> txtrp_sections;
-    for (auto &I : section_builders) {
-        m_modified = true;
-
-        auto section_ndx = I.first;
-        auto &builder = I.second;
-
-        cur_section = elf_getscn(m_elf, section_ndx);
-        GElf_Shdr header;
-        if (!gelf_getshdr(cur_section, &header))
-            Error::printf("Error getting new section header: %s\n", elf_errmsg(-1));
-
-        // Mark this section as needing anchors
-        txtrp_sections.push_back(section_ndx);
 
         // Mark and add padding
         auto name = get_section_name(cur_section);
@@ -524,9 +515,6 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
                      sizeof(int32_t) * group_elems.size(), 1);
         }
     }
-
-    if (!m_modified)
-        return false;
 
     Debug::printf<10>("Added .txtrp section(s)\n");
     symbol_table.mark_symbol(m_entry_points.first, "_TRaP_orig_init");
