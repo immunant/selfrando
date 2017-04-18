@@ -42,7 +42,7 @@ if(WIN32)
     # TODO: add win32 options
 elseif(UNIX)
     set(SR_PLATFORM posix)
-    
+
     add_compile_options(
         -fno-omit-frame-pointer
         -Wall
@@ -65,6 +65,7 @@ elseif(UNIX)
             PREFIX ${LIBELF_PATH}
             URL https://sourceware.org/elfutils/ftp/0.168/elfutils-0.168.tar.bz2
             URL_HASH MD5=52adfa40758d0d39e5d5c57689bf38d6
+            DOWNLOAD_NO_PROGRESS 1
             CONFIGURE_COMMAND ${LIBELF_PATH}/src/sr_libelf_build/configure --quiet --prefix=${LIBELF_PATH}
             BUILD_COMMAND make --quiet -j${NUM_PROCS}
             INSTALL_COMMAND make --quiet install
@@ -105,4 +106,3 @@ if(ANDROID_NDK)
 endif()
 
 add_subdirectory(src)
-
