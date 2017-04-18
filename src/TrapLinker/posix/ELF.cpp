@@ -881,42 +881,33 @@ void ElfStringTable::initialize(Elf_Scn *section) {
     m_section = section;
     m_string_table.clear();
     Elf_Data *data = nullptr;
+    std::string input_string;
     while ((data = elf_getdata(m_section, data)) != nullptr) {
-        m_string_table.insert(m_string_table.end(), (char*)data->d_buf, (char*)data->d_buf+data->d_size);
+        input_string.append((char*)data->d_buf, data->d_size);
     }
-
-    m_initial_size = m_string_table.size();
-}
-
-size_t ElfStringTable::add_string(std::string string) {
-    size_t index = m_string_table.size();
-    m_string_table.insert(m_string_table.end(), string.begin(), string.end());
-    m_string_table.push_back(0);
-    return index;
-}
-
-size_t ElfStringTable::add_string(const char* string) {
-    size_t index = m_string_table.size();
-    while (*string != 0) {
-        m_string_table.push_back(*string);
-        string++;
-    }
-    m_string_table.push_back(0);
-    return index;
+    m_initial_size = m_next_index = input_string.size();
+    m_string_table.emplace_back(new const std::string(std::move(input_string)));
+    m_indices.push_back(0);
 }
 
 void ElfStringTable::update(ElfObject &object) {
-    if (m_string_table.size() == m_initial_size)
+    if (m_next_index == m_initial_size)
         return;
 
     Debug::printf<10>("Updating string table...\n");
 
-    object.add_data(m_section,
-                    (char*)m_string_table.data()+m_initial_size,
-                    m_string_table.size()-m_initial_size);
+    size_t index = 0;
+    for (auto &str : m_string_table) {
+        auto zlen = str->size() + 1;
+        if (index >= m_initial_size) {
+            object.add_data(m_section, const_cast<char*>(str->c_str()), zlen);
+        }
+        index += zlen;
+    }
+    assert(index == m_next_index && "Index mismatch in ElfStringTable::update()");
 
     // reset initial size, in case update() is called again
-    m_initial_size = m_string_table.size();
+    m_initial_size = m_next_index;
 }
 
 ElfSymbolTable::ElfSymbolTable(Elf *elf, ElfObject &object)

@@ -13,6 +13,7 @@
 #include <libelf.h>
 #include <gelf.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -50,21 +51,33 @@ public:
 
     void initialize (Elf_Scn *section);
 
-    size_t add_string(std::string string);
-
-    size_t add_string(const char* string);
+    template<typename T>
+    size_t add_string(const T &string) {
+        m_string_table.emplace_back(new const std::string(string));
+        m_indices.push_back(m_next_index);
+        // Advance the index, including the null terminator
+        m_next_index += m_string_table.back()->size() + 1;
+        return m_indices.back();
+    }
 
     std::string get_string(size_t index) {
-        assert (index < m_string_table.size());
-        return std::string((char*)m_string_table.data() + index);
+        // FIXME: this used to be constant-time, but is now logarithmic
+        auto idx_it = std::prev(std::upper_bound(m_indices.begin(),
+                                                 m_indices.end(),
+                                                 index));
+        auto idx_pos = std::distance(m_indices.begin(), idx_it);
+        auto idx_ofs = index - m_indices[idx_pos];
+        return std::string(m_string_table[idx_pos]->c_str() + idx_ofs);
     }
 
     void update(ElfObject &object);
 
 private:
     Elf_Scn *m_section;
-    std::vector<char> m_string_table;
+    std::vector<std::unique_ptr<const std::string>> m_string_table;
+    std::vector<size_t> m_indices;
     size_t m_initial_size;
+    size_t m_next_index;
 };
 
 class ElfSymbolTable {
