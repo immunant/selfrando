@@ -220,6 +220,8 @@ public:
         friend class ElfSymbolTable;
     };
 
+    typedef std::map<SymbolRef, SymbolRef> SymbolMapping;
+
     SymbolRef get_input_symbol_ref(size_t idx) {
         if (idx >= m_input_locals.size())
             return SymbolRef(this, SymbolRef::INPUT_GLOBAL,
@@ -602,7 +604,8 @@ public:
         : m_object(object), m_symbol_table(symbol_table) { }
 
     // Build the trampoline instructions.
-    Elf_SectionIndex build_trampolines(const Target::EntrySymbols &entry_symbols);
+    std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
+    build_trampolines(const Target::EntrySymbols &entry_symbols);
 
 private:
     ElfObject::DataBuffer create_trampoline_data(const Target::EntrySymbols &entry_symbols);
@@ -708,6 +711,8 @@ public:
     size_t symbols_size() const {
         return m_symbols.size();
     }
+
+    void update_symbol_indices(ElfSymbolTable::SymbolMapping &symbol_mapping);
 
     void read_reloc_addends(Elf_Scn *section);
 

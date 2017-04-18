@@ -442,6 +442,16 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             builder.mark_padding_size(final_padding_size);
         }
 
+        // Build trampolines for this section
+        Elf_SectionIndex tramp_section_ndx = 0;
+        if (emit_textramp) {
+            TrampolineBuilder tramp_builder(*this, symbol_table);
+            ElfSymbolTable::SymbolMapping symbol_mapping; 
+            std::tie(tramp_section_ndx, symbol_mapping) =
+                tramp_builder.build_trampolines(builder.entry_symbols());
+            builder.update_symbol_indices(symbol_mapping);
+        }
+
         // Compute relocation addends
         builder.read_reloc_addends(cur_section);
         builder.build_trap_data(symbol_table);
@@ -491,13 +501,6 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         auto &trap_relocs = builder.get_trap_reloc_data();
         assert(!trap_relocs.empty() && "No relocations inside TRaP info");
         add_section_relocs(trap_section_ndx, trap_relocs);
-
-        // Build trampolines for this section
-        Elf_SectionIndex tramp_section_ndx = 0;
-        if (emit_textramp) {
-            TrampolineBuilder tramp_builder(*this, symbol_table);
-            tramp_section_ndx = tramp_builder.build_trampolines(builder.entry_symbols());
-        }
 
         // FIXME: if we create a new group, it should go at the beginning of
         // the file
@@ -964,7 +967,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     GElf_Sym *old_symbol = symbol.get();
     GElf_Sym new_symbol = *old_symbol;
 
-    // Rename new symbol by appending "$orig" to the original symbol name.
+    // Add new symbol by appending "$orig" to the original symbol name.
     std::string sym_name = m_string_table->get_string(old_symbol->st_name);
     std::string sym_name_orig(sym_name);
     std::size_t pos = sym_name.find('@');
@@ -974,20 +977,22 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     else
       sym_name_orig += "$orig";
 
-    old_symbol->st_name = m_string_table->add_string(sym_name_orig);
-    old_symbol->st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
+    new_symbol.st_name = m_string_table->add_string(sym_name_orig);
+    new_symbol.st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
 
     // Add new symbol for wrapper
-    uint32_t new_sym_xindex;
+    uint32_t old_sym_xindex;
+    uint32_t new_sym_xindex = m_xindex_table.get(symbol.get_input_index());
     if (section_index >= SHN_LORESERVE) {
-        new_symbol.st_shndx = SHN_XINDEX;
-        new_sym_xindex = section_index;
+        old_symbol->st_shndx = SHN_XINDEX;
+        old_sym_xindex = section_index;
     } else {
-        new_symbol.st_shndx = section_index;
-        new_sym_xindex = 0;
+        old_symbol->st_shndx = section_index;
+        old_sym_xindex = 0;
     }
-    new_symbol.st_value = new_value;
-    new_symbol.st_size  = new_size;
+    m_xindex_table.set(symbol.get_input_index(), old_sym_xindex);
+    old_symbol->st_value = new_value;
+    old_symbol->st_size  = new_size;
     return add_symbol(new_symbol, new_sym_xindex);
 }
 
@@ -1314,9 +1319,10 @@ void ElfSymbolTable::XindexTable::update() {
     }
 }
 
-Elf_SectionIndex TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
+TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
     if (entry_symbols.empty())
-        return 0;
+        return std::make_tuple(0, ElfSymbolTable::SymbolMapping{});
 
     GElf_Shdr tramp_section_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     tramp_section_header.sh_type = SHT_PROGBITS;
@@ -1326,12 +1332,15 @@ Elf_SectionIndex TrampolineBuilder::build_trampolines(const Target::EntrySymbols
         m_object.add_section(".textramp", &tramp_section_header,
                              create_trampoline_data(entry_symbols));
 
+    ElfSymbolTable::SymbolMapping symbol_mapping;
     for (auto trampoline : m_trampoline_offsets) {
         auto old_symbol_index = trampoline.first;
         GElf_Addr tramp_offset = trampoline.second;
-        m_symbol_table.replace_symbol(old_symbol_index, tramp_offset,
-                                      tramp_section_index, trampoline_size());
-        add_reloc(old_symbol_index, tramp_offset);
+        auto new_symbol_index =
+            m_symbol_table.replace_symbol(old_symbol_index, tramp_offset,
+                                          tramp_section_index, trampoline_size());
+        add_reloc(new_symbol_index, tramp_offset);
+        symbol_mapping[old_symbol_index] = new_symbol_index;
     }
 
     // Allow target to do any special stuff to the new section
@@ -1339,7 +1348,7 @@ Elf_SectionIndex TrampolineBuilder::build_trampolines(const Target::EntrySymbols
 
     if (!m_trampoline_relocs.empty())
         m_object.add_section_relocs(tramp_section_index, m_trampoline_relocs);
-    return tramp_section_index;
+    return std::make_tuple(tramp_section_index, symbol_mapping);
 }
 
 
@@ -1378,6 +1387,16 @@ void TrapRecordBuilder::mark_padding_offset(Elf_Offset offset) {
 void TrapRecordBuilder::mark_padding_size(Elf_Offset size) {
     m_padding_size = size;
 }
+
+void TrapRecordBuilder::update_symbol_indices(ElfSymbolTable::SymbolMapping &symbol_mapping) {
+    for (auto &sym : m_symbols) {
+        auto I = symbol_mapping.find(sym.symbol);
+        if (I != symbol_mapping.end()) {
+            sym.symbol = I->second;
+        }
+    }
+}
+
 
 void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
     if (m_addendless_relocs.empty())
