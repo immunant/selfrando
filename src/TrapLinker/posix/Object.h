@@ -557,13 +557,13 @@ private:
     /// New sections to be added when we write this object back
     std::vector<std::pair<GElf_Shdr, DataBuffer> > m_new_sections;
 
-    std::map<size_t, Elf_Offset> m_section_sizes;
+    std::unordered_map<Elf_SectionIndex, Elf_Offset> m_section_sizes;
 
-    std::map<uint32_t, std::map<Elf_Offset, std::pair<uint32_t, uint32_t>>> m_section_patches;
+    std::map<Elf_SectionIndex, std::map<Elf_Offset, std::pair<uint32_t, uint32_t>>> m_section_patches;
 
     std::vector<DataBuffer> m_replacement_data;
 
-    std::map<Elf_SectionIndex, ElfStringTable> m_string_tables;
+    std::unordered_map<Elf_SectionIndex, ElfStringTable> m_string_tables;
 
     std::map<Elf_SectionIndex, Elf_RelocBuffer> m_section_relocs;
 
