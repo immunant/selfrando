@@ -898,8 +898,9 @@ void ElfStringTable::update(ElfObject &object) {
 
     size_t index = 0;
     for (auto &str : m_string_table) {
-        auto zlen = str->size() + 1;
+        auto zlen = str->size();
         if (index >= m_initial_size) {
+            zlen++; // Add the null terminator to the length
             object.add_data(m_section, const_cast<char*>(str->c_str()), zlen);
         }
         index += zlen;
