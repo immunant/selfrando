@@ -102,9 +102,9 @@ private:
     // djb2 hash for char*'s for std::unordered_map
     struct StringHash {
         size_t operator() (const char *string) const {
-            uint32_t hash = 5381;
+            unsigned long hash = 5381;
             for (; *string != '\0'; string++)
-                hash = (hash << 5) + hash + *string;
+                hash = ((hash << 5) + hash) + static_cast<int>(*string);
             return static_cast<size_t>(hash);
         }
     };
