@@ -902,16 +902,18 @@ void ElfStringTable::update(ElfObject &object) {
 
     Debug::printf<10>("Updating string table...\n");
 
-    size_t index = 0;
-    for (auto &str : m_string_table) {
-        auto zlen = str->size();
-        if (index >= m_initial_size) {
-            zlen++; // Add the null terminator to the length
-            object.add_data(m_section, const_cast<char*>(str->c_str()), zlen);
-        }
-        index += zlen;
+    size_t i = 0;
+    while (i < m_indices.size() && m_indices[i] < m_initial_size)
+        i++;
+    assert(m_indices[i] == m_initial_size &&
+           "Mismatch between indices vector and actual string size");
+    for (; i < m_indices.size(); i++) {
+        auto &str = m_string_table[i];
+        auto zlen = str->size() + 1;
+        object.add_data(m_section, const_cast<char*>(str->c_str()), zlen);
     }
-    assert(index == m_next_index && "Index mismatch in ElfStringTable::update()");
+    assert(m_indices.size() == m_string_table.size() &&
+           "Mismatch between ElfStringTable vector sizes");
 
     // reset initial size, in case update() is called again
     m_initial_size = m_next_index;
