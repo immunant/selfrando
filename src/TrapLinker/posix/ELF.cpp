@@ -880,6 +880,9 @@ ret:
 void ElfStringTable::initialize(Elf_Scn *section) {
     m_section = section;
     m_string_table.clear();
+    m_indices.clear();
+    m_string_index_map.clear();
+
     Elf_Data *data = nullptr;
     std::string input_string;
     while ((data = elf_getdata(m_section, data)) != nullptr) {
