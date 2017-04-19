@@ -888,6 +888,9 @@ void ElfStringTable::initialize(Elf_Scn *section) {
     m_initial_size = m_next_index = input_string.size();
     m_string_table.emplace_back(new const std::string(std::move(input_string)));
     m_indices.push_back(0);
+
+    // Add the string and all its suffixes to the hash map
+    hash_last_string();
 }
 
 void ElfStringTable::update(ElfObject &object) {

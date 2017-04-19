@@ -51,13 +51,12 @@ public:
 
     void initialize (Elf_Scn *section);
 
-    template<typename T>
-    size_t add_string(const T &string) {
-        m_string_table.emplace_back(new const std::string(string));
-        m_indices.push_back(m_next_index);
-        // Advance the index, including the null terminator
-        m_next_index += m_string_table.back()->size() + 1;
-        return m_indices.back();
+    size_t add_string(const std::string &string) {
+        return internal_add_string(string, string.c_str());
+    }
+
+    size_t add_string(const char *string) {
+        return internal_add_string(string, string);
     }
 
     std::string get_string(size_t index) {
@@ -73,11 +72,55 @@ public:
     void update(ElfObject &object);
 
 private:
+    template<typename String>
+    size_t internal_add_string(const String &string,
+                               const char *c_string) {
+        auto it = m_string_index_map.find(c_string);
+        if (it != m_string_index_map.end())
+            return it->second;
+
+        m_string_table.emplace_back(new const std::string(string));
+        m_indices.push_back(m_next_index);
+        // Advance the index, including the null terminator
+        m_next_index += m_string_table.back()->size() + 1;
+
+        // Add the string and all its suffixes to the hash map
+        hash_last_string();
+        return m_indices.back();
+    }
+
+    void hash_last_string() {
+        // Add all suffixes of the last added string
+        // to the hash map
+        auto last_index = m_indices.back();
+        auto &last_string = *m_string_table.back().get();
+        for (size_t i = 0; i < last_string.size(); i++)
+            if (last_string[i] != '\0')
+                m_string_index_map[&last_string[i]] = last_index + i;
+    }
+
+    // djb2 hash for char*'s for std::unordered_map
+    struct StringHash {
+        size_t operator() (const char *string) const {
+            uint32_t hash = 5381;
+            for (; *string != '\0'; string++)
+                hash = (hash << 5) + hash + *string;
+            return static_cast<size_t>(hash);
+        }
+    };
+
+    struct StringEqual {
+        bool operator() (const char *sa, const char *sb) const {
+            return strcmp(sa, sb) == 0;
+        }
+    };
+
     Elf_Scn *m_section;
     std::vector<std::unique_ptr<const std::string>> m_string_table;
     std::vector<size_t> m_indices;
     size_t m_initial_size;
     size_t m_next_index;
+    std::unordered_map<const char*, size_t, StringHash, StringEqual> m_string_index_map;
 };
 
 class ElfSymbolTable {
