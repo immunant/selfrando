@@ -39,6 +39,10 @@
 #define RANDO_SECTION
 #endif
 
+#ifndef RANDO_ASSERT
+#define RANDO_ASSERT(x)
+#endif
+
 struct trap_header_t;
 
 typedef uint8_t *trap_pointer_t;
