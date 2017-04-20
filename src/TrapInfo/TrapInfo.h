@@ -60,11 +60,11 @@ static inline RANDO_SECTION
 uintptr_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
     uintptr_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += ((**trap_ptr) & 0x7F) << shift;
+        res += ((uintptr_t)(**trap_ptr) & 0x7F) << shift;
         shift += 7;
         (*trap_ptr)++;
     }
-    res += (**trap_ptr) << shift;
+    res += (uintptr_t)(**trap_ptr) << shift;
     (*trap_ptr)++;
     return res;
 }
@@ -149,7 +149,7 @@ struct RANDO_SECTION trap_header_t {
 #pragma pack(pop)
 
 static inline RANDO_SECTION
-int trap_header_has_flag(const struct trap_header_t *header, int flag) {
+int trap_header_has_flag(const struct trap_header_t *header, uint32_t flag) {
     return (header->flags & flag) != 0;
 }
 
