@@ -363,8 +363,10 @@ public:
 
 private:
     // Reader function to pass to TrapIterator
-    static int read_element(const struct trap_header_t *header, trap_pointer_t *trap_ptr,
+    static int read_element(const struct trap_header_t *header,
+                            trap_pointer_t *trap_ptr,
                             uintptr_t *address, void *data) {
+        (void) header; // Eliminate unused warning
         auto delta = trap_read_uleb128(trap_ptr);
         *address += delta;
         if (data)
