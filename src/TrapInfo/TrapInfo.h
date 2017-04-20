@@ -234,7 +234,7 @@ int trap_read_reloc(const struct trap_header_t *header,
                     void *data) {
     struct trap_reloc_t *reloc = RCAST(struct trap_reloc_t*, data);
     uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
-    size_t curr_type = SCAST(size_t, trap_read_uleb128(trap_ptr));
+    unsigned curr_type = SCAST(unsigned, trap_read_uleb128(trap_ptr));
     int end = (curr_delta == 0 && curr_type == 0);
 
     int extra_info = trap_reloc_info(curr_type);
