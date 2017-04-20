@@ -56,8 +56,10 @@
 struct trap_header_t;
 
 typedef uint8_t *trap_pointer_t;
-typedef int (*trap_read_func_t)(const struct trap_header_t*, trap_pointer_t*,
-                                uintptr_t*, void*);
+typedef int (*trap_read_func_t)(const struct trap_header_t*,
+                                trap_pointer_t*,
+                                uintptr_t*,
+                                void*);
 
 #pragma push_macro("SET_FIELD")
 #define SET_FIELD(x, field, val)  \
@@ -365,7 +367,8 @@ private:
     // Reader function to pass to TrapIterator
     static int read_element(const struct trap_header_t *header,
                             trap_pointer_t *trap_ptr,
-                            uintptr_t *address, void *data) {
+                            uintptr_t *address,
+                            void *data) {
         (void) header; // Eliminate unused warning
         auto delta = trap_read_uleb128(trap_ptr);
         *address += delta;
