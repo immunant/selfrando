@@ -89,20 +89,20 @@ uintptr_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
 }
 
 static inline RANDO_SECTION
-intptr_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
-    intptr_t res = 0, shift = 0;
+ptrdiff_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
+    ptrdiff_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += (SCAST(intptr_t, **trap_ptr) & 0x7F) << shift;
+        res += (SCAST(ptrdiff_t, **trap_ptr) & 0x7F) << shift;
         shift += 7;
         (*trap_ptr)++;
     }
-    res += SCAST(intptr_t, **trap_ptr) << shift;
+    res += SCAST(ptrdiff_t, **trap_ptr) << shift;
     (*trap_ptr)++;
     shift += 7;
 
-    intptr_t sign_bit = SCAST(intptr_t, 1) << (shift - 1);
+    ptrdiff_t sign_bit = SCAST(ptrdiff_t, 1) << (shift - 1);
     if ((res & sign_bit) != 0)
-        res |= -(SCAST(intptr_t, 1) << shift);
+        res |= -(SCAST(ptrdiff_t, 1) << shift);
     return res;
 }
 
@@ -187,7 +187,7 @@ uintptr_t trap_read_address(const struct trap_header_t *header,
                             trap_pointer_t *trap_ptr) {
     uintptr_t addr = 0;
     if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
-        intptr_t delta = *RCAST(intptr_t*, *trap_ptr);
+        ptrdiff_t delta = *RCAST(ptrdiff_t*, *trap_ptr);
 #if !RANDOLIB_IS_ARM64
         // We use GOT-relative offsets
         // We add the GOT base later inside of Address::to_ptr()
@@ -195,7 +195,7 @@ uintptr_t trap_read_address(const struct trap_header_t *header,
 #else
         addr = SCAST(uintptr_t, *trap_ptr + delta);
 #endif
-        *trap_ptr += sizeof(intptr_t);
+        *trap_ptr += sizeof(ptrdiff_t);
     } else {
         addr = *RCAST(uintptr_t*, *trap_ptr);
         *trap_ptr += sizeof(uintptr_t);
@@ -228,7 +228,7 @@ struct RANDO_SECTION trap_reloc_t {
     // FIXME: figure out a way to not store these in memory
     // when they're not needed
     uintptr_t symbol;
-    intptr_t addend;
+    ptrdiff_t addend;
 };
 #pragma pack(pop)
 
@@ -244,7 +244,7 @@ int trap_read_reloc(const struct trap_header_t *header,
 
     int extra_info = trap_reloc_info(curr_type);
     uintptr_t curr_symbol = 0;
-    intptr_t curr_addend = 0;
+    ptrdiff_t curr_addend = 0;
     if (!end) {
         if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
             curr_symbol = trap_read_address(header, trap_ptr);
