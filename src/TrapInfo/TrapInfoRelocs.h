@@ -91,6 +91,8 @@ int trap_reloc_info(unsigned type) {
 #assert "Invalid target architecture"
 #endif
 #elif RANDOLIB_IS_WIN32
+#else
+#assert "Invalid operating system"
 #endif
 
     return TRAP_RELOC_NONE;
