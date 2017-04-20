@@ -43,6 +43,16 @@
 #define RANDO_ASSERT(x)
 #endif
 
+#pragma push_macro("SCAST")
+#pragma push_macro("RCAST")
+#ifdef __cplusplus
+#define SCAST(type, val) (static_cast<type>(val))
+#define RCAST(type, val) (reinterpret_cast<type>(val))
+#else
+#define SCAST(type, val) ((type) (val))
+#define RCAST(type, val) ((type) (val))
+#endif
+
 struct trap_header_t;
 
 typedef uint8_t *trap_pointer_t;
@@ -64,11 +74,11 @@ static inline RANDO_SECTION
 uintptr_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
     uintptr_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += ((uintptr_t)(**trap_ptr) & 0x7F) << shift;
+        res += (SCAST(uintptr_t, **trap_ptr) & 0x7F) << shift;
         shift += 7;
         (*trap_ptr)++;
     }
-    res += (uintptr_t)(**trap_ptr) << shift;
+    res += SCAST(uintptr_t, **trap_ptr) << shift;
     (*trap_ptr)++;
     return res;
 }
@@ -77,17 +87,17 @@ static inline RANDO_SECTION
 intptr_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
     intptr_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += ((intptr_t)(**trap_ptr) & 0x7F) << shift;
+        res += (SCAST(intptr_t, **trap_ptr) & 0x7F) << shift;
         shift += 7;
         (*trap_ptr)++;
     }
-    res += (intptr_t)(**trap_ptr) << shift;
+    res += SCAST(intptr_t, **trap_ptr) << shift;
     (*trap_ptr)++;
     shift += 7;
 
-    intptr_t sign_bit = (intptr_t)1 << (shift - 1);
+    intptr_t sign_bit = SCAST(intptr_t, 1) << (shift - 1);
     if ((res & sign_bit) != 0)
-        res |= -((intptr_t)1 << shift);
+        res |= -(SCAST(intptr_t, 1) << shift);
     return res;
 }
 
@@ -172,17 +182,17 @@ uintptr_t trap_read_address(const struct trap_header_t *header,
                             trap_pointer_t *trap_ptr) {
     uintptr_t addr = 0;
     if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
-        intptr_t delta = *(intptr_t*)*trap_ptr;
+        intptr_t delta = *RCAST(intptr_t*, *trap_ptr);
 #if !RANDOLIB_IS_ARM64
         // We use GOT-relative offsets
         // We add the GOT base later inside of Address::to_ptr()
-        addr = (uintptr_t)delta;
+        addr = SCAST(uintptr_t, delta);
 #else
-        addr = (uintptr_t)((*trap_ptr) + delta);
+        addr = SCAST(uintptr_t, *trap_ptr + delta);
 #endif
         *trap_ptr += sizeof(intptr_t);
     } else {
-        addr = *(uintptr_t*)*trap_ptr;
+        addr = *RCAST(uintptr_t*, *trap_ptr);
         *trap_ptr += sizeof(uintptr_t);
     }
     return addr;
@@ -222,9 +232,9 @@ int trap_read_reloc(const struct trap_header_t *header,
                     trap_pointer_t *trap_ptr,
                     uintptr_t *address,
                     void *data) {
-    struct trap_reloc_t *reloc = (struct trap_reloc_t*)data;
+    struct trap_reloc_t *reloc = RCAST(struct trap_reloc_t*, data);
     uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
-    size_t curr_type = (size_t)trap_read_uleb128(trap_ptr);
+    size_t curr_type = SCAST(size_t, trap_read_uleb128(trap_ptr));
     int end = (curr_delta == 0 && curr_type == 0);
 
     int extra_info = trap_reloc_info(curr_type);
@@ -258,7 +268,7 @@ int trap_read_symbol(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      uintptr_t *address,
                      void *data) {
-    struct trap_symbol_t *symbol = (struct trap_symbol_t*)data;
+    struct trap_symbol_t *symbol = RCAST(struct trap_symbol_t*, data);
 
     // FIXME: would be faster to add curr_delta to m_address in advance
     // so this turns into a simple read from m_address
@@ -273,8 +283,8 @@ int trap_read_symbol(const struct trap_header_t *header,
     int end = (curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
     *address += curr_delta;
     SET_FIELD(symbol, address,   *address);
-    SET_FIELD(symbol, alignment, ((uintptr_t)1 << curr_p2align));
-    SET_FIELD(symbol, size,      (size_t)curr_size);
+    SET_FIELD(symbol, alignment, (SCAST(uintptr_t, 1) << curr_p2align));
+    SET_FIELD(symbol, size,      SCAST(size_t, curr_size));
     return !end;
 }
 
@@ -286,8 +296,8 @@ int trap_read_header(const struct trap_header_t *header,
     (void)address;
 
     // FIXME: assert that data == header
-    struct trap_header_t *headerw = (struct trap_header_t*)data;
-    uint32_t flags = *(uint32_t*)*trap_ptr;
+    struct trap_header_t *headerw = RCAST(struct trap_header_t*, data);
+    uint32_t flags = *RCAST(uint32_t*, *trap_ptr);
     SET_FIELD(headerw, flags, flags);
     *trap_ptr += sizeof(uint32_t);
 
@@ -358,7 +368,7 @@ private:
         auto delta = trap_read_uleb128(trap_ptr);
         *address += delta;
         if (data)
-            *(uintptr_t*)data = *address;
+            *RCAST(uintptr_t*, data) = *address;
         return 1;
     }
 
@@ -470,7 +480,7 @@ int trap_read_record(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      uintptr_t *address,
                      void *data) {
-    struct trap_record_t *record = (struct trap_record_t*)data;
+    struct trap_record_t *record = RCAST(struct trap_record_t*, data);
     uintptr_t base_address = *address;
     uintptr_t record_address = trap_read_address(header, trap_ptr);
     record_address += base_address;
@@ -557,5 +567,7 @@ private:
 #endif // __cplusplus
 
 #pragma pop_macro("SET_FIELD")
+#pragma pop_macro("SCAST")
+#pragma pop_macro("RCAST")
 
 #endif // __RANDOLIB_TRAPINFO_H
