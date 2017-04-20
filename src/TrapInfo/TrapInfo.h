@@ -43,6 +43,9 @@
 #define RANDO_ASSERT(x)
 #endif
 
+// Our own C and C++-compatible cast macros,
+// one that is equivalent with static_cast
+// and one with reinterpret_cast
 #pragma push_macro("SCAST")
 #pragma push_macro("RCAST")
 #ifdef __cplusplus
