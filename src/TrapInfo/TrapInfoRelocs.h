@@ -20,7 +20,7 @@ typedef enum {
 #endif
 
 static inline RANDO_SECTION
-int trap_reloc_info(unsigned type) {
+uint64_t trap_reloc_info(uint64_t type) {
 #if RANDOLIB_IS_POSIX
 #if RANDOLIB_IS_X86
 #elif RANDOLIB_IS_X86_64

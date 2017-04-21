@@ -245,7 +245,7 @@ int trap_read_reloc(const struct trap_header_t *header,
     uint64_t curr_type = trap_read_uleb128(trap_ptr);
     int end = (curr_delta == 0 && curr_type == 0);
 
-    int extra_info = trap_reloc_info(curr_type);
+    uint64_t extra_info = trap_reloc_info(curr_type);
     uint64_t curr_symbol = 0;
     int64_t curr_addend = 0;
     if (!end) {
