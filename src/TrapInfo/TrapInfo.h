@@ -189,18 +189,26 @@ static inline RANDO_SECTION
 trap_address_t trap_read_address(const struct trap_header_t *header,
                                  trap_pointer_t *trap_ptr) {
     trap_address_t addr;
-    if (header->pointer_size == 32) {
-        addr = SCAST(trap_address_t, *RCAST(int32_t*, *trap_ptr));
-    } else {
-        addr = SCAST(trap_address_t, *RCAST(uint64_t*, *trap_ptr));
-    }
     if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
+        int64_t delta;
+        if (header->pointer_size == 32) {
+            delta = SCAST(int64_t, *RCAST(int32_t*, *trap_ptr));
+        } else {
+            delta = *RCAST(int64_t*, *trap_ptr);
+        }
 #if !RANDOLIB_IS_ARM64
         // We use GOT-relative offsets
         // We add the GOT base later inside of Address::to_ptr()
+        addr = SCAST(trap_address_t, delta);
 #else
-        addr = SCAST(trap_address_t, *trap_ptr + SCAST(int64_t, addr));
+        addr = SCAST(trap_address_t, *trap_ptr + delta);
 #endif
+    } else {
+        if (header->pointer_size == 32) {
+            addr = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
+        } else {
+            addr = SCAST(trap_address_t, *RCAST(uint64_t*, *trap_ptr));
+        }
     }
     *trap_ptr += header->pointer_size / 8;
     return addr;
