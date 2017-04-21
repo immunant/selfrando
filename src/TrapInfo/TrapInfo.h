@@ -230,7 +230,7 @@ struct RANDO_SECTION trap_reloc_t {
     uint64_t type;
     // FIXME: figure out a way to not store these in memory
     // when they're not needed
-    uint64_t symbol;
+    trap_address_t symbol;
     int64_t addend;
 };
 #pragma pack(pop)
@@ -246,7 +246,7 @@ int trap_read_reloc(const struct trap_header_t *header,
     int end = (curr_delta == 0 && curr_type == 0);
 
     uint64_t extra_info = trap_reloc_info(curr_type);
-    uint64_t curr_symbol = 0;
+    trap_address_t curr_symbol = 0;
     int64_t curr_addend = 0;
     if (!end) {
         if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
