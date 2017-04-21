@@ -61,7 +61,7 @@ struct trap_header_t;
 typedef uint8_t *trap_pointer_t;
 typedef int (*trap_read_func_t)(const struct trap_header_t*,
                                 trap_pointer_t*,
-                                uintptr_t*,
+                                uint64_t*,
                                 void*);
 
 #pragma push_macro("SET_FIELD")
@@ -74,35 +74,35 @@ typedef int (*trap_read_func_t)(const struct trap_header_t*,
         }                         \
     } while (0)
 
-// FIXME: is uintptr_t the correct type here?
+// FIXME: is uint64_t the correct type here?
 static inline RANDO_SECTION
-uintptr_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
-    uintptr_t res = 0, shift = 0;
+uint64_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
+    uint64_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += (SCAST(uintptr_t, **trap_ptr) & 0x7F) << shift;
+        res += (SCAST(uint64_t, **trap_ptr) & 0x7F) << shift;
         shift += 7;
         (*trap_ptr)++;
     }
-    res += SCAST(uintptr_t, **trap_ptr) << shift;
+    res += SCAST(uint64_t, **trap_ptr) << shift;
     (*trap_ptr)++;
     return res;
 }
 
 static inline RANDO_SECTION
-ptrdiff_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
-    ptrdiff_t res = 0, shift = 0;
+int64_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
+    int64_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += (SCAST(ptrdiff_t, **trap_ptr) & 0x7F) << shift;
+        res += (SCAST(int64_t, **trap_ptr) & 0x7F) << shift;
         shift += 7;
         (*trap_ptr)++;
     }
-    res += SCAST(ptrdiff_t, **trap_ptr) << shift;
+    res += SCAST(int64_t, **trap_ptr) << shift;
     (*trap_ptr)++;
     shift += 7;
 
-    ptrdiff_t sign_bit = SCAST(ptrdiff_t, 1) << (shift - 1);
+    int64_t sign_bit = SCAST(int64_t, 1) << (shift - 1);
     if ((res & sign_bit) != 0)
-        res |= -(SCAST(ptrdiff_t, 1) << shift);
+        res |= -(SCAST(int64_t, 1) << shift);
     return res;
 }
 
@@ -126,7 +126,7 @@ struct RANDO_SECTION trap_header_t {
         uint8_t version;
         uint32_t flags;
     };
-    size_t pointer_size;
+    uint64_t pointer_size;
 
     trap_pointer_t reloc_start, reloc_end;
     trap_pointer_t record_start;
@@ -185,23 +185,23 @@ size_t trap_elements_in_symbol(const struct trap_header_t *header) {
 }
 
 static inline RANDO_SECTION
-uintptr_t trap_read_address(const struct trap_header_t *header,
+uint64_t trap_read_address(const struct trap_header_t *header,
                             trap_pointer_t *trap_ptr) {
-    uintptr_t addr = 0;
+    uint64_t addr;
+    if (header->pointer_size == 32) {
+        addr = SCAST(uint64_t, *RCAST(int32_t*, *trap_ptr));
+    } else {
+        addr = *RCAST(uint64_t*, *trap_ptr);
+    }
     if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
-        ptrdiff_t delta = *RCAST(ptrdiff_t*, *trap_ptr);
 #if !RANDOLIB_IS_ARM64
         // We use GOT-relative offsets
         // We add the GOT base later inside of Address::to_ptr()
-        addr = SCAST(uintptr_t, delta);
 #else
-        addr = SCAST(uintptr_t, *trap_ptr + delta);
+        addr = SCAST(uint64_t, *trap_ptr + SCAST(int64_t, addr));
 #endif
-        *trap_ptr += header->pointer_size / 8;
-    } else {
-        addr = *RCAST(uintptr_t*, *trap_ptr);
-        *trap_ptr += header->pointer_size / 8;
     }
+    *trap_ptr += header->pointer_size / 8;
     return addr;
 }
 
@@ -216,7 +216,7 @@ static inline RANDO_SECTION
 void trap_skip_vector(const struct trap_header_t *trap_header,
                       trap_pointer_t *trap_ptr,
                       trap_read_func_t read_func) {
-    uintptr_t address = 0;
+    uint64_t address = 0;
     int cont = 0;
     do {
         cont = (*read_func)(trap_header, trap_ptr, &address, NULL);
@@ -225,28 +225,28 @@ void trap_skip_vector(const struct trap_header_t *trap_header,
 
 #pragma pack(push, 1)
 struct RANDO_SECTION trap_reloc_t {
-    uintptr_t address;
-    size_t type;
+    uint64_t address;
+    uint64_t type;
     // FIXME: figure out a way to not store these in memory
     // when they're not needed
-    uintptr_t symbol;
-    ptrdiff_t addend;
+    uint64_t symbol;
+    int64_t addend;
 };
 #pragma pack(pop)
 
 static inline RANDO_SECTION
 int trap_read_reloc(const struct trap_header_t *header,
                     trap_pointer_t *trap_ptr,
-                    uintptr_t *address,
+                    uint64_t *address,
                     void *data) {
     struct trap_reloc_t *reloc = RCAST(struct trap_reloc_t*, data);
-    uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
-    unsigned curr_type = SCAST(unsigned, trap_read_uleb128(trap_ptr));
+    uint64_t curr_delta = trap_read_uleb128(trap_ptr);
+    uint64_t curr_type = trap_read_uleb128(trap_ptr);
     int end = (curr_delta == 0 && curr_type == 0);
 
     int extra_info = trap_reloc_info(curr_type);
-    uintptr_t curr_symbol = 0;
-    ptrdiff_t curr_addend = 0;
+    uint64_t curr_symbol = 0;
+    int64_t curr_addend = 0;
     if (!end) {
         if ((extra_info & TRAP_RELOC_SYMBOL) != 0)
             curr_symbol = trap_read_address(header, trap_ptr);
@@ -264,24 +264,24 @@ int trap_read_reloc(const struct trap_header_t *header,
 
 #pragma pack(push, 1)
 struct RANDO_SECTION trap_symbol_t {
-    uintptr_t address;
-    uintptr_t alignment;
-    size_t size;
+    uint64_t address;
+    uint64_t alignment;
+    uint64_t size;
 };
 #pragma pack(pop)
 
 static inline RANDO_SECTION
 int trap_read_symbol(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
-                     uintptr_t *address,
+                     uint64_t *address,
                      void *data) {
     struct trap_symbol_t *symbol = RCAST(struct trap_symbol_t*, data);
 
     // FIXME: would be faster to add curr_delta to m_address in advance
     // so this turns into a simple read from m_address
-    uintptr_t curr_delta = trap_read_uleb128(trap_ptr);
-    uintptr_t curr_size = 0;
-    uintptr_t curr_p2align = 0;
+    uint64_t curr_delta = trap_read_uleb128(trap_ptr);
+    uint64_t curr_size = 0;
+    uint64_t curr_p2align = 0;
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_SIZE))
         curr_size = trap_read_uleb128(trap_ptr);
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
@@ -290,15 +290,15 @@ int trap_read_symbol(const struct trap_header_t *header,
     int end = (curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
     *address += curr_delta;
     SET_FIELD(symbol, address,   *address);
-    SET_FIELD(symbol, alignment, (SCAST(uintptr_t, 1) << curr_p2align));
-    SET_FIELD(symbol, size,      SCAST(size_t, curr_size));
+    SET_FIELD(symbol, alignment, (SCAST(uint64_t, 1) << curr_p2align));
+    SET_FIELD(symbol, size,      curr_size);
     return !end;
 }
 
 static inline RANDO_SECTION
 int trap_read_header(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
-                     uintptr_t *address,
+                     uint64_t *address,
                      void *data) {
     (void)address;
 
@@ -316,7 +316,7 @@ int trap_read_header(const struct trap_header_t *header,
         SET_FIELD(headerw, reloc_end, *trap_ptr);
     }
     if (flags & TRAP_HAS_POINTER_SIZE) {
-        uintptr_t pointer_size = trap_read_uleb128(trap_ptr);
+        uint64_t pointer_size = trap_read_uleb128(trap_ptr);
         SET_FIELD(headerw, pointer_size, pointer_size);
     } else {
         // If we don't have the pointer size in TRaP info,
@@ -333,7 +333,7 @@ class RANDO_SECTION TrapIterator {
 public:
     explicit TrapIterator(const struct trap_header_t *header,
                           trap_pointer_t trap_ptr,
-                          uintptr_t address,
+                          uint64_t address,
                           const trap_read_func_t func)
         : m_header(header), m_trap_ptr(trap_ptr),
           m_address(address), m_func(func) {}
@@ -365,14 +365,14 @@ public:
 private:
     const struct trap_header_t *m_header;
     trap_pointer_t m_trap_ptr;
-    uintptr_t m_address;
+    uint64_t m_address;
     const trap_read_func_t m_func;
 };
 
 class RANDO_SECTION TrapVector {
 public:
     TrapVector(const struct trap_header_t *header, trap_pointer_t start,
-               trap_pointer_t end, uintptr_t address)
+               trap_pointer_t end, uint64_t address)
         : m_header(header), m_start(start),
           m_end(end), m_address(address) {}
 
@@ -380,40 +380,40 @@ private:
     // Reader function to pass to TrapIterator
     static int read_element(const struct trap_header_t *header,
                             trap_pointer_t *trap_ptr,
-                            uintptr_t *address,
+                            uint64_t *address,
                             void *data) {
         (void) header; // Eliminate unused warning
         auto delta = trap_read_uleb128(trap_ptr);
         *address += delta;
         if (data)
-            *RCAST(uintptr_t*, data) = *address;
+            *RCAST(uint64_t*, data) = *address;
         return 1;
     }
 
 public:
-    TrapIterator<uintptr_t> begin() {
-        return TrapIterator<uintptr_t>(m_header, m_start, m_address,
+    TrapIterator<uint64_t> begin() {
+        return TrapIterator<uint64_t>(m_header, m_start, m_address,
                                        read_element);
     }
 
-    TrapIterator<uintptr_t> end() {
+    TrapIterator<uint64_t> end() {
         RANDO_ASSERT(m_end[0] == 0 || m_start == m_end);
         // FIXME: use MAX_INT instead of 0???
-        return TrapIterator<uintptr_t>(m_header, m_end, 0,
+        return TrapIterator<uint64_t>(m_header, m_end, 0,
                                        read_element);
     }
 
 private:
     const struct trap_header_t *m_header;
     trap_pointer_t m_start, m_end;
-    uintptr_t m_address;
+    uint64_t m_address;
 };
 
 class RANDO_SECTION TrapRelocVector {
 public:
     TrapRelocVector() = delete;
     TrapRelocVector(trap_pointer_t start, trap_pointer_t end,
-                    uintptr_t address, const struct trap_header_t *header)
+                    uint64_t address, const struct trap_header_t *header)
         : m_start(start), m_end(end), m_address(address), m_header(header) {}
 
     TrapIterator<trap_reloc_t> begin() {
@@ -430,14 +430,14 @@ public:
 
 private:
     trap_pointer_t m_start, m_end;
-    uintptr_t m_address;
+    uint64_t m_address;
     const struct trap_header_t *m_header;
 };
 
 // TODO: maybe we can merge this with TrapVector (using templates???)
 class RANDO_SECTION TrapSymbolVector {
 public:
-    TrapSymbolVector(const struct trap_header_t *header, trap_pointer_t start, trap_pointer_t end, uintptr_t address)
+    TrapSymbolVector(const struct trap_header_t *header, trap_pointer_t start, trap_pointer_t end, uint64_t address)
         : m_header(header), m_start(start), m_end(end), m_address(address) {}
 
     TrapIterator<trap_symbol_t> begin() {
@@ -457,16 +457,16 @@ public:
 private:
     const struct trap_header_t *m_header;
     trap_pointer_t m_start, m_end;
-    uintptr_t m_address;
+    uint64_t m_address;
 };
 #endif // __cplusplus
 
 #pragma pack(push, 1)
 struct RANDO_SECTION trap_record_t {
     const struct trap_header_t *header; // TODO: get rid of this
-    uintptr_t address;
+    uint64_t address;
     struct trap_symbol_t first_symbol;
-    size_t padding_ofs, padding_size;
+    uint64_t padding_ofs, padding_size;
     trap_pointer_t symbol_start, symbol_end;
     trap_pointer_t reloc_start, reloc_end;
     trap_pointer_t data_refs_start, data_refs_end;
@@ -486,7 +486,7 @@ struct RANDO_SECTION trap_record_t {
         return TrapVector(header, data_refs_start, data_refs_end, address);
     }
 
-    uintptr_t padding_address() {
+    uint64_t padding_address() {
         return address + padding_ofs;
     }
 #endif // __cplusplus
@@ -496,11 +496,11 @@ struct RANDO_SECTION trap_record_t {
 static inline RANDO_SECTION
 int trap_read_record(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
-                     uintptr_t *address,
+                     uint64_t *address,
                      void *data) {
     struct trap_record_t *record = RCAST(struct trap_record_t*, data);
-    uintptr_t base_address = *address;
-    uintptr_t record_address = trap_read_address(header, trap_ptr);
+    uint64_t base_address = *address;
+    uint64_t record_address = trap_read_address(header, trap_ptr);
     record_address += base_address;
     SET_FIELD(record, header, header);
     SET_FIELD(record, address, record_address);
@@ -508,7 +508,7 @@ int trap_read_record(const struct trap_header_t *header,
     SET_FIELD(record, symbol_start, *trap_ptr);
     // We include the first symbol in the symbol vector
     // and we set m_address to the section address
-    uintptr_t tmp_address = 0;
+    uint64_t tmp_address = 0;
     if (record) {
         trap_read_symbol(header, trap_ptr, &tmp_address,
                          &record->first_symbol);
