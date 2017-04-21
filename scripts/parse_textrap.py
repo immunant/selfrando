@@ -122,6 +122,7 @@ have_nonexec_relo = (flags & 0x20) != 0
 record_padding = (flags & 0x40) != 0
 pcrel_addr = (flags & 0x80) != 0
 have_sym_alignment = (flags & 0x100) != 0
+have_pointer_size = (flags & 0x200) != 0
 trap_data_pos = 4
 
 if trap_address is not None:
@@ -199,6 +200,10 @@ if have_nonexec_relo:
 
         rel_addr += delta
         print "Rel[%d]@%x=%x+%d" % (rel_type, rel_addr, rel_symbol, rel_addend)
+
+if have_pointer_size:
+    word_size = get_trap_uleb128()
+    print 'trap word size: %d' % word_size
 
 addr_list = []
 addr_set = set()

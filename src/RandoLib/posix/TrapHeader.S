@@ -13,4 +13,6 @@
 .type _TRaP_trap_begin, %object
 _TRaP_trap_begin:
 .byte 0x01 // Version
-.byte 0xD1, 0x01, 0x00 // Flags
+.byte 0xD1, 0x03, 0x00 // Flags
+.byte RANDOLIB_ARCH_SIZE
+

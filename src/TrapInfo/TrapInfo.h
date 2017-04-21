@@ -116,6 +116,7 @@ typedef enum {
     TRAP_HAS_RECORD_PADDING = 0x4000,
     TRAP_PC_RELATIVE_ADDRESSES = 0x8000,
     TRAP_HAS_SYMBOL_P2ALIGN = 0x10000,
+    TRAP_HAS_POINTER_SIZE = 0x20000,
 } trap_header_flags_t;
 
 // Warning: relies on little-endianness
@@ -125,6 +126,7 @@ struct RANDO_SECTION trap_header_t {
         uint8_t version;
         uint32_t flags;
     };
+    size_t pointer_size;
 
     trap_pointer_t reloc_start, reloc_end;
     trap_pointer_t record_start;
@@ -195,10 +197,10 @@ uintptr_t trap_read_address(const struct trap_header_t *header,
 #else
         addr = SCAST(uintptr_t, *trap_ptr + delta);
 #endif
-        *trap_ptr += sizeof(ptrdiff_t);
+        *trap_ptr += header->pointer_size / 8;
     } else {
         addr = *RCAST(uintptr_t*, *trap_ptr);
-        *trap_ptr += sizeof(uintptr_t);
+        *trap_ptr += header->pointer_size / 8;
     }
     return addr;
 }
@@ -312,6 +314,14 @@ int trap_read_header(const struct trap_header_t *header,
         SET_FIELD(headerw, reloc_end, (*trap_ptr - 2));
     } else {
         SET_FIELD(headerw, reloc_end, *trap_ptr);
+    }
+    if (flags & TRAP_HAS_POINTER_SIZE) {
+        uintptr_t pointer_size = trap_read_uleb128(trap_ptr);
+        SET_FIELD(headerw, pointer_size, pointer_size);
+    } else {
+        // If we don't have the pointer size in TRaP info,
+        // assume it's for the native architecture
+        SET_FIELD(headerw, pointer_size, sizeof(void*));
     }
     SET_FIELD(headerw, record_start, *trap_ptr);
     return 1;

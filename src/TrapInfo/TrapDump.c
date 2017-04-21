@@ -33,8 +33,9 @@ int main(int argc, const char *argv[]) {
     struct trap_header_t header;
     uint8_t *trap_ptr = data.data;
     trap_read_header(NULL, &trap_ptr, NULL, &header);
-    printf("Header: %08x Version: %02x Flags: %06x\n",
-           header.flags, header.version, header.flags >> 8);
+    printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%d\n",
+           header.flags, header.version, header.flags >> 8,
+           header.pointer_size);
 
     if (trap_header_has_flag(&header, TRAP_HAS_NONEXEC_RELOCS)) {
         struct trap_reloc_t reloc;

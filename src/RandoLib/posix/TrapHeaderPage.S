@@ -14,4 +14,6 @@
 .p2align 12
 _TRaP_trap_begin:
 .byte 0x01 // Version
-.byte 0xD1, 0x01, 0x00 // Flags
+.byte 0xD1, 0x03, 0x00 // Flags
+.byte RANDOLIB_ARCH_SIZE
+
