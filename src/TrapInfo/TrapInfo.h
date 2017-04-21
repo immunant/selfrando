@@ -56,6 +56,43 @@
 #define RCAST(type, val) ((type) (val))
 #endif
 
+#ifdef _MSC_VER
+#include <intrin.h>
+
+/*
+* We have a problem with uint64_t on Win32 MSVC:
+* MSVC compiles the left-shift of a uint64_t to
+* a function call to __allshl, which is usually inside
+* the main binary and therefore at a randomized location.
+* We need to avoid all direct left shifts, and use our
+* own function.
+*/
+static inline RANDO_SECTION
+uint64_t __TRaP_shl_uint64(uint64_t val, size_t bits) {
+#if defined(_WIN64)
+    return val << bits;
+#else // _WIN64
+    if (bits >= 64)
+        return 0ULL;
+    if (bits >= 32) {
+        union {
+            uint32_t a[2];
+            uint64_t b;
+        } u;
+        u.a[0] = 0;
+        u.a[1] = SCAST(uint32_t, val) << (bits - 32);
+        return u.b;
+    }
+    return __ll_lshift(val, bits);
+#endif
+}
+#else // _MSC_VER
+static inline RANDO_SECTION
+uint64_t __TRaP_shl_uint64(uint64_t val, size_t bits) {
+    return val << bits;
+}
+#endif
+
 struct trap_header_t;
 
 typedef uint8_t *trap_pointer_t;
@@ -80,11 +117,11 @@ static inline RANDO_SECTION
 uint64_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
     uint64_t res = 0, shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += (SCAST(uint64_t, **trap_ptr) & 0x7F) << shift;
+        res += __TRaP_shl_uint64(**trap_ptr & 0x7F, shift);
         shift += 7;
         (*trap_ptr)++;
     }
-    res += SCAST(uint64_t, **trap_ptr) << shift;
+    res += __TRaP_shl_uint64(**trap_ptr, shift);
     (*trap_ptr)++;
     return res;
 }
@@ -93,17 +130,17 @@ static inline RANDO_SECTION
 int64_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
     int64_t res = 0, shift = 0, sign_bit;
     while (((**trap_ptr) & 0x80) != 0) {
-        res += (SCAST(int64_t, **trap_ptr) & 0x7F) << shift;
+        res += SCAST(int64_t, __TRaP_shl_uint64(**trap_ptr & 0x7F, shift));
         shift += 7;
         (*trap_ptr)++;
     }
-    res += SCAST(int64_t, **trap_ptr) << shift;
+    res += SCAST(int64_t, __TRaP_shl_uint64(**trap_ptr, shift));
     (*trap_ptr)++;
     shift += 7;
 
-    sign_bit = SCAST(int64_t, 1) << (shift - 1);
+    sign_bit = SCAST(int64_t, __TRaP_shl_uint64(1, shift - 1));
     if ((res & sign_bit) != 0)
-        res |= -(SCAST(int64_t, 1) << shift);
+        res |= -SCAST(int64_t, __TRaP_shl_uint64(1, shift));
     return res;
 }
 
@@ -298,7 +335,7 @@ int trap_read_symbol(const struct trap_header_t *header,
 
     *address += curr_delta;
     SET_FIELD(symbol, address,   *address);
-    SET_FIELD(symbol, alignment, (SCAST(uint64_t, 1) << curr_p2align));
+    SET_FIELD(symbol, alignment, __TRaP_shl_uint64(1, curr_p2align));
     SET_FIELD(symbol, size,      curr_size);
     return !(curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
 }
