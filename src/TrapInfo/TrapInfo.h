@@ -91,7 +91,7 @@ uint64_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
 
 static inline RANDO_SECTION
 int64_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
-    int64_t res = 0, shift = 0;
+    int64_t res = 0, shift = 0, sign_bit;
     while (((**trap_ptr) & 0x80) != 0) {
         res += (SCAST(int64_t, **trap_ptr) & 0x7F) << shift;
         shift += 7;
@@ -101,7 +101,7 @@ int64_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
     (*trap_ptr)++;
     shift += 7;
 
-    int64_t sign_bit = SCAST(int64_t, 1) << (shift - 1);
+    sign_bit = SCAST(int64_t, 1) << (shift - 1);
     if ((res & sign_bit) != 0)
         res |= -(SCAST(int64_t, 1) << shift);
     return res;
@@ -288,12 +288,11 @@ int trap_read_symbol(const struct trap_header_t *header,
     if (trap_header_has_flag(header, TRAP_HAS_SYMBOL_P2ALIGN))
         curr_p2align = trap_read_uleb128(trap_ptr);
 
-    int end = (curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
     *address += curr_delta;
     SET_FIELD(symbol, address,   *address);
     SET_FIELD(symbol, alignment, (SCAST(uint64_t, 1) << curr_p2align));
     SET_FIELD(symbol, size,      curr_size);
-    return !end;
+    return !(curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
 }
 
 static inline RANDO_SECTION
@@ -301,13 +300,14 @@ int trap_read_header(const struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
                      trap_address_t *address,
                      void *data) {
-    (void)address;
-
     // FIXME: assert that data == header
     struct trap_header_t *headerw = RCAST(struct trap_header_t*, data);
     uint32_t flags = *RCAST(uint32_t*, *trap_ptr);
     SET_FIELD(headerw, flags, flags);
     *trap_ptr += sizeof(uint32_t);
+
+    // Add a void use of address to prevent "unused argument" warnings
+    (void) address;
 
     SET_FIELD(headerw, reloc_start, *trap_ptr);
     if (flags & TRAP_HAS_NONEXEC_RELOCS) {
@@ -503,6 +503,7 @@ int trap_read_record(const struct trap_header_t *header,
                      trap_address_t *address,
                      void *data) {
     struct trap_record_t *record = RCAST(struct trap_record_t*, data);
+    trap_address_t tmp_address = 0;
     trap_address_t base_address = *address;
     trap_address_t record_address = trap_read_address(header, trap_ptr);
     record_address += base_address;
@@ -512,7 +513,6 @@ int trap_read_record(const struct trap_header_t *header,
     SET_FIELD(record, symbol_start, *trap_ptr);
     // We include the first symbol in the symbol vector
     // and we set m_address to the section address
-    trap_address_t tmp_address = 0;
     if (record) {
         trap_read_symbol(header, trap_ptr, &tmp_address,
                          &record->first_symbol);
