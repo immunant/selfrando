@@ -322,7 +322,7 @@ int trap_read_header(const struct trap_header_t *header,
     } else {
         // If we don't have the pointer size in TRaP info,
         // assume it's for the native architecture
-        SET_FIELD(headerw, pointer_size, sizeof(void*));
+        SET_FIELD(headerw, pointer_size, 8 * sizeof(void*));
     }
     SET_FIELD(headerw, record_start, *trap_ptr);
     return 1;
