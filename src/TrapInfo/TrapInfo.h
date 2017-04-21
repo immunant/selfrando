@@ -115,7 +115,8 @@ typedef int (*trap_read_func_t)(const struct trap_header_t*,
 // FIXME: is uint64_t the correct type here?
 static inline RANDO_SECTION
 uint64_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
-    uint64_t res = 0, shift = 0;
+    uint64_t res = 0;
+    size_t shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
         res += __TRaP_shl_uint64(**trap_ptr & 0x7F, shift);
         shift += 7;
@@ -128,7 +129,8 @@ uint64_t trap_read_uleb128(trap_pointer_t *trap_ptr) {
 
 static inline RANDO_SECTION
 int64_t trap_read_sleb128(trap_pointer_t *trap_ptr) {
-    int64_t res = 0, shift = 0, sign_bit;
+    int64_t res = 0, sign_bit;
+    size_t shift = 0;
     while (((**trap_ptr) & 0x80) != 0) {
         res += SCAST(int64_t, __TRaP_shl_uint64(**trap_ptr & 0x7F, shift));
         shift += 7;
