@@ -213,6 +213,10 @@ struct RANDO_SECTION trap_header_t {
         return (flags & TRAP_HAS_SYMBOL_P2ALIGN) != 0;
     }
 
+    bool has_pointer_size() const {
+        return (flags & TRAP_HAS_POINTER_SIZE) != 0;
+    }
+
     bool base_relative_addresses() const {
         return (flags & TRAP_BASE_RELATIVE_ADDRESSES) != 0;
     }
