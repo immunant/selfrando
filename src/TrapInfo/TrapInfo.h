@@ -157,6 +157,7 @@ typedef enum {
     TRAP_PC_RELATIVE_ADDRESSES = 0x8000,
     TRAP_HAS_SYMBOL_P2ALIGN = 0x10000,
     TRAP_HAS_POINTER_SIZE = 0x20000,
+    TRAP_BASE_RELATIVE_ADDRESSES = 0x40000,
 } trap_header_flags_t;
 
 // Warning: relies on little-endianness
@@ -211,6 +212,10 @@ struct RANDO_SECTION trap_header_t {
     bool has_symbol_p2align() const {
         return (flags & TRAP_HAS_SYMBOL_P2ALIGN) != 0;
     }
+
+    bool base_relative_addresses() const {
+        return (flags & TRAP_BASE_RELATIVE_ADDRESSES) != 0;
+    }
 #endif // __cplusplus
 };
 #pragma pack(pop)
@@ -234,20 +239,19 @@ static inline RANDO_SECTION
 trap_address_t trap_read_address(const struct trap_header_t *header,
                                  trap_pointer_t *trap_ptr) {
     trap_address_t addr;
-    if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES)) {
+    if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES) ||
+        trap_header_has_flag(header, TRAP_BASE_RELATIVE_ADDRESSES)) {
         int64_t delta;
         if (header->pointer_size == 32) {
             delta = SCAST(int64_t, *RCAST(int32_t*, *trap_ptr));
         } else {
             delta = *RCAST(int64_t*, *trap_ptr);
         }
-#if !RANDOLIB_IS_ARM64
-        // We use GOT-relative offsets, assuming that
-        // header->base_address is set to the base of the GOT
-        addr = SCAST(trap_address_t, header->base_address + delta);
-#else
-        addr = SCAST(trap_address_t, *trap_ptr + delta);
-#endif
+        if (trap_header_has_flag(header, TRAP_BASE_RELATIVE_ADDRESSES)) {
+            addr = SCAST(trap_address_t, header->base_address + delta);
+        } else {
+            addr = RCAST(trap_address_t, *trap_ptr + delta);
+        }
     } else {
         if (header->pointer_size == 32) {
             addr = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
