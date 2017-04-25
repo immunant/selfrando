@@ -99,13 +99,8 @@ public:
 		//assert((sizeof(uintptr_t)==1));
             switch (m_space) {
             case AddressSpace::MEMORY:
-                return reinterpret_cast<T>(m_address);
             case AddressSpace::TRAP:
-#if !RANDOLIB_IS_ARM64
-                return reinterpret_cast<T>(m_address + m_module.get_got_ptr());
-#else
                 return reinterpret_cast<T>(m_address);
-#endif
             case AddressSpace::RVA:
                 //return reinterpret_cast<T>(m_address + reinterpret_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));
                 return reinterpret_cast<T>(m_address + static_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));

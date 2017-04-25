@@ -387,7 +387,8 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
                             this, sec_start, sec_info.size,
                             sec_trap_start, sec_info.trap_size);
         Section section(*this, sec_start, sec_info.size);
-        TrapInfo sec_trap_info(sec_trap_start, sec_info.trap_size);
+        TrapInfo sec_trap_info(sec_trap_start, sec_info.trap_size,
+                               reinterpret_cast<trap_address_t>(m_got));
         (*callback)(*this, section, sec_trap_info, self_rando, callback_arg);
         section.flush_icache();
     }

@@ -32,7 +32,7 @@ int main(int argc, const char *argv[]) {
 
     struct trap_header_t header;
     uint8_t *trap_ptr = data.data;
-    trap_read_header(&header, &trap_ptr, NULL, &header);
+    trap_read_header(&header, &trap_ptr, &data.base_address, &header);
     printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%lu\n",
            header.flags, header.version, header.flags >> 8,
            header.pointer_size);
@@ -45,8 +45,7 @@ int main(int argc, const char *argv[]) {
             assert(rel_addr == reloc.address);
             printf("Rel[%ld]@%lx=%lx+%ld\n",
                    reloc.type, reloc.address,
-                   reloc.symbol ? (reloc.symbol + data.base_address) : 0,
-                   reloc.addend);
+                   reloc.symbol, reloc.addend);
         }
     }
 
@@ -54,8 +53,7 @@ int main(int argc, const char *argv[]) {
     struct trap_record_t record;
     trap_ptr = header.record_start;
     while (trap_ptr < (data.data + data.size)) {
-        uintptr_t tmp_address = data.base_address;
-        trap_read_record(&header, &trap_ptr, &tmp_address, &record);
+        trap_read_record(&header, &trap_ptr, NULL, &record);
         size_t first_ofs = record.first_symbol.address - record.address;
         printf("Record@%lx(sec+%ld)\n",
                record.address, first_ofs);
@@ -83,8 +81,7 @@ int main(int argc, const char *argv[]) {
                 assert(rel_addr == reloc.address);
                 printf("  Rel[%ld]@%lx=%lx+%ld\n",
                        reloc.type, reloc.address,
-                       reloc.symbol ? (reloc.symbol + data.base_address) : 0,
-                       reloc.addend);
+                       reloc.symbol, reloc.addend);
             }
         }
 

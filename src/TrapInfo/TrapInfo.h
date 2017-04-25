@@ -174,6 +174,9 @@ struct RANDO_SECTION trap_header_t {
     trap_pointer_t reloc_start, reloc_end;
     trap_pointer_t record_start;
 
+    // Base address to add to all addresses encoded in TRaP info.
+    trap_address_t base_address;
+
 #ifdef __cplusplus
     // Do the Trap records also contain size info???
     bool has_symbol_size() const {
@@ -239,9 +242,9 @@ trap_address_t trap_read_address(const struct trap_header_t *header,
             delta = *RCAST(int64_t*, *trap_ptr);
         }
 #if !RANDOLIB_IS_ARM64
-        // We use GOT-relative offsets
-        // We add the GOT base later inside of Address::to_ptr()
-        addr = SCAST(trap_address_t, delta);
+        // We use GOT-relative offsets, assuming that
+        // header->base_address is set to the base of the GOT
+        addr = SCAST(trap_address_t, header->base_address + delta);
 #else
         addr = SCAST(trap_address_t, *trap_ptr + delta);
 #endif
@@ -356,8 +359,11 @@ int trap_read_header(const struct trap_header_t *header,
     SET_FIELD(headerw, flags, flags);
     *trap_ptr += sizeof(uint32_t);
 
-    // Add a void use of address to prevent "unused argument" warnings
-    (void) address;
+    if (address) {
+        SET_FIELD(headerw, base_address, *address);
+    } else {
+        SET_FIELD(headerw, base_address, 0);
+    }
 
     SET_FIELD(headerw, reloc_start, *trap_ptr);
     if (flags & TRAP_HAS_NONEXEC_RELOCS) {
@@ -554,9 +560,7 @@ int trap_read_record(const struct trap_header_t *header,
                      void *data) {
     struct trap_record_t *record = RCAST(struct trap_record_t*, data);
     trap_address_t tmp_address = 0;
-    trap_address_t base_address = *address;
     trap_address_t record_address = trap_read_address(header, trap_ptr);
-    record_address += base_address;
     SET_FIELD(record, header, header);
     SET_FIELD(record, address, record_address);
     // Parse symbol vector
@@ -602,11 +606,12 @@ int trap_read_record(const struct trap_header_t *header,
 #ifdef __cplusplus
 class RANDO_SECTION TrapInfo {
 public:
-    explicit TrapInfo(trap_pointer_t trap_data, size_t trap_size) {
+    explicit TrapInfo(trap_pointer_t trap_data, size_t trap_size,
+                      trap_address_t base_address = 0) {
         m_trap_data = trap_data;
         m_trap_size = trap_size;
         auto tmp_trap_ptr = m_trap_data;
-        trap_read_header(&m_header, &tmp_trap_ptr, NULL, &m_header);
+        trap_read_header(&m_header, &tmp_trap_ptr, &base_address, &m_header);
     }
 
     TrapIterator<trap_record_t> begin() const {
