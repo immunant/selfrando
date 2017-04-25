@@ -168,6 +168,9 @@ struct RANDO_SECTION trap_header_t {
     };
     uint64_t pointer_size;
 
+    // Start of internal fields.
+    // Everything up to this point is read from the TRaP data.
+    // Fields starting from here are our own.
     trap_pointer_t reloc_start, reloc_end;
     trap_pointer_t record_start;
 
