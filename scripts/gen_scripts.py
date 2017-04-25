@@ -78,12 +78,14 @@ def set_env_vars():
     randolib_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Release")
     randolib_path = os.path.abspath(randolib_path)
     randolib_file_path = os.path.join(randolib_path, "RandoLib.lib")
-    if not os.path.exists(randolib_file_path) or not os.path.isfile(randolib_file_path):
-        randolib_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Debug")
-        randolib_path = os.path.abspath(randolib_path)
-        randolib_file_path = os.path.join(randolib_path, "RandoLib.lib")
-        assert os.path.exists(randolib_file_path) and os.path.isfile(randolib_file_path), \
-               "Invalid RandoLib.lib location: %s" % randolib_path
+    if not os.path.isfile(randolib_file_path):
+        dbg_randolib_path = os.path.join(scpt_path, os.pardir, platform_subdir, "Debug")
+        dbg_randolib_path = os.path.abspath(dbg_randolib_path)
+        dbg_randolib_file_path = os.path.join(dbg_randolib_path, "RandoLib.lib")
+        if not os.path.isfile(dbg_randolib_file_path):
+            print "Error, RandoLib.lib was not found in any of these dirs:\n %s\n %s" % \
+                (randolib_path, dbg_randolib_path)
+            quit(1)
 
     pshell_lines.append(set_env_var_ps("LIB", [randolib_path, libs_path], True))
     batchs_lines.append(set_env_var_bat("LIB", [randolib_path, libs_path], True))
