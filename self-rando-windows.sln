@@ -27,11 +27,14 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C55508A3-37D1-4B6C-8CE9-F2A3B76E791A}"
 	ProjectSection(SolutionItems) = preProject
 		appveyor.yml = appveyor.yml
+		scripts\gen_scripts.py = scripts\gen_scripts.py
 		Scripts\ida_textrap.py = Scripts\ida_textrap.py
 		Scripts\parse_textrap.py = Scripts\parse_textrap.py
 		SConstruct = SConstruct
 		Docs\textrap.txt = Docs\textrap.txt
-		Scripts\trap-msvc-libs.py = Scripts\trap-msvc-libs.py
+		scripts\trap_msvc_libs.py = scripts\trap_msvc_libs.py
+		scripts\TrapLinker32.props.mako = scripts\TrapLinker32.props.mako
+		scripts\TrapLinker64.props.mako = scripts\TrapLinker64.props.mako
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WrapperCommonTests", "src\TrapLinker\win32\WrapperCommonTests\WrapperCommonTests.vcxproj", "{6F59C47A-4096-44C9-9909-C6316E69911A}"
