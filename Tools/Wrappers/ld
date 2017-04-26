@@ -23,7 +23,7 @@ if [ -f /tmp/traplinker-argtrace ]; then
       --traplinker-original-linker "$TRAPLINKER_ORIG_LD" \
       $TRAPLINKER_EXTRA_LDFLAGS "$@"
 fi
-"$TRAPLINKER_SR_PATH/$WRAPPER" -rpath "$TRAPLINKER_SR_PATH" \
+exec_traplinker "$TRAPLINKER_SR_PATH/$WRAPPER" -rpath "$TRAPLINKER_SR_PATH" \
     -rpath "$TRAPLINKER_SR_PATH/$TRAPLINKER_SR_ARCH" \
     --traplinker-original-linker "$TRAPLINKER_ORIG_LD" \
     $TRAPLINKER_EXTRA_LDFLAGS "$@"
