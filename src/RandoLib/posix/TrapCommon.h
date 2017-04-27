@@ -9,7 +9,7 @@
 #pragma once
 
 #define DEFINE_SECTION_SYMBOL(symbol, section_name, ...)    \
-    .section section_name, __VA_ARGS__;                     \
+    .section section_name, ##__VA_ARGS__;                   \
     .globl symbol;                                          \
     .hidden symbol;                                         \
     .type symbol, %object;                                  \
