@@ -37,3 +37,5 @@ _TRaP_trap_begin:
 
 // Symbols for other sections
 DEFINE_SECTION_SYMBOL(_TRaP_xptramp_begin, .textramp, "ax", %progbits)
+DEFINE_SECTION_SYMBOL(_TRaP_got_begin,     .got,      "wa", %progbits)
+DEFINE_SECTION_SYMBOL(_TRaP_got_plt_begin, .got.plt,  "wa", %progbits)

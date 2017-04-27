@@ -47,8 +47,6 @@ static char kLinkerIdScript[] = "/linker_id.sh";
 // FOR TESTING! TODO: figure out a better way to find this path
 static char kSelfrandoObject[] = "/selfrando_txtrp.o";
 static char kTrapScript[] = "/linker_script.ld";
-static char kTrapGOTOnlyScript[] = "/linker_script_got_only.ld";
-static char kTrapGOTPLTScript[] = "/linker_script_got_plt.ld";
 static char kProvideTRaPEndPageScript[] = "/provide_TRaP_end_page.ld";
 #if 0 // FIXME: put this back in when we need it
 static const char *kExecSections[][2] = {
@@ -935,25 +933,8 @@ LinkerInvocation ArgParser::create_new_invocation(
             m_args.emplace(header_pos, "--no-whole-archive", true);
 
             std::string trap_script = randolib_install_path + kTrapScript;
-            std::string trap_got_script = randolib_install_path;
-            if (elf_machine == EM_ARM) {
-                // On ARM, both linkers always omit .got.plt
-                trap_got_script += kTrapGOTOnlyScript;
-            } else {
-                // On x86/ARM64, the following things happen:
-                // 1) gold always emits both .got and .got.plt
-                // 2) ld.bfd omits .got.plt for relro+now builds
-                if (linker_type != LD_BFD ||
-                    (m_z_keywords.count("relro") == 0 ||
-                     m_z_keywords.count("now") == 0)) {
-                    trap_got_script += kTrapGOTPLTScript;
-                } else {
-                    trap_got_script += kTrapGOTOnlyScript;
-                }
-            }
             m_args.emplace_back("--whole-archive", true);
             m_args.emplace_back(trap_script.c_str(), true);
-            m_args.emplace_back(trap_got_script.c_str(), true);
             m_args.emplace_back("-ltrapfooter", true);
             m_args.emplace_back("--no-whole-archive", true);
             if (m_static_selfrando && m_selfrando_txtrp_pages) {
