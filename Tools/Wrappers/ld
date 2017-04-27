@@ -8,7 +8,7 @@
 
 set -ue
 
-TC_PATH="$(dirname "$0")"
+TC_PATH="$(readlink -e $(dirname "$0"))"
 : ${TRAPLINKER_SR_ARCH:="x86_64"}        # only set if unset
 : ${TRAPLINKER_SR_PATH:=$(readlink -f "$TC_PATH/../../out/$TRAPLINKER_SR_ARCH/bin")}
 source $TC_PATH/functions.sh

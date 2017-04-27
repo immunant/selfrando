@@ -8,7 +8,7 @@
 
 set -ue
 
-TC_PATH="$(dirname "$0")"
+TC_PATH="$(readlink -e $(dirname "$0"))"
 source $TC_PATH/functions.sh
 
 run_original -B"$TC_PATH" -ffunction-sections -fdata-sections -fPIC "$@"

@@ -10,7 +10,7 @@ set -ue
 
 exec 2> >(tee -a /tmp/tc.log >&2)
 
-TC_PATH="$(dirname "$0")"
+TC_PATH="$(readlink -e $(dirname "$0"))"
 SR_PATH='/home/debian/install/selfrando'
 source $TC_PATH/functions.sh
 
