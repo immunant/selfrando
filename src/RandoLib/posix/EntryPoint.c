@@ -33,8 +33,9 @@ extern char
     _TRaP_got_begin,
     _TRaP_got_end,
     _TRaP_got_plt_begin,
-    _TRaP_got_plt_end,
-    _TRaP_dynamic;
+    _TRaP_got_plt_end;
+
+extern char _DYNAMIC __attribute__((weak));
 #pragma GCC visibility pop
 
 extern void _TRaP_Linux_EntryPoint_mprotect(void*, size_t, int) __attribute__((section(".selfrando.entry")));
@@ -70,7 +71,7 @@ void _TRaP_Linux_EntryPointImpl(void) {
     PIT.sections[1].trap_size = &_TRaP_trap_end_page - &_TRaP_trap_begin;
 
     struct ModuleInfo module_info;
-    module_info.dynamic = (BytePointer)&_TRaP_dynamic;
+    module_info.dynamic = (BytePointer)&_DYNAMIC;
     module_info.program_info_table = &PIT;
 
     _TRaP_RandoMain(&module_info);
