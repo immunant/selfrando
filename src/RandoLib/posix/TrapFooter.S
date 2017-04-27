@@ -6,16 +6,7 @@
  *
  */
 
-.section .txtrp, "a", %progbits
-.globl _TRaP_trap_end
-.hidden _TRaP_trap_end
-.type _TRaP_trap_end, %object
-_TRaP_trap_end:
+#include "TrapCommon.h"
 
-
-.section .text
-.globl _TRaP_text_end
-.hidden _TRaP_text_end
-.type _TRaP_text_end, %object
-_TRaP_text_end:
-
+DEFINE_SECTION_SYMBOL(_TRaP_trap_end,    .txtrp,    "a",  %progbits)
+DEFINE_SECTION_SYMBOL(_TRaP_xptramp_end, .textramp, "ax", %progbits)

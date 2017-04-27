@@ -6,6 +6,8 @@
  *
  */
 
+#include "TrapCommon.h"
+
 #if RANDOLIB_IS_ARM64
 // On ARM64, we encode addresses as PC-relative offsets
 #define ARCH_PCREL_FLAG     0x80
@@ -17,7 +19,6 @@
 #endif
 
 .section .txtrp, "a", %progbits
-
 .globl _TRaP_trap_begin
 .hidden _TRaP_trap_begin
 .type _TRaP_trap_begin, %object
@@ -33,3 +34,6 @@ _TRaP_trap_begin:
 .byte 0x00
 // Pointer size
 .byte RANDOLIB_ARCH_SIZE
+
+// Symbols for other sections
+DEFINE_SECTION_SYMBOL(_TRaP_xptramp_begin, .textramp, "ax", %progbits)
