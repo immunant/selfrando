@@ -529,6 +529,64 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
     }
 }
 
+template<typename DynType, typename RelType,
+         size_t dt_relocs, size_t dt_relocs_size>
+RANDO_SECTION void Module::build_arch_relocs() {
+    os::BytePointer dyn_rels = nullptr;
+    size_t dyn_rel_size = 0;
+    auto dyn = reinterpret_cast<DynType*>(m_module_info->dynamic);
+    for (; dyn->d_tag != DT_NULL; dyn++) {
+        if (dyn->d_tag == dt_relocs) {
+            if (m_dynamic_has_base) {
+                dyn_rels = reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr);
+            } else {
+                dyn_rels = m_image_base + dyn->d_un.d_ptr;
+            }
+        }
+        if (dyn->d_tag == dt_relocs_size)
+            dyn_rel_size = dyn->d_un.d_val;
+    }
+
+    if (dyn_rels != nullptr && dyn_rel_size != 0) {
+        auto dyn_rel_end = dyn_rels + dyn_rel_size;
+        for (auto rel = reinterpret_cast<RelType*>(dyn_rels);
+                  rel < reinterpret_cast<RelType*>(dyn_rel_end); rel++) {
+            auto rel_type = arch_reloc_type(rel);
+            if (rel_type)
+               m_num_arch_relocs++;
+        }
+        if (m_num_arch_relocs > 0) {
+            m_arch_relocs = reinterpret_cast<ArchReloc*>(
+                os::API::MemAlloc(m_num_arch_relocs * sizeof(ArchReloc)));
+            size_t idx = 0;
+            for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
+                      rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
+                auto rel_type = arch_reloc_type(rel);
+                if (rel_type) {
+                    m_arch_relocs[idx].address = RVA2Address(rel->r_offset).to_ptr();
+                    m_arch_relocs[idx].type = rel_type;
+                    m_arch_relocs[idx].applied = false;
+                    idx++;
+                }
+            }
+            RANDO_ASSERT(idx == m_num_arch_relocs);
+            os::API::QuickSort(m_arch_relocs, m_num_arch_relocs, sizeof(ArchReloc),
+                               ArchReloc::sort_compare);
+        }
+    }
+}
+
+// Instantiate build_arch_relocs() for the most common cases
+#if RANDOLIB_ARCH_SIZE == 32
+template
+RANDO_SECTION void Module::build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
+#endif
+
+#if RANDOLIB_ARCH_SIZE == 64
+template
+RANDO_SECTION void Module::build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
+#endif
+
 RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address) const {
     // Given a memory address, find the ArchReloc that covers that address
     // using binary search (assuming the architecture code pre-sorted them)

@@ -293,6 +293,13 @@ public:
                                          Module::Relocation::Callback callback,
                                          void *callback_arg) const;
 
+    template<typename RelType>
+    RANDO_SECTION Relocation::Type arch_reloc_type(const RelType *dyn_reloc);
+
+    template<typename DynType, typename RelType,
+             size_t dt_relocs, size_t dt_relocs_size>
+    RANDO_SECTION void build_arch_relocs();
+
     RANDO_SECTION void preprocess_arch();
     RANDO_SECTION void relocate_arch(FunctionList *functions,
                                      Module::Relocation::Callback callback,

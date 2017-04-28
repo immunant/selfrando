@@ -197,57 +197,20 @@ void Module::Relocation::fixup_entry_point(const Module &module,
     reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 }
 
-void os::Module::preprocess_arch() {
+template<>
+size_t Module::arch_reloc_type<Elf64_Rela>(const Elf64_Rela *rel) {
+    auto rel_type = ELF64_R_TYPE(rel->r_info);
+    if (rel_type == R_X86_64_RELATIVE ||
+        rel_type == R_X86_64_GLOB_DAT ||
+        rel_type == R_X86_64_64) {
+        return R_X86_64_64;
+    }
+    return 0;
+}
+
+void Module::preprocess_arch() {
     m_linker_stubs = 0;
-
-    os::BytePointer dyn_rels = nullptr;
-    size_t dyn_rel_size = 0;
-    auto dyn = reinterpret_cast<Elf64_Dyn*>(m_module_info->dynamic);
-    for (; dyn->d_tag != DT_NULL; dyn++) {
-        if (dyn->d_tag == DT_RELA) {
-            if (m_dynamic_has_base) {
-                dyn_rels = reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr);
-            } else {
-                dyn_rels = m_image_base + dyn->d_un.d_ptr;
-            }
-        }
-        if (dyn->d_tag == DT_RELASZ)
-            dyn_rel_size = dyn->d_un.d_val;
-    }
-
-    if (dyn_rels != nullptr && dyn_rel_size != 0) {
-        auto dyn_rel_end = dyn_rels + dyn_rel_size;
-        for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
-                  rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
-            auto rel_type = ELF64_R_TYPE(rel->r_info);
-            if (rel_type == R_X86_64_RELATIVE ||
-                rel_type == R_X86_64_GLOB_DAT ||
-                rel_type == R_X86_64_64) {
-                m_num_arch_relocs++;
-            }
-        }
-        if (m_num_arch_relocs > 0) {
-            m_arch_relocs = reinterpret_cast<ArchReloc*>(
-                os::API::MemAlloc(m_num_arch_relocs * sizeof(ArchReloc)));
-            size_t idx = 0;
-            for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
-                      rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
-                auto rel_type = ELF64_R_TYPE(rel->r_info);
-                if (rel_type == R_X86_64_RELATIVE ||
-                    rel_type == R_X86_64_GLOB_DAT ||
-                    rel_type == R_X86_64_64) {
-                    m_arch_relocs[idx].address = RVA2Address(rel->r_offset).to_ptr();
-                    m_arch_relocs[idx].type = R_X86_64_64;
-                    m_arch_relocs[idx].applied = false;
-                    idx++;
-                }
-            }
-            RANDO_ASSERT(idx == m_num_arch_relocs);
-            os::API::QuickSort(m_arch_relocs, m_num_arch_relocs, sizeof(ArchReloc),
-                               ArchReloc::sort_compare);
-        }
-    }
-
+    build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
 
 void Module::relocate_arch(FunctionList *functions,
