@@ -81,6 +81,7 @@ public:
 
     Module() = delete;
     RANDO_SECTION Module(Handle dynamic_ptr, PHdrInfoPointer phdr_info = nullptr);
+    RANDO_SECTION ~Module();
 
     class Address {
     public:
@@ -181,6 +182,17 @@ public:
             return m_addend;
         }
 
+        bool already_applied() const {
+            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_addr);
+            return arch_reloc != nullptr && arch_reloc->applied;
+        }
+
+        void mark_applied() {
+            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_addr);
+            if (arch_reloc != nullptr)
+                arch_reloc->applied = true;
+        }
+
     private:
         const Module &m_module;
         const Address m_orig_src_addr;
@@ -255,6 +267,14 @@ public:
         size_t m_size;
     };
 
+    struct ArchReloc {
+        // Cannot use Address here because we run into trouble with
+        // Address's copy-assignment and move-assignment operators
+        os::BytePointer address;
+        Relocation::Type type;
+        bool applied;
+    };
+
     // FIXME: TrapInfo could be pre-computed, and accessed via a function
     typedef void(*ExecSectionCallback)(const Module&, const Section&, ::TrapInfo&, bool, void*);
     RANDO_SECTION void ForAllExecSections(bool, ExecSectionCallback, void*);
@@ -266,10 +286,10 @@ public:
                                          Module::Relocation::Callback callback,
                                          void *callback_arg) const;
 
-    RANDO_SECTION void preprocess_linker_stubs();
-    RANDO_SECTION void relocate_linker_stubs(FunctionList *functions,
-                                             Module::Relocation::Callback callback,
-                                             void *callback_arg) const;
+    RANDO_SECTION void preprocess_arch();
+    RANDO_SECTION void relocate_arch(FunctionList *functions,
+                                     Module::Relocation::Callback callback,
+                                     void *callback_arg) const;
 
     inline RANDO_SECTION Section export_section() const {
         return Section(*this, m_module_info->program_info_table->xptramp_start,
@@ -283,6 +303,8 @@ public:
     inline RANDO_SECTION const char *get_module_name() const {
         return m_phdr_info.dlpi_name;
     }
+
+    RANDO_SECTION ArchReloc *find_arch_reloc(const Address &address) const;
 
 #if RANDOLIB_WRITE_LAYOUTS
     void write_layout_file(FunctionList *functions,
@@ -312,6 +334,8 @@ private:
 
     RANDO_SECTION void MarkRandomized(RandoState);
 
+    ArchReloc *m_arch_relocs;
+    size_t m_num_arch_relocs;
     size_t m_linker_stubs;
 };
 

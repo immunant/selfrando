@@ -390,11 +390,11 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     reloc_section.flush_icache();
 }
 
-void os::Module::preprocess_linker_stubs() {
-    m_linker_stubs = 0;
+void os::Module::preprocess_arch() {
+    m_arch_relocs = 0;
 }
 
-void os::Module::relocate_linker_stubs(FunctionList *functions,
-                                       os::Module::Relocation::Callback callback,
-                                       void *callback_arg) const {
+void os::Module::relocate_arch(FunctionList *functions,
+                               os::Module::Relocation::Callback callback,
+                               void *callback_arg) const {
 }

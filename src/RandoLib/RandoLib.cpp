@@ -520,6 +520,8 @@ void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
         at_exec = true;
         reloc.set_source_ptr(at_ptr);
     }
+    if (reloc.already_applied())
+        return;
     // Get target address
     os::BytePointer target_ptr = reloc.get_target_ptr();
     os::API::DebugPrintf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n", reloc.get_type(),
@@ -538,6 +540,7 @@ void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
     // Update the relocation entry
     os::API::DebugPrintf<6>("  setting => %p\n", target_ptr);
     reloc.set_target_ptr(target_ptr);
+    reloc.mark_applied();
 }
 
 void ExecSectionProcessor::FixupRelocations() {

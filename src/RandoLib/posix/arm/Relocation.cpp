@@ -318,12 +318,12 @@ os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &re
     m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
-void os::Module::preprocess_linker_stubs() {
+void os::Module::preprocess_arch() {
 }
 
-void os::Module::relocate_linker_stubs(FunctionList *functions,
-                                       os::Module::Relocation::Callback callback,
-                                       void *callback_arg) const {
+void os::Module::relocate_arch(FunctionList *functions,
+                               os::Module::Relocation::Callback callback,
+                               void *callback_arg) const {
     for (size_t i = 0; i < TRAP_NUM_SECTIONS; i++) {
         auto &sec_info = m_module_info->program_info_table->sections[i];
         if (sec_info.start == 0 || sec_info.size == 0 ||

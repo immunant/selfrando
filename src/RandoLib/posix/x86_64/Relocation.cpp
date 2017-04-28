@@ -7,6 +7,7 @@
  */
 
 #include <OS.h>
+#include <RandoLib.h>
 #include <TrapInfo.h>
 
 #include <elf.h>
@@ -194,11 +195,62 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
 }
 
-void os::Module::preprocess_linker_stubs() {
-    m_linker_stubs = 0;
+static RANDO_SECTION int CompareArchRelocs(const void *pa, const void *pb) {
+    auto ra = reinterpret_cast<const os::Module::ArchReloc*>(pa);
+    auto rb = reinterpret_cast<const os::Module::ArchReloc*>(pb);
+    return  (ra->address <  rb->address) ? -1 :
+           ((ra->address == rb->address) ?  0 : 1);
 }
 
-void os::Module::relocate_linker_stubs(FunctionList *functions,
-                                       os::Module::Relocation::Callback callback,
-                                       void *callback_arg) const {
+void os::Module::preprocess_arch() {
+    m_linker_stubs = 0;
+
+    os::BytePointer dyn_rels = nullptr;
+    size_t dyn_rel_size = 0;
+    auto dyn = reinterpret_cast<Elf64_Dyn*>(m_module_info->dynamic);
+    for (; dyn->d_tag != DT_NULL; dyn++) {
+        if (dyn->d_tag == DT_RELA)
+            dyn_rels = reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr);
+        if (dyn->d_tag == DT_RELASZ)
+            dyn_rel_size = dyn->d_un.d_val;
+    }
+
+    if (dyn_rels != nullptr && dyn_rel_size != 0) {
+        auto dyn_rel_end = dyn_rels + dyn_rel_size;
+        for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
+                  rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
+            auto rel_type = ELF64_R_TYPE(rel->r_info);
+            if (rel_type == R_X86_64_RELATIVE ||
+                rel_type == R_X86_64_GLOB_DAT ||
+                rel_type == R_X86_64_64) {
+                m_num_arch_relocs++;
+            }
+        }
+        if (m_num_arch_relocs > 0) {
+            m_arch_relocs = reinterpret_cast<ArchReloc*>(
+                os::API::MemAlloc(m_num_arch_relocs * sizeof(ArchReloc)));
+            size_t idx = 0;
+            for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
+                      rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
+                auto rel_type = ELF64_R_TYPE(rel->r_info);
+                if (rel_type == R_X86_64_RELATIVE ||
+                    rel_type == R_X86_64_GLOB_DAT ||
+                    rel_type == R_X86_64_64) {
+                    m_arch_relocs[idx].address = RVA2Address(rel->r_offset).to_ptr();
+                    m_arch_relocs[idx].type = R_X86_64_64;
+                    m_arch_relocs[idx].applied = false;
+                    idx++;
+                }
+            }
+            RANDO_ASSERT(idx == m_num_arch_relocs);
+            os::API::QuickSort(m_arch_relocs, m_num_arch_relocs, sizeof(ArchReloc),
+                               CompareArchRelocs);
+        }
+    }
+
+}
+
+void os::Module::relocate_arch(FunctionList *functions,
+                               os::Module::Relocation::Callback callback,
+                               void *callback_arg) const {
 }

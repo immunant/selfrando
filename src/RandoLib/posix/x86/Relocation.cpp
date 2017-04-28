@@ -102,11 +102,11 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
 }
 
-void os::Module::preprocess_linker_stubs() {
+void os::Module::preprocess_arch() {
     m_linker_stubs = 0;
 }
 
-void os::Module::relocate_linker_stubs(FunctionList *functions,
-                                       os::Module::Relocation::Callback callback,
-                                       void *callback_arg) const {
+void os::Module::relocate_arch(FunctionList *functions,
+                               os::Module::Relocation::Callback callback,
+                               void *callback_arg) const {
 }

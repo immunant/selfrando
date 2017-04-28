@@ -349,7 +349,15 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
                         m_module_info->program_info_table,
                         m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
     API::DebugPrintf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
-    preprocess_linker_stubs();
+
+    m_arch_relocs = nullptr;
+    m_num_arch_relocs = 0;
+    preprocess_arch();
+}
+
+RANDO_SECTION Module::~Module() {
+    if (m_arch_relocs != nullptr)
+        os::API::MemFree(m_arch_relocs);
 }
 
 RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
@@ -485,24 +493,14 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                                   new_entry);
     API::DebugPrintf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 
-    relocate_linker_stubs(functions, callback, callback_arg);
-    // Handle .got and .got.plt
-    API::DebugPrintf<1>(".got@%p-%p .got.plt@%p-%p\n",
-                        m_module_info->program_info_table->got_start,
-                        m_module_info->program_info_table->got_end,
-                        m_module_info->program_info_table->got_plt_start,
-                        m_module_info->program_info_table->got_plt_end);
-    for (uintptr_t *p = m_module_info->program_info_table->got_start;
-                    p < m_module_info->program_info_table->got_end; p++) {
-        Relocation reloc(*this, address_from_ptr(p),
-                         Relocation::get_pointer_reloc_type());
-        (*callback)(reloc, callback_arg);
-    }
-    for (uintptr_t *p = m_module_info->program_info_table->got_plt_start;
-                    p < m_module_info->program_info_table->got_plt_end; p++) {
-        Relocation reloc(*this, address_from_ptr(p),
-                         Relocation::get_pointer_reloc_type());
-        (*callback)(reloc, callback_arg);
+    relocate_arch(functions, callback, callback_arg);
+    if (m_arch_relocs != nullptr) {
+        for (size_t i = 0; i < m_num_arch_relocs; i++)
+            if (!m_arch_relocs[i].applied) {
+                Relocation reloc(*this, address_from_ptr(m_arch_relocs[i].address),
+                                 m_arch_relocs[i].type);
+                (*callback)(reloc, callback_arg);
+            }
     }
 
     // Fix up .eh_frame_hdr, if it exists
@@ -525,6 +523,33 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                            compare_eh_frame_entries);
         }
     }
+}
+
+RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address) const {
+    // Given a memory address, find the ArchReloc that covers that address
+    // using binary search (assuming the architecture code pre-sorted them)
+    if (m_arch_relocs == nullptr) {
+        RANDO_ASSERT(m_num_arch_relocs == 0);
+        return nullptr;
+    }
+
+    auto address_ptr = address.to_ptr();
+    // return null if no function contains addr
+    if (address_ptr < m_arch_relocs[0].address ||
+        address_ptr > m_arch_relocs[m_num_arch_relocs - 1].address)
+        return nullptr;
+    size_t lo = 0, hi = m_num_arch_relocs - 1;
+    while (lo < hi) {
+        auto mid = lo + ((hi - lo) >> 1);
+        if (address_ptr == m_arch_relocs[mid].address) {
+            return &m_arch_relocs[mid];
+        } else if (address_ptr > m_arch_relocs[mid].address) {
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    return address_ptr == m_arch_relocs[lo].address ? &m_arch_relocs[lo] : nullptr;
 }
 
 }
