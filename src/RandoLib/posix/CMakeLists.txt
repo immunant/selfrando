@@ -20,6 +20,8 @@ if (SR_BUILD_MODULE_RANDOLIB)
     # We don't want to depend on memset/memcpy/the rest
     add_compile_options(-minline-all-stringops)
 
+    add_compile_options(-fno-exceptions)
+
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,noexecstack")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)

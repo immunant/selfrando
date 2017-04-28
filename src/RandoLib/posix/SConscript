@@ -46,6 +46,8 @@ lib_env.Library('trapfooter_page', ['TrapFooterPage.S'])
 # Build flags start here
 lib_env.Append(CCFLAGS = '-fPIC')
 
+lib_env.Append(CCFLAGS = '-fno-exceptions')
+
 # Don't export anything from the library
 lib_env.Append(CCFLAGS='-fvisibility=hidden')
 lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
