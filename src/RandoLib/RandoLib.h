@@ -126,6 +126,8 @@ struct RANDO_SECTION FunctionList {
     }
 
     Function *FindFunction(os::BytePointer);
+
+    void AdjustRelocation(os::Module::Relocation*);
 };
 
 #endif // __RANDOLIB_H

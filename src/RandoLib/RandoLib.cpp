@@ -55,6 +55,39 @@ Function *FunctionList::FindFunction(os::BytePointer addr) {
     return functions[lo].undiv_contains(addr) ? &functions[lo] : nullptr;
 }
 
+RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc) {
+    auto source_ptr = reloc->get_source_ptr();
+    static_assert(sizeof(*source_ptr) == 1, "Byte size not 8 bits");
+    // Update the "source" address if it falls inside a diversified function
+    auto source_func = FindFunction(source_ptr);
+    if (source_func != nullptr) {
+        source_ptr = source_func->post_div_address(source_ptr);
+        reloc->set_source_ptr(source_ptr);
+    }
+    if (reloc->already_applied())
+        return;
+
+    // Get target address
+    os::BytePointer target_ptr = reloc->get_target_ptr();
+    os::API::DebugPrintf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n",
+                            reloc->get_type(),
+                            reloc->get_original_source_address().to_ptr(),
+                            source_ptr, *reinterpret_cast<uint32_t*>(source_ptr),
+                            *reinterpret_cast<uintptr_t*>(source_ptr), target_ptr);
+    // Compute new target address
+    auto target_func = FindFunction(target_ptr);
+    // Check if either source or target addresses fall inside a moved function
+    // If not, then we really don't care about this relocation
+    if (source_func == nullptr && target_func == nullptr)
+        return;
+    if (target_func != nullptr)
+        target_ptr = target_func->post_div_address(target_ptr);
+    // Update the relocation entry
+    os::API::DebugPrintf<6>("  setting => %p\n", target_ptr);
+    reloc->set_target_ptr(target_ptr);
+    reloc->mark_applied();
+}
+
 #if RANDOLIB_MEASURE_TIME
 class RANDO_SECTION FunctionCallTimer {
 public:
@@ -510,35 +543,7 @@ void ExecSectionProcessor::ShuffleCode() {
 void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
                                             void *callback_arg) {
     auto esp = reinterpret_cast<ExecSectionProcessor*>(callback_arg);
-    auto source_ptr = reloc.get_source_ptr();
-    static_assert(sizeof(*source_ptr) == 1, "Byte size not 8 bits");
-    // Update the "source" address if it falls inside a diversified function
-    auto source_func = esp->m_functions.FindFunction(source_ptr);
-    if (source_func != nullptr) {
-        source_ptr = source_func->post_div_address(source_ptr);
-        reloc.set_source_ptr(source_ptr);
-    }
-    if (reloc.already_applied())
-        return;
-
-    // Get target address
-    os::BytePointer target_ptr = reloc.get_target_ptr();
-    os::API::DebugPrintf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n", reloc.get_type(),
-                            reloc.get_original_source_address().to_ptr(),
-                            source_ptr, *reinterpret_cast<uint32_t*>(source_ptr),
-                            *reinterpret_cast<uintptr_t*>(source_ptr), target_ptr);
-    // Compute new target address
-    auto target_func = esp->m_functions.FindFunction(target_ptr);
-    // Check if either source or target addresses fall inside a moved function
-    // If not, then we really don't care about this relocation
-    if (source_func == nullptr && target_func == nullptr)
-        return;
-    if (target_func != nullptr)
-        target_ptr = target_func->post_div_address(target_ptr);
-    // Update the relocation entry
-    os::API::DebugPrintf<6>("  setting => %p\n", target_ptr);
-    reloc.set_target_ptr(target_ptr);
-    reloc.mark_applied();
+    esp->m_functions.AdjustRelocation(&reloc);
 }
 
 void ExecSectionProcessor::FixupRelocations() {
