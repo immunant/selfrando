@@ -273,6 +273,13 @@ public:
         os::BytePointer address;
         Relocation::Type type;
         bool applied;
+
+        static int sort_compare(const void *pa, const void *pb) {
+            auto ra = reinterpret_cast<const os::Module::ArchReloc*>(pa);
+            auto rb = reinterpret_cast<const os::Module::ArchReloc*>(pb);
+            return  (ra->address <  rb->address) ? -1 :
+                   ((ra->address == rb->address) ?  0 : 1);
+        }
     };
 
     // FIXME: TrapInfo could be pre-computed, and accessed via a function

@@ -195,13 +195,6 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
 }
 
-static RANDO_SECTION int CompareArchRelocs(const void *pa, const void *pb) {
-    auto ra = reinterpret_cast<const os::Module::ArchReloc*>(pa);
-    auto rb = reinterpret_cast<const os::Module::ArchReloc*>(pb);
-    return  (ra->address <  rb->address) ? -1 :
-           ((ra->address == rb->address) ?  0 : 1);
-}
-
 void os::Module::preprocess_arch() {
     m_linker_stubs = 0;
 
@@ -249,7 +242,7 @@ void os::Module::preprocess_arch() {
             }
             RANDO_ASSERT(idx == m_num_arch_relocs);
             os::API::QuickSort(m_arch_relocs, m_num_arch_relocs, sizeof(ArchReloc),
-                               CompareArchRelocs);
+                               ArchReloc::sort_compare);
         }
     }
 
