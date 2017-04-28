@@ -11,14 +11,16 @@
 
 #include <elf.h>
 
-os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
+namespace os {
+
+Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
       m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
     m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
-os::BytePointer os::Module::Relocation::get_target_ptr() const {
+BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
@@ -29,7 +31,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
-        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
     case R_386_GOTOFF:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(at_ptr);
     case R_386_PC32:
@@ -43,7 +45,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     }
 }
 
-void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
+void Module::Relocation::set_target_ptr(BytePointer new_target) {
     auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case R_386_32:
@@ -68,14 +70,14 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     }
 }
 
-os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
+Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_386_32;
 }
 
-void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
-                                                     const Module &module,
-                                                     os::Module::Relocation::Callback callback,
-                                                     void *callback_arg) {
+void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
+                                                 const Module &module,
+                                                 Module::Relocation::Callback callback,
+                                                 void *callback_arg) {
     if (**export_ptr == 0xEB) {
         // We hit the placeholder in Textramp.S, skip over it
         *export_ptr += 2;
@@ -85,28 +87,30 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     // is the opcode for the breakpoint instruction that gdb uses (INT 3)
     RANDO_ASSERT(**export_ptr == 0xE9 || **export_ptr == 0xCC);
     RANDO_ASSERT((reinterpret_cast<uintptr_t>(*export_ptr) & 1) == 0);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(*export_ptr + 1),
-                                 R_386_PC32);
+    Module::Relocation reloc(module,
+                             module.address_from_ptr(*export_ptr + 1),
+                             R_386_PC32);
     (*callback)(reloc, callback_arg);
     *export_ptr += 6;
 }
 
-void os::Module::Relocation::fixup_entry_point(const Module &module,
-                                               uintptr_t entry_point,
-                                               uintptr_t target) {
+void Module::Relocation::fixup_entry_point(const Module &module,
+                                           uintptr_t entry_point,
+                                           uintptr_t target) {
     RANDO_ASSERT(*reinterpret_cast<uint8_t*>(entry_point) == 0xE9);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(entry_point + 1),
-                                 R_386_PC32, -4);
-    reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
+    Module::Relocation reloc(module,
+                             module.address_from_ptr(entry_point + 1),
+                             R_386_PC32, -4);
+    reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 }
 
-void os::Module::preprocess_arch() {
+void Module::preprocess_arch() {
     m_linker_stubs = 0;
 }
 
-void os::Module::relocate_arch(FunctionList *functions,
-                               os::Module::Relocation::Callback callback,
-                               void *callback_arg) const {
+void Module::relocate_arch(FunctionList *functions,
+                           Module::Relocation::Callback callback,
+                           void *callback_arg) const {
 }
+
+} // namespace os

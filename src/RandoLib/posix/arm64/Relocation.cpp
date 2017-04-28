@@ -12,7 +12,9 @@
 
 #include <elf.h>
 
-os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
+namespace os {
+
+Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
 	      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
@@ -37,7 +39,7 @@ enum class Instruction : uint32_t {
 };
 
 static inline RANDO_SECTION
-uint32_t read_insn_operand(os::BytePointer at_ptr, Instruction insn) {
+uint32_t read_insn_operand(BytePointer at_ptr, Instruction insn) {
     auto insn_value = *reinterpret_cast<uint32_t*>(at_ptr);
     switch (insn) {
     case Instruction::MOVW:
@@ -86,13 +88,13 @@ bool insn_is_ldst_uimm(uint32_t insn) {
 }
 
 static inline RANDO_SECTION
-void force_adrp(os::BytePointer ptr) {
+void force_adrp(BytePointer ptr) {
     uint32_t* insn_ptr = reinterpret_cast<uint32_t*>(ptr);
     *insn_ptr &= 0x60ffffff;
     *insn_ptr |= 0x90000000;
 }
 
-os::BytePointer os::Module::Relocation::get_target_ptr() const {
+BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
@@ -100,9 +102,9 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     auto orig_ptr = m_orig_src_addr.to_ptr();
     switch(m_type) {
     case R_AARCH64_ABS32:
-        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
     case R_AARCH64_ABS64:
-        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
     case R_AARCH64_PREL32:
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_AARCH64_PREL64:
@@ -156,7 +158,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
                 base = page_address(base);
                 delta <<= 12;
             }
-            return reinterpret_cast<os::BytePointer>(base + delta);
+            return reinterpret_cast<BytePointer>(base + delta);
         }
     default:
         RANDO_ASSERT(false);
@@ -173,7 +175,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     } while (0)
 
 static inline RANDO_SECTION
-void write_insn_operand(os::BytePointer at_ptr, Instruction insn,
+void write_insn_operand(BytePointer at_ptr, Instruction insn,
                         ptrdiff_t new_value, size_t shift) {
     auto insn_ptr = reinterpret_cast<uint32_t*>(at_ptr);
     new_value >>= shift;
@@ -226,14 +228,14 @@ void write_insn_operand(os::BytePointer at_ptr, Instruction insn,
         insn_is_adrp(insn_ptr[0]) && insn_is_ldst(insn_ptr[1]) &&
         (insn_is_ldst_uimm(insn_ptr[2]) || insn_is_ldst_uimm(insn_ptr[3]))) {
         // We may have an 843419 erratum
-        os::API::DebugPrintf<1>("Warning: violating erratum 843419 at %p\n", at_ptr);
+        API::DebugPrintf<1>("Warning: violating erratum 843419 at %p\n", at_ptr);
 #if 0
         RANDO_ASSERT(false);
 #endif
     }
 }
 
-void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
+void Module::Relocation::set_target_ptr(BytePointer new_target) {
     auto at_ptr = m_src_addr.to_ptr();
     ptrdiff_t        pcrel_delta = new_target - at_ptr;
     ptrdiff_t addend_pcrel_delta = pcrel_delta + m_addend;
@@ -350,14 +352,14 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     }
 }
 
-os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
+Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_AARCH64_ABS64;
 }
 
-void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
-                                                     const Module &module,
-                                                     os::Module::Relocation::Callback callback,
-                                                     void *callback_arg) {
+void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
+                                                 const Module &module,
+                                                 Module::Relocation::Callback callback,
+                                                 void *callback_arg) {
     //RANDO_ASSERT(**export_ptr == 0xE9);
     // According to the AArch64 encoding document I found,
     // unconditional branches are encoded as:
@@ -365,21 +367,21 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     //RANDO_ASSERT((**export_ptr >> 26) == 0x5);
     //RANDO_ASSERT(**export_ptr == 0xff ||**export_ptr == 0xfe ||**export_ptr == 0x94 || **export_ptr == 0x97 ||
     //             **export_ptr == 0x14 || **export_ptr == 0x17);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(*export_ptr),
-                                 R_AARCH64_JUMP26);
+    Module::Relocation reloc(module,
+                             module.address_from_ptr(*export_ptr),
+                             R_AARCH64_JUMP26);
     (*callback)(reloc, callback_arg);
     *export_ptr += 4;
 }
 
-void os::Module::Relocation::fixup_entry_point(const Module &module,
-                                               uintptr_t entry_point,
-                                               uintptr_t target) {
+void Module::Relocation::fixup_entry_point(const Module &module,
+                                           uintptr_t entry_point,
+                                           uintptr_t target) {
     RANDO_ASSERT(*reinterpret_cast<uint32_t*>(entry_point) == 0x14000001);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(entry_point),
-                                 R_AARCH64_JUMP26);
-    reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
+    Module::Relocation reloc(module,
+                             module.address_from_ptr(entry_point),
+                             R_AARCH64_JUMP26);
+    reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 
     // Flush the icache line containing this entry point
     // FIXME: this might be slow to do twice (once per entry point),
@@ -390,11 +392,13 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     reloc_section.flush_icache();
 }
 
-void os::Module::preprocess_arch() {
+void Module::preprocess_arch() {
     m_arch_relocs = 0;
 }
 
-void os::Module::relocate_arch(FunctionList *functions,
-                               os::Module::Relocation::Callback callback,
-                               void *callback_arg) const {
+void Module::relocate_arch(FunctionList *functions,
+                           Module::Relocation::Callback callback,
+                           void *callback_arg) const {
 }
+
+} // namespace os

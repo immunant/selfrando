@@ -13,6 +13,8 @@
 
 #include "RelocTypes.h"
 
+namespace os {
+
 #define BIT(X, B) \
     ((X >> B) & 1)
 
@@ -115,7 +117,7 @@ inline uint32_t thm_movwt_set(uint32_t ins, uint32_t imm) {
     return ins;
 }
 
-os::BytePointer os::Module::Relocation::get_target_ptr() const {
+BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
@@ -126,7 +128,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     // Data relocs
     case R_ARM_ABS32:
     case R_ARM_TARGET1: // The ARM exception handling ABI says this is equivalent to R_ARM_ABS32
-        return reinterpret_cast<os::BytePointer>(reloc_contents & 0xfffffffe);
+        return reinterpret_cast<BytePointer>(reloc_contents & 0xfffffffe);
     case R_ARM_REL32:
     case R_ARM_GOTPC: // aka R_ARM_BASE_PREL
     case R_ARM_GOT_PREL:
@@ -145,7 +147,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
         return imm24_get(reloc_contents) + orig_address + 8;
     case R_ARM_THM_PC22:
         if (thm_bl_isX(reloc_contents))
-            return thm_imm24_get(reloc_contents) + reinterpret_cast<os::BytePointer>(ALIGN(orig_address + 4, 4));
+            return thm_imm24_get(reloc_contents) + reinterpret_cast<BytePointer>(ALIGN(orig_address + 4, 4));
         // intentional fall-through
     case R_ARM_THM_JUMP24:
         return thm_imm24_get(reloc_contents) + orig_address + 4;
@@ -175,7 +177,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
         RANDO_ASSERT((delta) >= min);               \
     } while (0)
 
-void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
+void Module::Relocation::set_target_ptr(BytePointer new_target) {
     auto cur_address = m_src_addr.to_ptr();
     auto reloc_contents = *reinterpret_cast<uint32_t*>(cur_address);
     ptrdiff_t        pcrel_delta = new_target - cur_address;
@@ -278,52 +280,52 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         RANDO_ASSERT(false);
         break;
     }
-    os::API::DebugPrintf<5>("Setting reloc - target: %p, new contents: %p\n", new_target, *reinterpret_cast<uint32_t*>(cur_address));
+    API::DebugPrintf<5>("Setting reloc - target: %p, new contents: %p\n", new_target, *reinterpret_cast<uint32_t*>(cur_address));
 }
 
-os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
+Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_ARM_ABS32;
 }
 
-void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
-                                                     const Module &module,
-                                                     os::Module::Relocation::Callback callback,
-                                                     void *callback_arg) {
+void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
+                                                 const Module &module,
+                                                 Module::Relocation::Callback callback,
+                                                 void *callback_arg) {
     unsigned int reloc_type;
     if (*((*export_ptr)+3) == 0xea) {
-        os::API::DebugPrintf<5>("Export tramp (arm): %p\n", *export_ptr);
+        API::DebugPrintf<5>("Export tramp (arm): %p\n", *export_ptr);
         reloc_type = R_ARM_JUMP24;
     } else {
-        os::API::DebugPrintf<5>("Export tramp (thumb): %p\n", *export_ptr);
+        API::DebugPrintf<5>("Export tramp (thumb): %p\n", *export_ptr);
         reloc_type = R_ARM_THM_JUMP24;
     }
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(*export_ptr),
-                                 reloc_type);
+    Module::Relocation reloc(module,
+                             module.address_from_ptr(*export_ptr),
+                             reloc_type);
     (*callback)(reloc, callback_arg);
     *export_ptr += 4;
 }
 
-void os::Module::Relocation::fixup_entry_point(const Module &module,
-                                               uintptr_t entry_point,
-                                               uintptr_t target) {
+void Module::Relocation::fixup_entry_point(const Module &module,
+                                           uintptr_t entry_point,
+                                           uintptr_t target) {
     RANDO_ASSERT(*reinterpret_cast<uint32_t*>(entry_point) == 0xe51fc00c);
     *reinterpret_cast<uint32_t*>(entry_point-4) = static_cast<uint32_t>(target);
 }
 
-os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
+Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
       m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
     m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
-void os::Module::preprocess_arch() {
+void Module::preprocess_arch() {
 }
 
-void os::Module::relocate_arch(FunctionList *functions,
-                               os::Module::Relocation::Callback callback,
-                               void *callback_arg) const {
+void Module::relocate_arch(FunctionList *functions,
+                           Module::Relocation::Callback callback,
+                           void *callback_arg) const {
     for (size_t i = 0; i < TRAP_NUM_SECTIONS; i++) {
         auto &sec_info = m_module_info->program_info_table->sections[i];
         if (sec_info.start == 0 || sec_info.size == 0 ||
@@ -343,13 +345,13 @@ void os::Module::relocate_arch(FunctionList *functions,
             for (; div_ptr < end; undiv_ptr++, div_ptr++) {
                 if (div_ptr[0] == 0x46c04778) {
                     // Found some Thumb stubs
-                    os::API::DebugPrintf<10>("Found Thumb linker stub @%p/%p\n",
+                    API::DebugPrintf<10>("Found Thumb linker stub @%p/%p\n",
                                              undiv_ptr, div_ptr);
                     undiv_ptr++, div_ptr++;
                 }
                 switch(div_ptr[0]) {
                 case 0xe51ff004: {
-                    os::API::DebugPrintf<10>("Found ARM/Thumb linker stub A@%p/%p\n",
+                    API::DebugPrintf<10>("Found ARM/Thumb linker stub A@%p/%p\n",
                                              undiv_ptr, div_ptr);
                     undiv_ptr += 1, div_ptr += 1;
                     Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_ABS32, 0);
@@ -360,7 +362,7 @@ void os::Module::relocate_arch(FunctionList *functions,
                     RANDO_ASSERT(div_ptr[1] == 0xe12fff1c ||
                                  div_ptr[1] == 0xe08cf00f ||
                                  div_ptr[1] == 0xe08ff00c);
-                    os::API::DebugPrintf<10>("Found ARM/Thumb linker stub B@%p/%p\n",
+                    API::DebugPrintf<10>("Found ARM/Thumb linker stub B@%p/%p\n",
                                              undiv_ptr, div_ptr);
                     undiv_ptr += 2, div_ptr += 2;
                     if (div_ptr[-1] == 0xe12fff1c) {
@@ -373,7 +375,7 @@ void os::Module::relocate_arch(FunctionList *functions,
                     break;
                 }
                 case 0xe59fc004: {
-                    os::API::DebugPrintf<10>("Found ARM/Thumb linker stub C@%p/%p\n",
+                    API::DebugPrintf<10>("Found ARM/Thumb linker stub C@%p/%p\n",
                                              undiv_ptr, div_ptr);
                     RANDO_ASSERT(div_ptr[1] == 0xe08fc00c);
                     RANDO_ASSERT(div_ptr[2] == 0xe12fff1c);
@@ -385,14 +387,14 @@ void os::Module::relocate_arch(FunctionList *functions,
                 default: {
                     if (div_ptr[-1] == 0x46c04778) {
                         RANDO_ASSERT((div_ptr[0] >> 24) == 0xea); // Make sure we're patching a B instruction
-                        os::API::DebugPrintf<10>("Found Thumb short branch stub @%p/%p\n",
+                        API::DebugPrintf<10>("Found Thumb short branch stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
                         Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_JUMP24, -8);
                         (*callback)(reloc, callback_arg);
                         break;
                     }
                     if ((div_ptr[0] & 0xd000f800) == 0x9000f000) {
-                        os::API::DebugPrintf<10>("Found A8 veneer stub @%p/%p\n",
+                        API::DebugPrintf<10>("Found A8 veneer stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
                         Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_THM_JUMP24, -4);
                         (*callback)(reloc, callback_arg);
@@ -406,3 +408,4 @@ void os::Module::relocate_arch(FunctionList *functions,
     }
 }
 
+} // namespace os
