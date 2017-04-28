@@ -334,6 +334,11 @@ private:
 
     RANDO_SECTION void MarkRandomized(RandoState);
 
+    // Some loaders add the module base to all entries in .dynamic,
+    // e.g., the glibc loaders, while others don't, e.g., the Android one.
+    // We set this flag if the addresses have the base.
+    bool m_dynamic_has_base;
+
     ArchReloc *m_arch_relocs;
     size_t m_num_arch_relocs;
     size_t m_linker_stubs;

@@ -209,8 +209,13 @@ void os::Module::preprocess_arch() {
     size_t dyn_rel_size = 0;
     auto dyn = reinterpret_cast<Elf64_Dyn*>(m_module_info->dynamic);
     for (; dyn->d_tag != DT_NULL; dyn++) {
-        if (dyn->d_tag == DT_RELA)
-            dyn_rels = reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr);
+        if (dyn->d_tag == DT_RELA) {
+            if (m_dynamic_has_base) {
+                dyn_rels = reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr);
+            } else {
+                dyn_rels = m_image_base + dyn->d_un.d_ptr;
+            }
+        }
         if (dyn->d_tag == DT_RELASZ)
             dyn_rel_size = dyn->d_un.d_val;
     }

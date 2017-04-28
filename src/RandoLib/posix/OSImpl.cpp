@@ -312,21 +312,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             break;
         }
     }
-    // Find the module's GOT (easy on x86, it's in DT_PLTGOT)
-#if 0
-    // FIXME: tried doing this, but it turned out that d_ptr
-    // inside DT_PLTGOT would sometimes have the load bias
-    // added to it, but most often it wouldn't
-    typedef std::conditional<sizeof(uintptr_t) == 8, Elf64_Dyn, Elf32_Dyn>::type Elf_Dyn;
-    auto dyn = reinterpret_cast<Elf_Dyn*>(m_module_info->dynamic);
-    m_got = nullptr;
-    for (; dyn->d_tag != DT_NULL; dyn++) {
-        if (dyn->d_tag == DT_PLTGOT) {
-            m_got = RVA2Address(dyn->d_un.d_ptr).to_ptr();
-            break;
-        }
-    }
-#endif
+
     // FIXME: do we always get .got.plt from the ProgramInfoTable???
     m_got = reinterpret_cast<BytePointer>(m_module_info->program_info_table->got_plt_start);
     // If got_plt_start == m_image_base, that means that
@@ -335,6 +321,24 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     if (m_got == m_image_base || m_got == nullptr)
       m_got = reinterpret_cast<BytePointer>(m_module_info->program_info_table->got_start);
     RANDO_ASSERT(m_got != nullptr);
+
+    // Some loaders add the image base to the entries in .dynamic, others don't.
+    // The easiest way to find out if this is the case is to compare DT_PLTGOT
+    // against the address of .got.plt obtained some other way, e.g., from
+    // _GLOBAL_OFFSET_TABLE_.
+    typedef std::conditional<sizeof(uintptr_t) == 8, Elf64_Dyn, Elf32_Dyn>::type Elf_Dyn;
+    auto dyn = reinterpret_cast<Elf_Dyn*>(m_module_info->dynamic);
+    for (; dyn->d_tag != DT_NULL; dyn++) {
+        if (dyn->d_tag == DT_PLTGOT) {
+            if (reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr) == m_got) {
+                m_dynamic_has_base = true;
+            } else {
+                assert(RVA2Address(dyn->d_un.d_ptr).to_ptr() == m_got);
+                m_dynamic_has_base = false;
+            }
+            break;
+        }
+    }
 
     m_eh_frame_hdr = nullptr;
     for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
