@@ -320,7 +320,20 @@ Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
     m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
+template<>
+size_t Module::arch_reloc_type<Elf32_Rel>(const Elf32_Rel *rel) {
+    auto rel_type = ELF32_R_TYPE(rel->r_info);
+    if (rel_type == R_ARM_RELATIVE ||
+        rel_type == R_ARM_GLOB_DAT ||
+        rel_type == R_ARM_ABS32) {
+        return R_ARM_ABS32;
+    }
+    return 0;
+}
+
 void Module::preprocess_arch() {
+    m_linker_stubs = 0;
+    build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
 }
 
 void Module::relocate_arch(FunctionList *functions,
