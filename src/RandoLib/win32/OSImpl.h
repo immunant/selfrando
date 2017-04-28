@@ -228,6 +228,12 @@ public:
 
         static void fixup_export_trampoline(BytePointer*, const Module&, Callback, void*);
 
+        bool already_applied() const {
+            return false;
+        }
+
+        void mark_applied() {}
+
     private:
         const Module &m_module;
         const Address m_orig_src_addr;
