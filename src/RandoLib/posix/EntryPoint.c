@@ -31,9 +31,7 @@ extern char
     _TRaP_trap_end,
     _TRaP_trap_end_page __attribute__((weak)), // FIXME: this might not be available under -Bsymbolic
     _TRaP_got_begin,
-    _TRaP_got_end,
-    _TRaP_got_plt_begin,
-    _TRaP_got_plt_end;
+    _TRaP_got_plt_begin;
 
 extern char _DYNAMIC __attribute__((weak));
 #pragma GCC visibility pop
@@ -55,9 +53,7 @@ void _TRaP_Linux_EntryPointImpl(void) {
     PIT.xptramp_start = (uintptr_t)(&_TRaP_xptramp_begin);
     PIT.xptramp_size = &_TRaP_xptramp_end - &_TRaP_xptramp_begin;
     PIT.got_start = (uintptr_t*)(&_TRaP_got_begin);
-    PIT.got_end = (uintptr_t*)(&_TRaP_got_end);
     PIT.got_plt_start = (uintptr_t*)(&_TRaP_got_plt_begin);
-    PIT.got_plt_end = (uintptr_t*)(&_TRaP_got_plt_end);
     PIT.num_sections = 1;
     PIT.sections[0].start = (uintptr_t)(&_TRaP_text_begin);
     PIT.sections[0].size = &_TRaP_text_end - &_TRaP_text_begin;
