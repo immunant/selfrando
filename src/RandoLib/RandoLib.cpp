@@ -587,8 +587,8 @@ void ExecSectionProcessor::WriteLayoutFile() {
 
     uint32_t version = 0x00000101;
     uint32_t seed = 0; // FIXME: we write a fake seed for now
-    os::BytePointer func_base = m_functions.functions[0].undiv_start;
-    os::BytePointer func_end = m_functions.functions[m_functions.num_elems - 1].undiv_end();
+    os::BytePointer func_base = m_functions.elems[0].undiv_start;
+    os::BytePointer func_end = m_functions.elems[m_functions.num_elems - 1].undiv_end();
     ptrdiff_t func_size = func_end - func_base;
     const char *module_name = m_module.get_module_name();
     nullptr_t np = nullptr;
@@ -600,7 +600,7 @@ void ExecSectionProcessor::WriteLayoutFile() {
     os::API::WriteFile(fd, module_name, strlen(module_name) + 1);
     for (size_t i = 0; i < m_functions.num_elems; i++) {
         auto si = m_shuffled_order[i];
-        auto &func = m_functions.functions[si];
+        auto &func = m_functions.elems[si];
         if (func.skip_copy)
             continue;
 
