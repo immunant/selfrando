@@ -354,14 +354,11 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
                         m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
     API::DebugPrintf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
 
-    m_arch_relocs = nullptr;
-    m_num_arch_relocs = 0;
     preprocess_arch();
 }
 
 RANDO_SECTION Module::~Module() {
-    if (m_arch_relocs != nullptr)
-        os::API::MemFree(m_arch_relocs);
+    m_arch_relocs.free();
 }
 
 RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
@@ -496,8 +493,8 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     API::DebugPrintf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 
     relocate_arch(functions);
-    if (m_arch_relocs != nullptr) {
-        for (size_t i = 0; i < m_num_arch_relocs; i++)
+    if (m_arch_relocs.elems != nullptr) {
+        for (size_t i = 0; i < m_arch_relocs.num_elems; i++)
             if (!m_arch_relocs[i].applied) {
                 Relocation reloc(*this, address_from_ptr(m_arch_relocs[i].address),
                                  m_arch_relocs[i].type);
@@ -547,16 +544,16 @@ RANDO_SECTION void Module::build_arch_relocs() {
 
     if (dyn_rels != nullptr && dyn_rel_size != 0) {
         auto dyn_rel_end = dyn_rels + dyn_rel_size;
+        size_t new_arch_relocs = 0;
         for (auto rel = reinterpret_cast<RelType*>(dyn_rels);
                   rel < reinterpret_cast<RelType*>(dyn_rel_end); rel++) {
             auto rel_type = arch_reloc_type(rel);
             if (rel_type)
-               m_num_arch_relocs++;
+               new_arch_relocs++;
         }
-        if (m_num_arch_relocs > 0) {
-            m_arch_relocs = reinterpret_cast<ArchReloc*>(
-                os::API::MemAlloc(m_num_arch_relocs * sizeof(ArchReloc)));
-            size_t idx = 0;
+        if (new_arch_relocs > 0) {
+            size_t idx = m_arch_relocs.num_elems;
+            m_arch_relocs.extend(new_arch_relocs);
             for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
                       rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
                 auto rel_type = arch_reloc_type(rel);
@@ -567,9 +564,8 @@ RANDO_SECTION void Module::build_arch_relocs() {
                     idx++;
                 }
             }
-            RANDO_ASSERT(idx == m_num_arch_relocs);
-            os::API::QuickSort(m_arch_relocs, m_num_arch_relocs, sizeof(ArchReloc),
-                               ArchReloc::sort_compare);
+            RANDO_ASSERT(idx == m_arch_relocs.num_elems);
+            m_arch_relocs.sort(ArchReloc::sort_compare);
         }
     }
 }
@@ -588,28 +584,30 @@ RANDO_SECTION void Module::build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_
 RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address) const {
     // Given a memory address, find the ArchReloc that covers that address
     // using binary search (assuming the architecture code pre-sorted them)
-    if (m_arch_relocs == nullptr) {
-        RANDO_ASSERT(m_num_arch_relocs == 0);
+    if (m_arch_relocs.elems == nullptr) {
+        RANDO_ASSERT(m_arch_relocs.num_elems == 0);
         return nullptr;
     }
 
     auto address_ptr = address.to_ptr();
     // return null if no function contains addr
     if (address_ptr < m_arch_relocs[0].address ||
-        address_ptr > m_arch_relocs[m_num_arch_relocs - 1].address)
+        address_ptr > m_arch_relocs[m_arch_relocs.num_elems - 1].address)
         return nullptr;
-    size_t lo = 0, hi = m_num_arch_relocs - 1;
+    size_t lo = 0, hi = m_arch_relocs.num_elems - 1;
     while (lo < hi) {
         auto mid = lo + ((hi - lo) >> 1);
         if (address_ptr == m_arch_relocs[mid].address) {
-            return &m_arch_relocs[mid];
+            return const_cast<ArchReloc*>(&m_arch_relocs[mid]);
         } else if (address_ptr > m_arch_relocs[mid].address) {
             lo = mid + 1;
         } else {
             hi = mid - 1;
         }
     }
-    return address_ptr == m_arch_relocs[lo].address ? &m_arch_relocs[lo] : nullptr;
+    return address_ptr == m_arch_relocs[lo].address
+           ? const_cast<ArchReloc*>(&m_arch_relocs[lo])
+           : nullptr;
 }
 
 }

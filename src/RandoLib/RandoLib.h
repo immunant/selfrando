@@ -130,6 +130,10 @@ struct RANDO_SECTION Vector {
         return elems[idx];
     }
 
+    const T &operator[](size_t idx) const {
+        return elems[idx];
+    }
+
     template<typename Func>
     void sort(Func compare) {
         os::API::QuickSort(elems, num_elems, sizeof(T), compare);

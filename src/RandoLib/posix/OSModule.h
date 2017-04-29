@@ -299,8 +299,7 @@ private:
     // We set this flag if the addresses have the base.
     bool m_dynamic_has_base;
 
-    ArchReloc *m_arch_relocs;
-    size_t m_num_arch_relocs;
+    Vector<ArchReloc> m_arch_relocs;
     size_t m_linker_stubs;
 };
 
