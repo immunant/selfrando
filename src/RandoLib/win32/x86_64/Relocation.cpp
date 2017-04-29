@@ -190,8 +190,8 @@ static RANDO_SECTION int compare_first_dword(const void *pa, const void *pb) {
 }
 
 void os::Module::fixup_target_relocations(FunctionList *functions) const {
-    for (size_t i = 0; i < functions->num_funcs; i++) {
-        auto &func = functions->functions[i];
+    for (size_t i = 0; i < functions->num_elems; i++) {
+        auto &func = functions->elems[i];
         if (func.from_trap)
             continue;
         RANDO_ASSERT(func.is_gap); // Functions should either be from TRaP info or gaps

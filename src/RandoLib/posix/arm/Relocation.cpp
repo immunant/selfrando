@@ -343,8 +343,8 @@ void Module::relocate_arch(FunctionList *functions) const {
             continue;
 
         Section sec(*this, sec_info.start, sec_info.size);
-        for (size_t j = 0; j < functions->num_funcs; j++) {
-            auto &func = functions->functions[j];
+        for (size_t j = 0; j < functions->num_elems; j++) {
+            auto &func = functions->elems[j];
             if (!sec.contains_addr(func.div_start))
                 continue;
             if (func.skip_copy || func.from_trap)
