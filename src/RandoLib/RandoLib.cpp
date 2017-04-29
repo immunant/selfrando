@@ -55,6 +55,7 @@ Function *FunctionList::FindFunction(os::BytePointer addr) const {
     return elems[lo].undiv_contains(addr) ? &elems[lo] : nullptr;
 }
 
+template<>
 RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc) const {
     auto source_ptr = reloc->get_source_ptr();
     static_assert(sizeof(*source_ptr) == 1, "Byte size not 8 bits");

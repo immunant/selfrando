@@ -124,6 +124,15 @@ public:
 };
 
 }
+
+#if RANDOLIB_IS_WIN32
+//#include "win32/OSModule.h"
+#elif RANDOLIB_IS_POSIX
+#include "posix/OSModule.h"
+#else
+#error "Unrecognized OS"
+#endif
+
 #endif  // __cplusplus
 
 #endif // __RANDOLIB_OS_H

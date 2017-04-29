@@ -139,7 +139,8 @@ struct RANDO_SECTION Vector {
 struct RANDO_SECTION FunctionList : public Vector<Function> {
     Function *FindFunction(os::BytePointer) const;
 
-    void AdjustRelocation(os::Module::Relocation*) const;
+    template<class Reloc>
+    void AdjustRelocation(Reloc*) const;
 };
 
 #endif // __RANDOLIB_H
