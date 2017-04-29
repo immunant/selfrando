@@ -7,6 +7,7 @@
  */
 
 #include <OS.h>
+#include <RandoLib.h>
 #include <TrapInfo.h>
 
 os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
