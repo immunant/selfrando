@@ -65,6 +65,7 @@ os::Module::Relocation::type_from_based(os::Module::Relocation::Type based_type)
 }
 
 void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
+                                                     const Module &module,
                                                      FunctionList *functions) {
     RANDO_ASSERT(**export_ptr == 0xE9);
     os::Module::Relocation reloc(module,
