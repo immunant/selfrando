@@ -39,20 +39,20 @@
 // Binary search function that finds function containing given address
 // TODO: move this to a separate .cpp file???
 Function *FunctionList::FindFunction(os::BytePointer addr) const {
-    size_t lo = 0, hi = num_funcs - 1;
+    size_t lo = 0, hi = num_elems - 1;
     // return null if no function contains addr
-    if (addr <  functions[lo].undiv_start ||
-        addr >= functions[hi].undiv_end())
+    if (addr <  elems[lo].undiv_start ||
+        addr >= elems[hi].undiv_end())
         return nullptr;
     while (lo < hi) {
         auto mid = lo + ((hi - lo) >> 1);
-        if (addr >= functions[mid + 1].undiv_start) {
+        if (addr >= elems[mid + 1].undiv_start) {
             lo = mid + 1;
         } else {
             hi = mid;
         }
     }
-    return functions[lo].undiv_contains(addr) ? &functions[lo] : nullptr;
+    return elems[lo].undiv_contains(addr) ? &elems[lo] : nullptr;
 }
 
 RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc) const {
@@ -130,7 +130,7 @@ public:
         TIME_FUNCTION_CALL(CountFunctions);
         TIME_FUNCTION_CALL(BuildFunctions);
         // Optimization: if only one function, skip shuffling
-        if (m_functions.num_funcs > 1) {
+        if (m_functions.num_elems > 1) {
             TIME_FUNCTION_CALL(SortFunctions);
             TIME_FUNCTION_CALL(RemoveEmptyFunctions);
             TIME_FUNCTION_CALL(CoverGaps);
@@ -245,22 +245,22 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
 }
 
 void ExecSectionProcessor::CountFunctions() {
-    m_functions.num_funcs = 0;
+    m_functions.num_elems = 0;
     IterateTrapFunctions([this] (const Function &new_func) {
-        m_functions.num_funcs++;
+        m_functions.num_elems++;
         return true;
     });
-    os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_funcs);
+    os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_elems);
 }
 
 void ExecSectionProcessor::BuildFunctions() {
     m_functions.allocate();
     size_t func_idx = 0;
     IterateTrapFunctions([this, &func_idx] (const Function &new_func) {
-        m_functions.functions[func_idx++] = new_func;
+        m_functions.elems[func_idx++] = new_func;
         return true;
     });
-    RANDO_ASSERT(func_idx == m_functions.num_funcs);
+    RANDO_ASSERT(func_idx == m_functions.num_elems);
 }
 
 template<typename T>
@@ -282,13 +282,13 @@ void ExecSectionProcessor::SortFunctions() {
     // Sort by undiversified addresses
     // FIXME: use our own qsort function, or force use of NTDLL!qsort
     if (m_trap_info.header()->needs_sort())
-        os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
+        m_functions.sort(CompareFunctions);
     // Build sizes for functions
     auto exec_end = m_exec_section.end().to_ptr();
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         if (m_functions[i].has_size)
             continue;
-        auto next_start = (i == (m_functions.num_funcs - 1)) ? exec_end : m_functions[i + 1].undiv_start;
+        auto next_start = (i == (m_functions.num_elems - 1)) ? exec_end : m_functions[i + 1].undiv_start;
         m_functions[i].has_size = true;
         m_functions[i].size = next_start - m_functions[i].undiv_start;
     }
@@ -296,7 +296,7 @@ void ExecSectionProcessor::SortFunctions() {
 
 void ExecSectionProcessor::RemoveEmptyFunctions() {
     size_t cnt = 0;
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         RANDO_ASSERT(m_functions[i].has_size);
         if (m_functions[i].size == 0)
             continue;
@@ -305,15 +305,15 @@ void ExecSectionProcessor::RemoveEmptyFunctions() {
         cnt++;
     }
     os::API::DebugPrintf<2>("Removed %d empty functions\n",
-                            m_functions.num_funcs - cnt);
-    m_functions.num_funcs = cnt;
+                            m_functions.num_elems - cnt);
+    m_functions.num_elems = cnt;
 }
 
 template<typename GapPredicate>
 RANDO_ALWAYS_INLINE
 void ExecSectionProcessor::IterateFunctionGaps(GapPredicate pred) {
     auto last_addr = m_exec_section.start().to_ptr();
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         if (m_functions[i].is_gap)
             break; // We're currently adding gaps, and we reached the first one
         RANDO_ASSERT(m_functions[i].undiv_start >= last_addr);
@@ -344,7 +344,7 @@ void ExecSectionProcessor::CoverGaps() {
 
     os::API::DebugPrintf<2>("Trap gaps: %d\n", num_gaps);
     m_functions.extend(num_gaps);
-    size_t gap_idx = m_functions.num_funcs - num_gaps;
+    size_t gap_idx = m_functions.num_elems - num_gaps;
     IterateFunctionGaps([this, &gap_idx] (os::BytePointer gap_start, os::BytePointer gap_end) {
         m_functions[gap_idx].undiv_start = gap_start;
         m_functions[gap_idx].size = gap_end - gap_start;
@@ -353,14 +353,14 @@ void ExecSectionProcessor::CoverGaps() {
         m_functions[gap_idx].has_size = true;
         gap_idx++;
     });
-    RANDO_ASSERT(gap_idx == m_functions.num_funcs);
+    RANDO_ASSERT(gap_idx == m_functions.num_elems);
     // We need to re-sort the functions after adding the gaps at the end
-    os::API::QuickSort(m_functions.functions, m_functions.num_funcs, sizeof(Function), CompareFunctions);
+    m_functions.sort(CompareFunctions);
 }
 
 void ExecSectionProcessor::TrimGaps() {
     // Trim all NOPs (0x90 and 0xCCs) at the beginning of gap functions
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         if (!m_functions[i].is_gap)
             continue;
         while (m_functions[i].size > 0 && os::API::Is1ByteNOP(m_functions[i].undiv_start)) {
@@ -379,12 +379,12 @@ void ExecSectionProcessor::ShuffleFunctions() {
     }
 
     // Shuffle the order of the functions, using a Fisher-Yates shuffle
-    m_shuffled_order = reinterpret_cast<size_t*>(os::API::MemAlloc(m_functions.num_funcs * sizeof(size_t)));
-    for (size_t i = 0; i < m_functions.num_funcs; i++)
+    m_shuffled_order = reinterpret_cast<size_t*>(os::API::MemAlloc(m_functions.num_elems * sizeof(size_t)));
+    for (size_t i = 0; i < m_functions.num_elems; i++)
         m_shuffled_order[i] = i;
-    for (size_t i = 0; i < m_functions.num_funcs - 1; i++) {
+    for (size_t i = 0; i < m_functions.num_elems - 1; i++) {
         // Pick shuffled_order[i] at random from the remaining elements
-        auto j = skip_shuffle ? 0 : os::API::GetRandom(m_functions.num_funcs - i);
+        auto j = skip_shuffle ? 0 : os::API::GetRandom(m_functions.num_elems - i);
         if (j == 0) {
             continue;
         }
@@ -408,7 +408,7 @@ static inline RANDO_SECTION void PatchInTrampoline(os::BytePointer at, os::ByteP
 void ExecSectionProcessor::LayoutCode() {
     auto orig_code = m_exec_section.start().to_ptr();
     auto curr_addr = orig_code;
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         auto si = m_shuffled_order[i];
         auto &func = m_functions[si];
         if (func.skip_copy) continue;
@@ -476,7 +476,7 @@ void ExecSectionProcessor::ShuffleCode() {
     os::API::DebugPrintf<1>("Divcode@%p\n", m_exec_copy);
 
     auto copy_delta = m_exec_copy - orig_code;
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         auto si = m_shuffled_order[i];
         auto &func = m_functions[si];
         if (func.skip_copy) continue;
@@ -497,10 +497,10 @@ void ExecSectionProcessor::ShuffleCode() {
         os::API::MemCpy(orig_code, m_exec_copy, m_exec_code_size);
         // TODO: zero out the space left over
         // Revert the div_start addresses to the original section
-        for (size_t i = 0; i < m_functions.num_funcs; i++)
+        for (size_t i = 0; i < m_functions.num_elems; i++)
             m_functions[i].div_start -= copy_delta;
     } else {
-        for (size_t i = 0; i < m_functions.num_funcs; i++) {
+        for (size_t i = 0; i < m_functions.num_elems; i++) {
 #ifdef WIN32 // For now, we only replace the original code with CC's on Windows
             auto &func = m_functions[i];
             if (func.size < 7) {
@@ -587,7 +587,7 @@ void ExecSectionProcessor::WriteLayoutFile() {
     uint32_t version = 0x00000101;
     uint32_t seed = 0; // FIXME: we write a fake seed for now
     os::BytePointer func_base = m_functions.functions[0].undiv_start;
-    os::BytePointer func_end = m_functions.functions[m_functions.num_funcs - 1].undiv_end();
+    os::BytePointer func_end = m_functions.functions[m_functions.num_elems - 1].undiv_end();
     ptrdiff_t func_size = func_end - func_base;
     const char *module_name = m_module.get_module_name();
     nullptr_t np = nullptr;
@@ -597,7 +597,7 @@ void ExecSectionProcessor::WriteLayoutFile() {
     os::API::WriteFile(fd, &func_base, sizeof(func_base));
     os::API::WriteFile(fd, &func_size, sizeof(func_size));
     os::API::WriteFile(fd, module_name, strlen(module_name) + 1);
-    for (size_t i = 0; i < m_functions.num_funcs; i++) {
+    for (size_t i = 0; i < m_functions.num_elems; i++) {
         auto si = m_shuffled_order[i];
         auto &func = m_functions.functions[si];
         if (func.skip_copy)

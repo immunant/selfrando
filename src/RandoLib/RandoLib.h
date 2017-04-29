@@ -74,9 +74,9 @@ struct RANDO_SECTION Function {
         return (addr + div_delta());
     }
 
-    // Tiebreaker rank for functions with the same undiv_addr
+    // Tiebreaker rank for elems with the same undiv_addr
     int sort_rank() const {
-        // TRaP functions should come before their padding and gaps
+        // TRaP elems should come before their padding and gaps
         if (from_trap)
             return 1;
         if (is_padding)
@@ -87,44 +87,56 @@ struct RANDO_SECTION Function {
     }
 };
 
-struct RANDO_SECTION FunctionList {
-    Function *functions;
-    size_t num_funcs;
+template<typename T>
+struct RANDO_SECTION Vector {
+    T *elems;
+    size_t num_elems;
 
-    FunctionList() : functions(nullptr), num_funcs(0) { }
+    Vector() : elems(nullptr), num_elems(0) { }
+    Vector(const Vector&) = delete;
+    Vector(const Vector&&) = delete;
+    Vector &operator=(const Vector&) = delete;
+    Vector &operator=(const Vector&&) = delete;
 
     void allocate() {
-        if (functions != nullptr)
-            os::API::MemFree(functions);
-        functions = reinterpret_cast<Function*>(os::API::MemAlloc(num_funcs * sizeof(Function), true));
+        if (elems != nullptr)
+            os::API::MemFree(elems);
+        elems = reinterpret_cast<T*>(os::API::MemAlloc(num_elems * sizeof(T), true));
     }
 
     void free() {
-        if (functions != nullptr)
-            os::API::MemFree(functions);
-        functions = nullptr;
+        if (elems != nullptr)
+            os::API::MemFree(elems);
+        elems = nullptr;
     }
 
     void extend(size_t num_extra) {
         if (num_extra == 0)
             return;
-        if (functions == nullptr) {
-            num_funcs = num_extra;
+        if (elems == nullptr) {
+            num_elems = num_extra;
             allocate();
             return;
         }
 
-        Function *old_funcs = functions;
-        num_funcs += num_extra;
-        functions = reinterpret_cast<Function*>(os::API::MemAlloc(num_funcs * sizeof(Function), true));
-        os::API::MemCpy(functions, old_funcs, (num_funcs - num_extra) * sizeof(Function));
-        os::API::MemFree(old_funcs);
+        T *old_elems = elems;
+        num_elems += num_extra;
+        elems = reinterpret_cast<T*>(os::API::MemAlloc(num_elems * sizeof(T), true));
+        os::API::MemCpy(elems, old_elems, (num_elems - num_extra) * sizeof(T));
+        os::API::MemFree(old_elems);
     }
 
-    Function &operator[](size_t idx) {
-        return functions[idx];
+    T &operator[](size_t idx) {
+        return elems[idx];
     }
 
+    template<typename Func>
+    void sort(Func compare) {
+        os::API::QuickSort(elems, num_elems, sizeof(T), compare);
+    }
+};
+
+struct RANDO_SECTION FunctionList : public Vector<Function> {
     Function *FindFunction(os::BytePointer) const;
 
     void AdjustRelocation(os::Module::Relocation*) const;
