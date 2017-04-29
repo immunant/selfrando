@@ -27,11 +27,11 @@ BytePointer Module::Relocation::get_target_ptr() const {
     auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case R_386_32:
-    case R_386_GOT32:
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+    case R_386_GOT32:
     case R_386_GOTOFF:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(at_ptr);
     case R_386_PC32:
@@ -49,12 +49,12 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case R_386_32:
-    case R_386_GOT32:
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
         *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
+    case R_386_GOT32:
     case R_386_GOTOFF:
         *reinterpret_cast<ptrdiff_t*>(at_ptr) = new_target - m_module.get_got_ptr();
         break;
