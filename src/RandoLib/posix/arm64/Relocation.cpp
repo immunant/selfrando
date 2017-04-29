@@ -358,8 +358,7 @@ Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
 
 void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                  const Module &module,
-                                                 Module::Relocation::Callback callback,
-                                                 void *callback_arg) {
+                                                 FunctionList *functions) {
     //RANDO_ASSERT(**export_ptr == 0xE9);
     // According to the AArch64 encoding document I found,
     // unconditional branches are encoded as:
@@ -370,7 +369,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     Module::Relocation reloc(module,
                              module.address_from_ptr(*export_ptr),
                              R_AARCH64_JUMP26);
-    (*callback)(reloc, callback_arg);
+    functions->AdjustRelocation(&reloc);
     *export_ptr += 4;
 }
 
@@ -408,9 +407,7 @@ void Module::preprocess_arch() {
     build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
 
-void Module::relocate_arch(FunctionList *functions,
-                           Module::Relocation::Callback callback,
-                           void *callback_arg) const {
+void Module::relocate_arch(FunctionList *functions) const {
 }
 
 } // namespace os

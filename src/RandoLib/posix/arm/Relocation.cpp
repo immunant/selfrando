@@ -289,8 +289,7 @@ Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
 
 void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                  const Module &module,
-                                                 Module::Relocation::Callback callback,
-                                                 void *callback_arg) {
+                                                 FunctionList *functions) {
     unsigned int reloc_type;
     if (*((*export_ptr)+3) == 0xea) {
         API::DebugPrintf<5>("Export tramp (arm): %p\n", *export_ptr);
@@ -302,7 +301,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     Module::Relocation reloc(module,
                              module.address_from_ptr(*export_ptr),
                              reloc_type);
-    (*callback)(reloc, callback_arg);
+    functions->AdjustRelocation(&reloc);
     *export_ptr += 4;
 }
 
@@ -336,9 +335,7 @@ void Module::preprocess_arch() {
     build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
 }
 
-void Module::relocate_arch(FunctionList *functions,
-                           Module::Relocation::Callback callback,
-                           void *callback_arg) const {
+void Module::relocate_arch(FunctionList *functions) const {
     for (size_t i = 0; i < TRAP_NUM_SECTIONS; i++) {
         auto &sec_info = m_module_info->program_info_table->sections[i];
         if (sec_info.start == 0 || sec_info.size == 0 ||
@@ -368,7 +365,7 @@ void Module::relocate_arch(FunctionList *functions,
                                              undiv_ptr, div_ptr);
                     undiv_ptr += 1, div_ptr += 1;
                     Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_ABS32, 0);
-                    (*callback)(reloc, callback_arg);
+                    functions->AdjustRelocation(&reloc);
                     break;
                 }
                 case 0xe59fc000: {
@@ -380,10 +377,10 @@ void Module::relocate_arch(FunctionList *functions,
                     undiv_ptr += 2, div_ptr += 2;
                     if (div_ptr[-1] == 0xe12fff1c) {
                         Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_ABS32, 0);
-                        (*callback)(reloc, callback_arg);
+                        functions->AdjustRelocation(&reloc);
                     } else {
                         Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_REL32, -4);
-                        (*callback)(reloc, callback_arg);
+                        functions->AdjustRelocation(&reloc);
                     }
                     break;
                 }
@@ -394,7 +391,7 @@ void Module::relocate_arch(FunctionList *functions,
                     RANDO_ASSERT(div_ptr[2] == 0xe12fff1c);
                     undiv_ptr += 3, div_ptr += 3;
                     Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_REL32, 0);
-                    (*callback)(reloc, callback_arg);
+                    functions->AdjustRelocation(&reloc);
                     break;
                 }
                 default: {
@@ -403,14 +400,14 @@ void Module::relocate_arch(FunctionList *functions,
                         API::DebugPrintf<10>("Found Thumb short branch stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
                         Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_JUMP24, -8);
-                        (*callback)(reloc, callback_arg);
+                        functions->AdjustRelocation(&reloc);
                         break;
                     }
                     if ((div_ptr[0] & 0xd000f800) == 0x9000f000) {
                         API::DebugPrintf<10>("Found A8 veneer stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
                         Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_THM_JUMP24, -4);
-                        (*callback)(reloc, callback_arg);
+                        functions->AdjustRelocation(&reloc);
                         break;
                     }
                     break;

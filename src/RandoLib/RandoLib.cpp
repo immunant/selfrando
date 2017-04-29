@@ -38,7 +38,7 @@
 
 // Binary search function that finds function containing given address
 // TODO: move this to a separate .cpp file???
-Function *FunctionList::FindFunction(os::BytePointer addr) {
+Function *FunctionList::FindFunction(os::BytePointer addr) const {
     size_t lo = 0, hi = num_funcs - 1;
     // return null if no function contains addr
     if (addr <  functions[lo].undiv_start ||
@@ -55,7 +55,7 @@ Function *FunctionList::FindFunction(os::BytePointer addr) {
     return functions[lo].undiv_contains(addr) ? &functions[lo] : nullptr;
 }
 
-RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc) {
+RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc) const {
     auto source_ptr = reloc->get_source_ptr();
     static_assert(sizeof(*source_ptr) == 1, "Byte size not 8 bits");
     // Update the "source" address if it falls inside a diversified function
@@ -196,10 +196,6 @@ private:
 #if RANDOLIB_WRITE_LAYOUTS > 0
     void WriteLayoutFile();
 #endif
-
-    static void AdjustRelocation(os::Module::Relocation &reloc,
-                                 void *callback_arg);
-
 };
 
 template<typename FunctionPredicate>
@@ -538,17 +534,9 @@ void ExecSectionProcessor::ShuffleCode() {
     }
 }
 
-// TODO(performance): would be nice to turn reloc_type into a template parameter
-// FIXME: this also needs a refactoring into ArchX86 (to support ArchARM later or others)
-void ExecSectionProcessor::AdjustRelocation(os::Module::Relocation &reloc,
-                                            void *callback_arg) {
-    auto esp = reinterpret_cast<ExecSectionProcessor*>(callback_arg);
-    esp->m_functions.AdjustRelocation(&reloc);
-}
-
 void ExecSectionProcessor::FixupRelocations() {
     // FIXME(performance): this is pretty slow (profile confirms it)
-    m_module.ForAllRelocations(&m_functions, AdjustRelocation, this);
+    m_module.ForAllRelocations(&m_functions);
 }
 
 void ExecSectionProcessor::ProcessTrapRelocations() {
@@ -556,14 +544,14 @@ void ExecSectionProcessor::ProcessTrapRelocations() {
         auto nonexec_relocs = m_trap_info.nonexec_relocations();
         for (auto trap_reloc : nonexec_relocs) {
             auto reloc = os::Module::Relocation(m_module, trap_reloc);
-            AdjustRelocation(reloc, this);
+            m_functions.AdjustRelocation(&reloc);
         }
     }
     for (auto trap_entry : m_trap_info) {
         auto relocs = trap_entry.relocations();
         for (auto trap_reloc : relocs) {
             auto reloc = os::Module::Relocation(m_module, trap_reloc);
-            AdjustRelocation(reloc, this);
+            m_functions.AdjustRelocation(&reloc);
         }
     }
 }
@@ -580,8 +568,7 @@ void ExecSectionProcessor::FixupExports() {
     for (auto export_ptr = export_start; export_ptr < export_end;)
         os::Module::Relocation::fixup_export_trampoline(&export_ptr,
                                                         m_module,
-                                                        AdjustRelocation,
-                                                        this);
+                                                        &m_functions);
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0

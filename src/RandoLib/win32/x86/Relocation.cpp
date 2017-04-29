@@ -64,23 +64,19 @@ os::Module::Relocation::type_from_based(os::Module::Relocation::Type based_type)
 }
 
 void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
-                                                     const Module &module,
-                                                     os::Module::Relocation::Callback callback,
-                                                     void *callback_arg) {
+                                                     FunctionList *functions) {
     RANDO_ASSERT(**export_ptr == 0xE9);
     os::Module::Relocation reloc(module,
                                  module.address_from_ptr(*export_ptr + 1),
                                  IMAGE_REL_I386_REL32);
-    (*callback)(reloc, callback_arg);
+    functions->AdjustRelocation(&reloc);
     *export_ptr += 5;
 }
 
 void os::Module::arch_init() {
 }
 
-void os::Module::fixup_target_relocations(FunctionList *functions,
-                                          Relocation::Callback callback,
-                                          void *callback_arg) const {
+void os::Module::fixup_target_relocations(FunctionList *functions) const {
     // Fix up exception handler table
     // FIXME: this seems to fix the Firefox SAFESEH-related crashes, but only partially
     // It is possible that the Windows loader makes a copy of this table at startup,
@@ -93,7 +89,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
             if (seh_table != nullptr && load_config->SEHandlerCount > 0) {
                 auto table_size = load_config->SEHandlerCount * sizeof(BytePointer);
                 for (size_t i = 0; i < load_config->SEHandlerCount; i++)
-                    relocate_rva(&seh_table[i], callback, callback_arg, false);
+                    relocate_rva(&seh_table[i], functions, false);
             }
         }
     }

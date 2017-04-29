@@ -462,16 +462,14 @@ static RANDO_SECTION int compare_eh_frame_entries(const void *pa, const void *pb
     return (pca[0] < pcb[0]) ? -1 : ((pca[0] == pcb[0]) ? 0 : 1);
 }
 
-RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
-                                             Module::Relocation::Callback callback,
-                                             void *callback_arg) const {
+RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     // Fix up the original entry point and init addresses
     uintptr_t new_dt_init;
     if (m_module_info->program_info_table->orig_dt_init != 0) {
         new_dt_init = m_module_info->program_info_table->orig_dt_init;
         Relocation reloc(*this, address_from_ptr(&new_dt_init),
                          Relocation::get_pointer_reloc_type());
-        (*callback)(reloc, callback_arg);
+        functions->AdjustRelocation(&reloc);
     } else {
         // Point the branch to the return instruction
         new_dt_init = m_module_info->program_info_table->rando_return;
@@ -486,7 +484,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
         new_entry = m_module_info->program_info_table->orig_entry;
         Relocation reloc(*this, address_from_ptr(&new_entry),
                          Relocation::get_pointer_reloc_type());
-        (*callback)(reloc, callback_arg);
+        functions->AdjustRelocation(&reloc);
     } else {
         // See above
         new_entry = m_module_info->program_info_table->rando_return;
@@ -497,13 +495,13 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                                   new_entry);
     API::DebugPrintf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 
-    relocate_arch(functions, callback, callback_arg);
+    relocate_arch(functions);
     if (m_arch_relocs != nullptr) {
         for (size_t i = 0; i < m_num_arch_relocs; i++)
             if (!m_arch_relocs[i].applied) {
                 Relocation reloc(*this, address_from_ptr(m_arch_relocs[i].address),
                                  m_arch_relocs[i].type);
-                (*callback)(reloc, callback_arg);
+                functions->AdjustRelocation(&reloc);
             }
     }
 
@@ -520,7 +518,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                 BytePointer entry_pc = m_eh_frame_hdr + entry_pc_delta;
                 Relocation reloc(*this, address_from_ptr(&entry_pc),
                                  Relocation::get_pointer_reloc_type());
-                (*callback)(reloc, callback_arg);
+                functions->AdjustRelocation(&reloc);
                 ptr[idx] = static_cast<uint32_t>(entry_pc - m_eh_frame_hdr);
             }
             API::QuickSort(ptr + 3, num_entries, 2 * sizeof(int32_t),

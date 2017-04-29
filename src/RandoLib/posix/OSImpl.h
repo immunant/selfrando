@@ -134,7 +134,6 @@ public:
     class Relocation {
     public:
         typedef size_t Type;
-        typedef void(*Callback)(Relocation&, void*);
 
         Relocation() = delete;
 
@@ -175,7 +174,7 @@ public:
 
         static Type get_pointer_reloc_type();
 
-        static void fixup_export_trampoline(BytePointer*, const Module&, Callback, void*);
+        static void fixup_export_trampoline(BytePointer*, const Module&, FunctionList*);
         static void fixup_entry_point(const Module&, uintptr_t, uintptr_t);
 
         inline ptrdiff_t get_addend() const {
@@ -289,9 +288,7 @@ public:
     typedef void(*ModuleCallback)(Module&, void*);
     static RANDO_SECTION void ForAllModules(ModuleCallback, void*);
 
-    RANDO_SECTION void ForAllRelocations(FunctionList *functions,
-                                         Module::Relocation::Callback callback,
-                                         void *callback_arg) const;
+    RANDO_SECTION void ForAllRelocations(FunctionList *functions) const;
 
     template<typename RelType>
     RANDO_SECTION Relocation::Type arch_reloc_type(const RelType *dyn_reloc);
@@ -301,9 +298,7 @@ public:
     RANDO_SECTION void build_arch_relocs();
 
     RANDO_SECTION void preprocess_arch();
-    RANDO_SECTION void relocate_arch(FunctionList *functions,
-                                     Module::Relocation::Callback callback,
-                                     void *callback_arg) const;
+    RANDO_SECTION void relocate_arch(FunctionList *functions) const;
 
     inline RANDO_SECTION Section export_section() const {
         return Section(*this, m_module_info->program_info_table->xptramp_start,

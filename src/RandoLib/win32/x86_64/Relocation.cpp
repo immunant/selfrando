@@ -100,13 +100,12 @@ os::Module::Relocation::type_from_based(os::Module::Relocation::Type based_type)
 
 void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                      const Module &module,
-                                                     os::Module::Relocation::Callback callback,
-                                                     void *callback_arg) {
+                                                     FunctionList *functions) {
     RANDO_ASSERT(**export_ptr == 0xE9);
     os::Module::Relocation reloc(module,
                                  module.address_from_ptr(*export_ptr + 1),
                                  IMAGE_REL_AMD64_REL32);
-    (*callback)(reloc, callback_arg);
+    functions->AdjustRelocation(&reloc);
     *export_ptr += 5;
 }
 
@@ -190,9 +189,7 @@ static RANDO_SECTION int compare_first_dword(const void *pa, const void *pb) {
     return (fa[0] < fb[0]) ? -1 : 1;
 }
 
-void os::Module::fixup_target_relocations(FunctionList *functions,
-                                          Relocation::Callback callback,
-                                          void *callback_arg) const {
+void os::Module::fixup_target_relocations(FunctionList *functions) const {
     for (size_t i = 0; i < functions->num_funcs; i++) {
         auto &func = functions->functions[i];
         if (func.from_trap)
@@ -217,7 +214,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                 os::Module::Relocation reloc(*this,
                                              address_from_ptr(undiv_ptr + 2),
                                              IMAGE_REL_AMD64_REL32);
-                (*callback)(reloc, callback_arg);
+                functions->AdjustRelocation(&reloc);
                 div_ptr += 6;
                 undiv_ptr += 6;
                 continue;
@@ -236,8 +233,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                 os::Module::Relocation reloc2(*this,
                                               address_from_ptr(undiv_ptr + 8),
                                               IMAGE_REL_AMD64_REL32);
-                (*callback)(reloc1, callback_arg);
-                (*callback)(reloc2, callback_arg);
+                functions->AdjustRelocation(&reloc1);
+                functions->AdjustRelocation(&reloc2);
                 div_ptr += 12;
                 undiv_ptr += 12;
                 continue;
@@ -268,8 +265,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                 os::Module::Relocation reloc2(*this,
                                               address_from_ptr(undiv_ptr + 59),
                                               IMAGE_REL_AMD64_REL32);
-                (*callback)(reloc1, callback_arg);
-                (*callback)(reloc2, callback_arg);
+                functions->AdjustRelocation(&reloc1);
+                functions->AdjustRelocation(&reloc2);
                 div_ptr += 121;
                 undiv_ptr += 121;
                 continue;
@@ -289,8 +286,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
             // to TRaP info and handle them in get/set_target_ptr above. However, that would mean
             // we would have to add TRaP records for all .pdata/.xdata/other EH-related sections
             for (auto *ptr = pdata_start; ptr < pdata_end; ptr++) {
-                relocate_rva(&ptr->BeginAddress, callback, callback_arg, false);
-                relocate_rva(&ptr->EndAddress, callback, callback_arg, true);
+                relocate_rva(&ptr->BeginAddress, functions, false);
+                relocate_rva(&ptr->EndAddress, functions, true);
                 if (ptr->UnwindInfoAddress & 1)
                     continue;
 
@@ -305,13 +302,13 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                 if (unwind_info->flags & UNW_FLAG_CHAININFO) {
                     // We have a chained RUNTIME_FUNCTION
                     auto *chain = reinterpret_cast<RUNTIME_FUNCTION*>(end_of_codes);
-                    relocate_rva(&chain->BeginAddress, callback, callback_arg, false);
-                    relocate_rva(&chain->EndAddress, callback, callback_arg, true);
+                    relocate_rva(&chain->BeginAddress, functions, false);
+                    relocate_rva(&chain->EndAddress, functions, true);
                 } else if (unwind_info->flags & (UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER)) {
                     auto handler_rva_ptr = reinterpret_cast<DWORD*>(end_of_codes);
                     auto handler_rva = *handler_rva_ptr;
                     auto lsda_ptr = reinterpret_cast<os::BytePointer>(handler_rva_ptr + 1);
-                    relocate_rva(handler_rva_ptr, callback, callback_arg, false);
+                    relocate_rva(handler_rva_ptr, functions, false);
 #if 0
                     if (*handler_rva_ptr == seh_GSHandlerCheck_rva ||
                         *handler_rva_ptr == seh_GSHandlerCheck_SEH_rva) {
@@ -326,14 +323,14 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                                                 scope_table, scope_table->Count);
                         for (size_t i = 0; i < scope_table->Count; i++) {
                             auto &scope_record = scope_table->ScopeRecord[i];
-                            relocate_rva(&scope_record.BeginAddress, callback, callback_arg, false);
-                            relocate_rva(&scope_record.EndAddress, callback, callback_arg, true);
+                            relocate_rva(&scope_record.BeginAddress, functions, false);
+                            relocate_rva(&scope_record.EndAddress, functions, true);
                             // HandlerAddress can have the special values 0 or 1, which
                             // we should ignore
                             if (scope_record.HandlerAddress > 1)
-                                relocate_rva(&scope_record.HandlerAddress, callback, callback_arg, false);
+                                relocate_rva(&scope_record.HandlerAddress, functions, false);
                             if (scope_record.JumpTarget != 0)
-                                relocate_rva(&scope_record.JumpTarget, callback, callback_arg, false);
+                                relocate_rva(&scope_record.JumpTarget, functions, false);
                         }
                         // Re-sort the contents of pdata
                         os::API::QuickSort(&scope_table->ScopeRecord[0],
@@ -354,7 +351,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                             auto *unwind_map = RVA2Address(func_info->unwind_map_rva).to_ptr<UnwindMapEntry*>();
                             os::API::DebugPrintf<2>("Unwind map:%p[%d]\n", unwind_map, func_info->num_states);
                             for (size_t i = 0; i < func_info->num_states; i++)
-                                relocate_rva(&unwind_map[i].handler_rva, callback, callback_arg, false);
+                                relocate_rva(&unwind_map[i].handler_rva, functions, false);
                         }
                         if (func_info->try_block_map_rva != 0) {
                             auto *try_block_map = RVA2Address(func_info->try_block_map_rva).to_ptr<TryBlock*>();
@@ -364,7 +361,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                                 if (try_block.catches_rva != 0) {
                                     auto *catches = RVA2Address(try_block.catches_rva).to_ptr<CatchBlock*>();
                                     for (size_t j = 0; j < try_block.num_catches; j++) {
-                                        relocate_rva(&catches[j].handler_rva, callback, callback_arg, false);
+                                        relocate_rva(&catches[j].handler_rva, functions, false);
                                         // TODO: do we need to follow type_rva???
                                     }
                                 }
@@ -374,7 +371,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions,
                             auto *ip_state_map = RVA2Address(func_info->ip_state_map_rva).to_ptr<IpStateMapEntry*>();
                             os::API::DebugPrintf<2>("ip_state_map:%p[%d]\n", ip_state_map, func_info->num_ip_state_map_entries);
                             for (size_t i = 0; i < func_info->num_ip_state_map_entries; i++)
-                                relocate_rva(&ip_state_map[i].ip_rva, callback, callback_arg, false);
+                                relocate_rva(&ip_state_map[i].ip_rva, functions, false);
                             // The ip_state_map needs to be sorted
                             os::API::QuickSort(ip_state_map,
                                                func_info->num_ip_state_map_entries,

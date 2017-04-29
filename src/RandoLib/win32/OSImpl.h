@@ -189,7 +189,6 @@ public:
     class Relocation {
     public:
         typedef DWORD Type;
-        typedef void(*Callback)(Relocation&, void*);
 
         Relocation() = delete;
 
@@ -226,7 +225,7 @@ public:
 
         static Type type_from_based(Type based_type);
 
-        static void fixup_export_trampoline(BytePointer*, const Module&, Callback, void*);
+        static void fixup_export_trampoline(BytePointer*, const Module&, FunctionList*);
 
         bool already_applied() const {
             return false;
@@ -258,8 +257,7 @@ public:
 
     template<typename T>
     inline RANDO_SECTION void relocate_rva(T *rva,
-                                           Relocation::Callback callback,
-                                           void *callback_arg,
+                                           FunctionList *functions,
                                            bool subtract_one) const {
         auto full_addr = reinterpret_cast<uintptr_t>(m_handle) + *rva;
         // If we're relocating an RVA that points to one byte past the end
@@ -269,7 +267,7 @@ public:
             full_addr--;
         Relocation rva_reloc(*this, address_from_ptr(&full_addr),
                              Relocation::get_pointer_reloc_type());
-        (*callback)(rva_reloc, callback_arg);
+        functions->AdjustRelocation(&rva_reloc);
         if (subtract_one)
             full_addr++;
 
@@ -339,7 +337,7 @@ public:
     typedef void(*ModuleCallback)(Module&, void*);
     static RANDO_SECTION void ForAllModules(ModuleCallback, void*);
 
-    RANDO_SECTION void ForAllRelocations(FunctionList*, Relocation::Callback, void*) const;
+    RANDO_SECTION void ForAllRelocations(FunctionList*) const;
 
     inline RANDO_SECTION Section export_section() const {
         return Section(*this, m_export_section);
@@ -379,7 +377,7 @@ private:
 
     void arch_init();
 
-    void fixup_target_relocations(FunctionList*, Relocation::Callback, void*) const;
+    void fixup_target_relocations(FunctionList*) const;
 
     void get_file_name() const;
 

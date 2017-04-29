@@ -76,8 +76,7 @@ Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
 
 void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                  const Module &module,
-                                                 Module::Relocation::Callback callback,
-                                                 void *callback_arg) {
+                                                 FunctionList *functions) {
     if (**export_ptr == 0xEB) {
         // We hit the placeholder in Textramp.S, skip over it
         *export_ptr += 2;
@@ -90,7 +89,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     Module::Relocation reloc(module,
                              module.address_from_ptr(*export_ptr + 1),
                              R_386_PC32);
-    (*callback)(reloc, callback_arg);
+    functions->AdjustRelocation(&reloc);
     *export_ptr += 6;
 }
 
@@ -120,9 +119,7 @@ void Module::preprocess_arch() {
     build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
 }
 
-void Module::relocate_arch(FunctionList *functions,
-                           Module::Relocation::Callback callback,
-                           void *callback_arg) const {
+void Module::relocate_arch(FunctionList *functions) const {
 }
 
 } // namespace os

@@ -629,16 +629,14 @@ RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback
 #endif
 }
 
-RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
-                                             Relocation::Callback callback,
-                                             void *callback_arg) const {
+RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     // Fix up the entry point
     RANDO_ASSERT(m_info->entry_loop != nullptr);
     RANDO_ASSERT(m_info->entry_loop[0] == 0xE9);
 
     // Patch the entry loop jump
     // FIXME: this is x86-specific
-    relocate_rva(&m_info->original_entry_rva, callback, callback_arg, false);
+    relocate_rva(&m_info->original_entry_rva, functions, false);
     BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
     *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
     API::DebugPrintf<1>("New program entry:%p\n", new_entry);
@@ -664,10 +662,10 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
                 continue;
             auto reloc_rva = fixup_block->VirtualAddress + reloc_offset;
             Relocation reloc(*this, RVA2Address(reloc_rva), reloc_arch_type);
-            (*callback)(reloc, callback_arg);
+            functions->AdjustRelocation(&reloc);
         }
     }
-    fixup_target_relocations(functions, callback, callback_arg);
+    fixup_target_relocations(functions);
 }
 
 }
