@@ -31,6 +31,7 @@
 #define _CRT_NO_VA_START_VALIDATION // Disable this since it puts __vcrt_va_start_verify_argument_type() in .text
 
 #include <OS.h>
+#include <RandoLib.h>
 #include <TrapInfo.h>
 
 #include <Windows.h>
