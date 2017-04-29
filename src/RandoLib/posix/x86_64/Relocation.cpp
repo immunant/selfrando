@@ -64,8 +64,8 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_X86_64_32S: // FIXME: is this correct???
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
     case R_X86_64_64:
-    case R_X86_64_GOT64:
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
+    case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(at_ptr);
     case R_X86_64_GOTPCREL:
@@ -115,9 +115,9 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case R_X86_64_64:
-    case R_X86_64_GOT64:
         *reinterpret_cast<uint64_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
+    case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
         *reinterpret_cast<ptrdiff_t*>(at_ptr) = new_target - m_module.get_got_ptr();
         break;
