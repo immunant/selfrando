@@ -178,6 +178,12 @@ BytePointer Module::Relocation::get_got_entry() const {
     case 42: // R_X86_64_REX_GOTPCRELX
         if (is_patched_gotpcrel(at_ptr, m_addend))
             return nullptr;
+        if (at_ptr[-2] == 0x8d)
+            return nullptr; // MOV-to-LEA conversion
+        if (at_ptr[-2] == 0x67 && at_ptr[-1] == 0xe8)
+            return nullptr; // callq-to-addr32-callq conversion
+        if (at_ptr[-2] == 0xe9 && at_ptr[3] == 0x90)
+            return nullptr; // jmpq-to-jmpq-nop conversion
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_X86_64_GOTPC32:
         at_ptr += *reinterpret_cast<int32_t*>(at_ptr);
