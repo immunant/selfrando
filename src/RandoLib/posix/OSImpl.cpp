@@ -505,6 +505,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
 
     // Apply relocations to known GOT entries
     for (size_t i = 0; i < m_got_entries.num_elems; i++) {
+        API::DebugPrintf<5>("GOT entry@%p\n", m_got_entries.elems[i]);
         Relocation reloc(*this, address_from_ptr(m_got_entries.elems[i]),
                          Relocation::get_pointer_reloc_type());
         functions->AdjustRelocation(&reloc);
