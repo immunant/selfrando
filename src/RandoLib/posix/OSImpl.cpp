@@ -527,6 +527,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
 template<typename DynType, typename RelType,
          size_t dt_relocs, size_t dt_relocs_size>
 RANDO_SECTION void Module::build_arch_relocs() {
+#if 0 // Disabled since they overlap with the GOT relocs
     os::BytePointer dyn_rels = nullptr;
     size_t dyn_rel_size = 0;
     auto dyn = reinterpret_cast<DynType*>(m_module_info->dynamic);
@@ -568,6 +569,7 @@ RANDO_SECTION void Module::build_arch_relocs() {
             m_arch_relocs.sort(ArchReloc::sort_compare);
         }
     }
+#endif
 }
 
 // Instantiate build_arch_relocs() for the most common cases
