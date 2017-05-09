@@ -536,20 +536,10 @@ void ExecSectionProcessor::FixupRelocations() {
 }
 
 void ExecSectionProcessor::ProcessTrapRelocations() {
-    if (m_trap_info.header()->has_nonexec_relocs()) {
-        auto nonexec_relocs = m_trap_info.nonexec_relocations();
-        for (auto trap_reloc : nonexec_relocs) {
-            auto reloc = os::Module::Relocation(m_module, trap_reloc);
-            m_functions.AdjustRelocation(&reloc);
-        }
-    }
-    for (auto trap_entry : m_trap_info) {
-        auto relocs = trap_entry.relocations();
-        for (auto trap_reloc : relocs) {
-            auto reloc = os::Module::Relocation(m_module, trap_reloc);
-            m_functions.AdjustRelocation(&reloc);
-        }
-    }
+    m_trap_info.for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
+        auto reloc = os::Module::Relocation(m_module, trap_reloc);
+        m_functions.AdjustRelocation(&reloc);
+    });
 }
 
 void ExecSectionProcessor::FixupExports() {

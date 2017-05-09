@@ -644,6 +644,17 @@ public:
                                &m_header);
     }
 
+    template<typename Func>
+    void for_all_relocations(Func func) const {
+        if (m_header.has_nonexec_relocs())
+            for (auto trap_reloc : nonexec_relocations())
+                func(trap_reloc);
+
+        for (auto trap_entry : *this)
+            for (auto trap_reloc : trap_entry.relocations())
+                func(trap_reloc);
+    }
+
 private:
     trap_pointer_t m_trap_data;
     size_t m_trap_size;
