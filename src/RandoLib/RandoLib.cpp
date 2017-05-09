@@ -296,18 +296,13 @@ void ExecSectionProcessor::SortFunctions() {
 }
 
 void ExecSectionProcessor::RemoveEmptyFunctions() {
-    size_t cnt = 0;
-    for (size_t i = 0; i < m_functions.num_elems; i++) {
-        RANDO_ASSERT(m_functions[i].has_size);
-        if (m_functions[i].size == 0)
-            continue;
-        if (cnt < i)
-            m_functions[cnt] = m_functions[i];
-        cnt++;
-    }
+    auto orig_num_funcs = m_functions.num_elems;
+    m_functions.remove_if([this] (size_t idx) {
+        RANDO_ASSERT(m_functions[idx].has_size);
+        return m_functions[idx].size == 0;
+    });
     os::API::DebugPrintf<2>("Removed %d empty functions\n",
-                            m_functions.num_elems - cnt);
-    m_functions.num_elems = cnt;
+                            orig_num_funcs - m_functions.num_elems);
 }
 
 template<typename GapPredicate>

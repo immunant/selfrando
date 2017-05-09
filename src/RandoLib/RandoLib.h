@@ -138,6 +138,20 @@ struct RANDO_SECTION Vector {
     void sort(Func compare) {
         os::API::QuickSort(elems, num_elems, sizeof(T), compare);
     }
+
+    template<typename Func>
+    void remove_if(Func remove_index) {
+        size_t out = 0;
+        for (size_t in = 0; in < num_elems; in++) {
+            if (remove_index(in))
+                continue;
+            if (out < in)
+                elems[out] = elems[in];
+            out++;
+        }
+        num_elems = out;
+        // TODO: shrink the memory region to save space???
+    }
 };
 
 struct RANDO_SECTION FunctionList : public Vector<Function> {
