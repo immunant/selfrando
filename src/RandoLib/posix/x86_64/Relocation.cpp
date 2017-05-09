@@ -163,6 +163,37 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     }
 }
 
+BytePointer Module::Relocation::get_got_entry() const {
+    // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
+    // relocation requires a symbol and/or addend.
+    auto at_ptr = m_src_addr.to_ptr();
+    switch(m_type) {
+    case R_X86_64_GOT32:
+        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
+    case R_X86_64_GOT64:
+    case R_X86_64_GOTPLT64:
+        return m_module.get_got_ptr() + *reinterpret_cast<int64_t*>(at_ptr) - m_addend;
+    case R_X86_64_GOTPCREL:
+    case 41: // R_X86_64_GOTPCRELX
+    case 42: // R_X86_64_REX_GOTPCRELX
+        if (is_patched_gotpcrel(at_ptr, m_addend))
+            return nullptr;
+        return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
+    case R_X86_64_GOTPC32:
+        at_ptr += *reinterpret_cast<int32_t*>(at_ptr);
+        RANDO_ASSERT(at_ptr == m_module.get_got_ptr());
+        return nullptr;
+    case R_X86_64_GOTPCREL64:
+        return at_ptr + *reinterpret_cast<int64_t*>(at_ptr) - m_addend;
+    case R_X86_64_GOTPC64:
+        at_ptr += *reinterpret_cast<int64_t*>(at_ptr);
+        RANDO_ASSERT(at_ptr == m_module.get_got_ptr());
+        return nullptr;
+    default:
+        return nullptr;
+    }
+}
+
 Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_X86_64_64;
 }

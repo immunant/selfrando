@@ -398,6 +398,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         Section section(*this, sec_start, sec_info.size);
         TrapInfo sec_trap_info(sec_trap_start, sec_info.trap_size,
                                reinterpret_cast<trap_address_t>(m_got));
+        read_got_relocations(&sec_trap_info);
         (*callback)(*this, section, sec_trap_info, self_rando, callback_arg);
         section.flush_icache();
     }
@@ -500,6 +501,13 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
                                  m_arch_relocs[i].type);
                 functions->AdjustRelocation(&reloc);
             }
+    }
+
+    // Apply relocations to known GOT entries
+    for (size_t i = 0; i < m_got_entries.num_elems; i++) {
+        Relocation reloc(*this, address_from_ptr(m_got_entries.elems[i]),
+                         Relocation::get_pointer_reloc_type());
+        functions->AdjustRelocation(&reloc);
     }
 
     // Fix up .eh_frame_hdr, if it exists
@@ -610,6 +618,48 @@ RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address)
     return address_ptr == m_arch_relocs[lo].address
            ? const_cast<ArchReloc*>(&m_arch_relocs[lo])
            : nullptr;
+}
+
+RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
+    if (m_got_entries.num_elems > 0) {
+        m_got_entries.free();
+        m_got_entries.num_elems = 0;
+    }
+
+    size_t idx = 0;
+    trap_info->for_all_relocations([this, &idx]
+                                   (const trap_reloc_t &trap_reloc) {
+        auto reloc = os::Module::Relocation(*this, trap_reloc);
+        auto got_entry = reloc.get_got_entry();
+        if (got_entry != nullptr)
+            idx++;
+    });
+    os::API::DebugPrintf<1>("GOT relocations found: %d\n", idx);
+    if (idx == 0)
+        return;
+
+    m_got_entries.extend(idx);
+    idx = 0;
+    trap_info->for_all_relocations([this, &idx]
+                                   (const trap_reloc_t &trap_reloc) {
+        auto reloc = os::Module::Relocation(*this, trap_reloc);
+        auto got_entry = reloc.get_got_entry();
+        if (got_entry != nullptr)
+            m_got_entries.elems[idx++] = got_entry;
+    });
+    RANDO_ASSERT(idx == m_got_entries.num_elems);
+
+    // Sort and eliminate duplicates
+    m_got_entries.sort([] (const void *pa, const void *pb) {
+        auto *a = reinterpret_cast<const BytePointer*>(pa);
+        auto *b = reinterpret_cast<const BytePointer*>(pb);
+        return (*a < *b) ? -1 : ((*a == *b) ? 0 : 1);
+    });
+    m_got_entries.remove_if([this] (size_t idx) {
+        return idx > 0 && m_got_entries.elems[idx] == m_got_entries.elems[idx - 1];
+    });
+    os::API::DebugPrintf<1>("Final GOT relocations: %d\n",
+                            m_got_entries.num_elems);
 }
 
 }

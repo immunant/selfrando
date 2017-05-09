@@ -143,6 +143,8 @@ public:
                 arch_reloc->applied = true;
         }
 
+        BytePointer get_got_entry() const;
+
     private:
         const Module &m_module;
         const Address m_orig_src_addr;
@@ -271,6 +273,8 @@ public:
                            size_t *shuffled_order) const;
 #endif
 
+    RANDO_SECTION void read_got_relocations(const TrapInfo *trap_info);
+
 private:
     ModuleInfo *m_module_info;
     BytePointer m_image_base;
@@ -300,6 +304,7 @@ private:
     bool m_dynamic_has_base;
 
     Vector<ArchReloc> m_arch_relocs;
+    Vector<BytePointer> m_got_entries;
     size_t m_linker_stubs;
 };
 

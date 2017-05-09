@@ -106,7 +106,7 @@ elif platform.system() == 'Linux':
     else:
         reloc_has_extra_symbol = lambda reloc_type : False
         reloc_has_extra_addend = lambda reloc_type : reloc_type in [
-                2, 4, 9, 19, 20, 24, 26, 28, 29, 34, 35, 41, 42] # FIXME
+                2, 3, 4, 9, 19, 20, 24, 26, 27, 28, 29, 30, 34, 35, 41, 42] # FIXME
 
     #Un-comment this to write out the section to a file
     #text_file = open(sys.argv[1] + '.sec', "w")

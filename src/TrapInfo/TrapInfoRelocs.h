@@ -26,6 +26,7 @@ uint64_t trap_reloc_info(uint64_t type) {
 #elif RANDOLIB_IS_X86_64
     switch (type) {
     case  2:    // R_X86_64_PC32
+    case  3:    // R_X86_64_GOT32
     case  4:    // R_X86_64_PLT32
     case  9:    // R_X86_64_GOTPCREL
     case 19:    // R_X86_64_TLSGD
@@ -33,8 +34,10 @@ uint64_t trap_reloc_info(uint64_t type) {
     case 22:    // R_X86_64_GOTTPOFF
     case 24:    // R_X86_64_PC64
     case 26:    // R_X86_64_GOTPC32
+    case 27:    // R_X86_64_GOT64
     case 28:    // R_X86_64_GOTPCREL64
     case 29:    // R_X86_64_GOTPC64
+    case 30:    // R_X86_64_GOTPLT64
     case 34:    // R_X86_64_GOTPC32_TLSDESC
     // 32 bit signed PC relative offset to GOT
     // without REX prefix, relaxable.
