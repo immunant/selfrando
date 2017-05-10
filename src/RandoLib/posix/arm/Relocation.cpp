@@ -283,6 +283,15 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     API::DebugPrintf<5>("Setting reloc - target: %p, new contents: %p\n", new_target, *reinterpret_cast<uint32_t*>(cur_address));
 }
 
+BytePointer Module::Relocation::get_got_entry() const {
+    auto at_ptr = m_src_addr.to_ptr();
+    switch(m_type) {
+    // TODO: handle arch GOT relocations
+    default:
+        return nullptr;
+    }
+}
+
 Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_ARM_ABS32;
 }

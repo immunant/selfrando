@@ -352,6 +352,15 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     }
 }
 
+BytePointer Module::Relocation::get_got_entry() const {
+    auto at_ptr = m_src_addr.to_ptr();
+    switch(m_type) {
+    // TODO: handle arch GOT relocations
+    default:
+        return nullptr;
+    }
+}
+
 Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_AARCH64_ABS64;
 }
