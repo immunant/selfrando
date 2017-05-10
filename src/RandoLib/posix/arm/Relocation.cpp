@@ -163,6 +163,9 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_ARM_THM_MOVT_ABS:
         RANDO_ASSERT(m_has_symbol_addr);
         return m_symbol_addr.to_ptr() + m_addend;
+    case R_ARM_GOT32:
+        // Nothing to do here, we just need this for get_got_entry()
+        return nullptr;
     default:
         RANDO_ASSERT(false);
         return nullptr;
@@ -286,7 +289,10 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 BytePointer Module::Relocation::get_got_entry() const {
     auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
-    // TODO: handle arch GOT relocations
+    case R_ARM_GOT32:
+        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
+    case R_ARM_GOT_PREL:
+        return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     default:
         return nullptr;
     }

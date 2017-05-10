@@ -57,6 +57,7 @@ uint64_t trap_reloc_info(uint64_t type) {
     case 3:     // R_ARM_REL32
     case 24:    // R_ARM_GOTOFF32
     case 25:    // R_ARM_BASE_PREL
+    case 26:    // R_ARM_GOT32 == R_ARM_GOT_BREL
     case 41:    // R_ARM_TARGET2
     case 42:    // R_ARM_PREL31
     case 96:    // R_ARM_GOT_PREL
@@ -67,9 +68,6 @@ uint64_t trap_reloc_info(uint64_t type) {
     case 47:    // R_ARM_THM_MOVW_ABS_NC
     case 48:    // R_ARM_THM_MOVT_ABS
         return TRAP_RELOC_SYMBOL | TRAP_RELOC_ADDEND;
-
-    case R_ARM_GOT32:
-        return TRAP_RELOC_IGNORE;
     };
 #elif RANDOLIB_IS_ARM64
     switch(type) {
