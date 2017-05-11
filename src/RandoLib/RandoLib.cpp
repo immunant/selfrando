@@ -97,7 +97,7 @@ public:
     void print_duration(const char *call_name) {
         auto end_time = os::API::GetTime();
         auto duration = os::API::TimeDeltaMicroSec(m_start_time, end_time);
-        os::API::DebugPrintf<1>("Step %s time:%lldus\n", call_name, duration);
+        os::API::DebugPrintf<1>("Step %s time:%dus\n", call_name, static_cast<int>(duration));
     }
 
 private:
