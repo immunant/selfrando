@@ -44,15 +44,17 @@ Function *FunctionList::FindFunction(os::BytePointer addr) const {
     if (addr <  elems[lo].undiv_start ||
         addr >= elems[hi].undiv_end())
         return nullptr;
-    while (lo < hi) {
+    while (lo <= hi) {
         auto mid = lo + ((hi - lo) >> 1);
-        if (addr >= elems[mid + 1].undiv_start) {
-            lo = mid + 1;
+        if (elems[mid].undiv_contains(addr)) {
+            return &elems[mid];
+        } else if (addr < elems[mid].undiv_start) {
+            hi = mid - 1;
         } else {
-            hi = mid;
+            lo = mid + 1;
         }
     }
-    return elems[lo].undiv_contains(addr) ? &elems[lo] : nullptr;
+    return nullptr;
 }
 
 template<>
