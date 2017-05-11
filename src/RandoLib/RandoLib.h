@@ -157,7 +157,7 @@ struct RANDO_SECTION Vector {
 struct RANDO_SECTION FunctionList : public Vector<Function> {
     Function *FindFunction(os::BytePointer) const;
 
-    // It's unfortunare that we have to use a template here,
+    // It's unfortunate that we have to use a template here,
     // but it seems we cannot forward-declare os::Module::Relocation
     template<class Reloc>
     void AdjustRelocation(Reloc*) const;
