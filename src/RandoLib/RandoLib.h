@@ -76,12 +76,13 @@ struct RANDO_SECTION Function {
 
     // Tiebreaker rank for elems with the same undiv_addr
     int sort_rank() const {
-        // TRaP elems should come before their padding and gaps
-        if (from_trap)
-            return 1;
-        if (is_padding)
-            return 2;
-        if (is_gap)
+        // If we have multiple functions at the same address, then:
+        // 1) All the non-sized ones must come first, so we can set their sizes to 0
+        // 2) Non-sized gaps should precede non-sized TRaP functions, so the latter have priority when computing sizes
+        // 3) The sized function with non-zero size must come last (if it exists)
+        if (!has_size)
+            return is_gap ? 1 : 2;
+        if (size == 0)
             return 3;
         return 4;
     }

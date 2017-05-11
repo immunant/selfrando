@@ -136,8 +136,6 @@ public:
         // Optimization: if only one function, skip shuffling
         if (m_functions.num_elems > 1) {
             TIME_FUNCTION_CALL(SortFunctions);
-            TIME_FUNCTION_CALL(RemoveEmptyFunctions);
-            TIME_FUNCTION_CALL(CoverGaps);
             TIME_FUNCTION_CALL(TrimGaps);
             TIME_FUNCTION_CALL(RemoveEmptyFunctions);
             TIME_FUNCTION_CALL(ShuffleFunctions);
@@ -182,14 +180,10 @@ private:
     template<typename FunctionPredicate>
     void IterateTrapFunctions(FunctionPredicate);
 
-    template<typename GapPredicate>
-    void IterateFunctionGaps(GapPredicate);
-
     void CountFunctions();
     void BuildFunctions();
     void SortFunctions();
     void RemoveEmptyFunctions();
-    void CoverGaps();
     void TrimGaps();
     void ShuffleFunctions();
     void LayoutCode();
@@ -229,6 +223,17 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     RANDO_ASSERT(sym.size > 0);
                     new_func.has_size = true;
                     new_func.size = sym.size;
+
+                    // Add a gap function for what comes after this sized symbol
+                    Function gap_func = {};
+                    gap_func.undiv_start = new_func.undiv_end();
+                    gap_func.undiv_alignment = 1;
+                    gap_func.skip_copy = false;
+                    gap_func.from_trap = false;
+                    gap_func.is_padding = false;
+                    gap_func.is_gap = true;
+                    gap_func.has_size = false;
+                    pred(gap_func);
                 }
                 pred(new_func);
             }
@@ -243,6 +248,17 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 new_func.has_size = true;
                 new_func.size = trap_entry.padding_size;
                 pred(new_func);
+
+                // Add a gap function for what comes after the padding
+                Function gap_func = {};
+                gap_func.undiv_start = new_func.undiv_end();
+                gap_func.undiv_alignment = 1;
+                gap_func.skip_copy = false;
+                gap_func.from_trap = false;
+                gap_func.is_padding = false;
+                gap_func.is_gap = true;
+                gap_func.has_size = false;
+                pred(gap_func);
             }
         }
     }
@@ -275,8 +291,6 @@ static inline RANDO_SECTION int CompareIntegers(T a, T b) {
 static RANDO_SECTION int CompareFunctions(const void *a, const void *b) {
     auto fa = reinterpret_cast<const Function*>(a);
     auto fb = reinterpret_cast<const Function*>(b);
-    // Special case: put skip_copy before non-skip_copy,
-    // so we can correctly compute the sizes
     if (fa->undiv_start == fb->undiv_start)
         return CompareIntegers(fa->sort_rank(), fb->sort_rank());
     return CompareIntegers(fa->undiv_start, fb->undiv_start);
@@ -306,55 +320,6 @@ void ExecSectionProcessor::RemoveEmptyFunctions() {
     });
     os::API::DebugPrintf<2>("Removed %d empty functions\n",
                             orig_num_funcs - m_functions.num_elems);
-}
-
-template<typename GapPredicate>
-RANDO_ALWAYS_INLINE
-void ExecSectionProcessor::IterateFunctionGaps(GapPredicate pred) {
-    auto last_addr = m_exec_section.start().to_ptr();
-    for (size_t i = 0; i < m_functions.num_elems; i++) {
-        if (m_functions[i].is_gap)
-            break; // We're currently adding gaps, and we reached the first one
-        RANDO_ASSERT(m_functions[i].undiv_start >= last_addr);
-        if (m_functions[i].undiv_start > last_addr)
-            pred(last_addr, m_functions[i].undiv_start);
-        last_addr = m_functions[i].undiv_end();
-    }
-    auto exec_end = m_exec_section.end().to_ptr();
-    RANDO_ASSERT(exec_end >= last_addr);
-    if (exec_end > last_addr)
-        pred(last_addr, exec_end);
-}
-
-void ExecSectionProcessor::CoverGaps() {
-    // We only care about gaps in in-place mode, we can ignore them otherwise
-    // FIXME: maybe we do???
-    if (!m_in_place)
-        return;
-
-    size_t num_gaps = 0;
-    IterateFunctionGaps([this, &num_gaps] (os::BytePointer gap_start, os::BytePointer gap_end) {
-        RANDO_ASSERT(gap_start < gap_end);
-        num_gaps++;
-        os::API::DebugPrintf<10>("Found gap:%p-%p\n", gap_start, gap_end);
-    });
-    if (num_gaps == 0)
-        return;
-
-    os::API::DebugPrintf<2>("Trap gaps: %d\n", num_gaps);
-    m_functions.extend(num_gaps);
-    size_t gap_idx = m_functions.num_elems - num_gaps;
-    IterateFunctionGaps([this, &gap_idx] (os::BytePointer gap_start, os::BytePointer gap_end) {
-        m_functions[gap_idx].undiv_start = gap_start;
-        m_functions[gap_idx].size = gap_end - gap_start;
-        m_functions[gap_idx].undiv_alignment = 1;
-        m_functions[gap_idx].is_gap = true;
-        m_functions[gap_idx].has_size = true;
-        gap_idx++;
-    });
-    RANDO_ASSERT(gap_idx == m_functions.num_elems);
-    // We need to re-sort the functions after adding the gaps at the end
-    m_functions.sort(CompareFunctions);
 }
 
 void ExecSectionProcessor::TrimGaps() {
