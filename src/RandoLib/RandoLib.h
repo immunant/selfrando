@@ -35,7 +35,7 @@
 
 #include <OS.h>
 
-#pragma pack(1) // TODO: MSVC-only; use gcc equivalent on Linux
+#pragma pack(push, 1) // TODO: MSVC-only; use gcc equivalent on Linux
 struct RANDO_SECTION Function {
     os::BytePointer undiv_start, div_start;
     size_t size;
@@ -86,6 +86,7 @@ struct RANDO_SECTION Function {
         return 4;
     }
 };
+#pragma pack(pop)
 
 template<typename T>
 struct RANDO_SECTION Vector {
