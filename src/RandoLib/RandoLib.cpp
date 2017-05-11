@@ -49,6 +49,7 @@ Function *FunctionList::FindFunction(os::BytePointer addr) const {
         if (elems[mid].undiv_contains(addr)) {
             return &elems[mid];
         } else if (addr < elems[mid].undiv_start) {
+            RANDO_ASSERT(mid > 0); // Due to the checks above, we should never get here with mid == 0
             hi = mid - 1;
         } else {
             lo = mid + 1;
