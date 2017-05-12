@@ -646,13 +646,30 @@ public:
 
     template<typename Func>
     void for_all_relocations(Func func) const {
-        if (m_header.has_nonexec_relocs())
-            for (auto trap_reloc : nonexec_relocations())
+        if (m_header.has_nonexec_relocs()) {
+            trap_reloc_t trap_reloc;
+            trap_pointer_t reloc_trap_ptr = m_header.reloc_start;
+            trap_address_t reloc_address = 0;
+            while (reloc_trap_ptr < m_header.reloc_end &&
+                   trap_read_reloc(&m_header, &reloc_trap_ptr,
+                                   &reloc_address, &trap_reloc))
                 func(trap_reloc);
+        }
 
-        for (auto trap_entry : *this)
-            for (auto trap_reloc : trap_entry.relocations())
+        trap_record_t record;
+        trap_pointer_t trap_ptr = m_header.record_start;
+        trap_address_t address = 0;
+        while (trap_ptr < m_trap_data + m_trap_size &&
+               trap_read_record(&m_header, &trap_ptr,
+                                &address, &record)) {
+            trap_reloc_t trap_reloc;
+            trap_pointer_t reloc_trap_ptr = record.reloc_start;
+            trap_address_t reloc_address = record.address;
+            while (reloc_trap_ptr < record.reloc_end &&
+                   trap_read_reloc(&m_header, &reloc_trap_ptr,
+                                   &reloc_address, &trap_reloc))
                 func(trap_reloc);
+        }
     }
 
 private:
