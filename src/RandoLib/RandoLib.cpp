@@ -136,6 +136,7 @@ public:
         // Optimization: if only one function, skip shuffling
         if (m_functions.num_elems > 1) {
             TIME_FUNCTION_CALL(SortFunctions);
+            TIME_FUNCTION_CALL(ComputeFunctionSizes);
             TIME_FUNCTION_CALL(TrimGaps);
             TIME_FUNCTION_CALL(RemoveEmptyFunctions);
             TIME_FUNCTION_CALL(ShuffleFunctions);
@@ -183,6 +184,7 @@ private:
     void CountFunctions();
     void BuildFunctions();
     void SortFunctions();
+    void ComputeFunctionSizes();
     void RemoveEmptyFunctions();
     void TrimGaps();
     void ShuffleFunctions();
@@ -301,6 +303,9 @@ void ExecSectionProcessor::SortFunctions() {
     // FIXME: use our own qsort function, or force use of NTDLL!qsort
     if (m_trap_info.header()->needs_sort())
         m_functions.sort(CompareFunctions);
+}
+
+void ExecSectionProcessor::ComputeFunctionSizes() {
     // Build sizes for functions
     auto exec_end = m_exec_section.end().to_ptr();
     for (size_t i = 0; i < m_functions.num_elems; i++) {
