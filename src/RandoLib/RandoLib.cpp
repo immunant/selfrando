@@ -392,10 +392,8 @@ void ExecSectionProcessor::LayoutCode() {
         auto curr_ofs = (curr_addr - orig_code) & align_mask;
         auto want_ofs = os::API::kPreserveFunctionOffset ? old_ofs : 0;
         if (curr_ofs != want_ofs) {
-            func.alignment_padding = ((align_mask + 1) + want_ofs - curr_ofs) & align_mask;
-            curr_addr += func.alignment_padding;
-        } else {
-            func.alignment_padding = 0;
+            auto padding = ((align_mask + 1) + want_ofs - curr_ofs) & align_mask;
+            curr_addr += padding;
         }
         // TODO: also add in Windows-specific hot-patch trampolines
         func.div_start = curr_addr;
@@ -446,6 +444,7 @@ void ExecSectionProcessor::ShuffleCode() {
     os::API::DebugPrintf<1>("Divcode@%p\n", m_exec_copy);
 
     auto copy_delta = m_exec_copy - orig_code;
+    auto last_addr = m_exec_copy;
     for (size_t i = 0; i < m_functions.num_elems; i++) {
         auto si = m_shuffled_order[i];
         auto &func = m_functions[si];
@@ -456,10 +455,16 @@ void ExecSectionProcessor::ShuffleCode() {
             func.undiv_start, func.size,
             func.div_start, func.div_start + copy_delta);
         func.div_start += copy_delta;
-        if (func.alignment_padding > 0)
-            os::API::InsertNOPs(func.div_start - func.alignment_padding,
-                                func.alignment_padding);
+        if (func.div_start > last_addr) {
+            // There is a gap between the last function and this one,
+            // so we fill the gap with NOP instructions
+            auto padding = func.div_start - last_addr;
+            os::API::InsertNOPs(last_addr, padding);
+        } else {
+            RANDO_ASSERT(func.div_start == last_addr);
+        }
         os::API::MemCpy(func.div_start, func.undiv_start, func.size);
+        last_addr = func.div_end();
     }
     if (m_in_place) {
         os::API::DebugPrintf<3>("Copying code back %p[%u]=>%p\n",

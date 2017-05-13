@@ -39,7 +39,6 @@
 struct RANDO_SECTION Function {
     os::BytePointer undiv_start, div_start;
     size_t size;
-    size_t alignment_padding;
 
     // Base-2 logarithm of alignment
     unsigned undiv_p2align : 6;
