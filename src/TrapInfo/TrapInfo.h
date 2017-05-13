@@ -327,7 +327,7 @@ int trap_read_reloc(const struct trap_header_t *header,
 #pragma pack(push, 1)
 struct RANDO_SECTION trap_symbol_t {
     trap_address_t address;
-    uint64_t alignment;
+    uint64_t p2align;
     uint64_t size;
 };
 #pragma pack(pop)
@@ -350,9 +350,9 @@ int trap_read_symbol(const struct trap_header_t *header,
         curr_p2align = trap_read_uleb128(trap_ptr);
 
     *address += curr_delta;
-    SET_FIELD(symbol, address,   *address);
-    SET_FIELD(symbol, alignment, __TRaP_shl_uint64(1, curr_p2align));
-    SET_FIELD(symbol, size,      curr_size);
+    SET_FIELD(symbol, address, *address);
+    SET_FIELD(symbol, p2align, curr_p2align);
+    SET_FIELD(symbol, size,    curr_size);
     return !(curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
 }
 

@@ -68,7 +68,7 @@ int main(int argc, const char *argv[]) {
                    symbol.address - record.address,
                    symbol.address,
                    symbol.size,
-                   symbol.alignment);
+                   (1L << symbol.p2align));
             num_symbols++;
         }
 

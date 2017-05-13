@@ -217,7 +217,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 new_func.skip_copy = false;
                 new_func.from_trap = true;
                 if (m_trap_info.header()->has_symbol_p2align()) {
-                    new_func.undiv_alignment = sym.alignment;
+                    new_func.undiv_alignment = 1 << sym.p2align;
                 } else {
                     new_func.undiv_alignment = os::API::kFunctionAlignment;
                 }
