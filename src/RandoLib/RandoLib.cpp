@@ -217,9 +217,10 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 new_func.skip_copy = false;
                 new_func.from_trap = true;
                 if (m_trap_info.header()->has_symbol_p2align()) {
-                    new_func.undiv_alignment = 1 << sym.p2align;
+                    RANDO_ASSERT(sym.p2align < 64); // 6-bit bitfield
+                    new_func.undiv_p2align = sym.p2align;
                 } else {
-                    new_func.undiv_alignment = os::API::kFunctionAlignment;
+                    new_func.undiv_p2align = os::API::kFunctionP2Align;
                 }
                 if (m_trap_info.header()->has_symbol_size()) {
                     RANDO_ASSERT(sym.size > 0);
@@ -229,7 +230,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     // Add a gap function for what comes after this sized symbol
                     Function gap_func = {};
                     gap_func.undiv_start = new_func.undiv_end();
-                    gap_func.undiv_alignment = 1;
+                    gap_func.undiv_p2align = 0;
                     gap_func.skip_copy = false;
                     gap_func.from_trap = false;
                     gap_func.is_padding = false;
@@ -246,7 +247,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 new_func.is_padding = true;
                 new_func.undiv_start =
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
-                new_func.undiv_alignment = 1;
+                new_func.undiv_p2align = 0;
                 new_func.has_size = true;
                 new_func.size = trap_entry.padding_size;
                 pred(new_func);
@@ -254,7 +255,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 // Add a gap function for what comes after the padding
                 Function gap_func = {};
                 gap_func.undiv_start = new_func.undiv_end();
-                gap_func.undiv_alignment = 1;
+                gap_func.undiv_p2align = 0;
                 gap_func.skip_copy = false;
                 gap_func.from_trap = false;
                 gap_func.is_padding = false;
@@ -386,12 +387,12 @@ void ExecSectionProcessor::LayoutCode() {
         // or the same modulo as the undiversified code
         // (depending on kPreserveFunctionOffset)
         // TODO: handle 5-NOP padding between consecutive functions
-        RANDO_ASSERT(func.undiv_alignment > 0);
-        auto  old_ofs = (func.undiv_start - orig_code) & (func.undiv_alignment - 1);
-        auto curr_ofs = (curr_addr - orig_code) & (func.undiv_alignment - 1);
+        size_t align_mask = (static_cast<size_t>(1) << func.undiv_p2align) - 1;
+        auto  old_ofs = (func.undiv_start - orig_code) & align_mask;
+        auto curr_ofs = (curr_addr - orig_code) & align_mask;
         auto want_ofs = os::API::kPreserveFunctionOffset ? old_ofs : 0;
         if (curr_ofs != want_ofs) {
-            func.alignment_padding = (func.undiv_alignment + want_ofs - curr_ofs) & (func.undiv_alignment - 1);
+            func.alignment_padding = ((align_mask + 1) + want_ofs - curr_ofs) & align_mask;
             curr_addr += func.alignment_padding;
         } else {
             func.alignment_padding = 0;

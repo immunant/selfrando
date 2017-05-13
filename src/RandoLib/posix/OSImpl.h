@@ -129,7 +129,7 @@ public:
     // TODO: make this into a compile-time value,
     // or maybe a run-time one, and also a TRaP
     // info setting
-    static const int kFunctionAlignment = 4;
+    static const int kFunctionP2Align = 2;
     static const int kTextAlignment = 4096;
     static const int kPageAlignment = 4096;
     static const bool kPreserveFunctionOffset = true;

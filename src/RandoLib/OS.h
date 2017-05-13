@@ -96,7 +96,7 @@ public:
     using APIImpl::InsertNOPs;
 
     // Align function addresses to multiples of this values
-    using APIImpl::kFunctionAlignment;
+    using APIImpl::kFunctionP2Align;
 
     // Preserve function alignment offsets past randomization
     // If this is true and a function at address A before randomization
