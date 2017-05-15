@@ -628,24 +628,15 @@ RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
     if (m_got_entries.num_elems > 0)
         m_got_entries.free();
 
-    size_t idx = 0;
-    trap_info->for_all_relocations([this, &idx]
-                                   (const trap_reloc_t &trap_reloc) {
-        auto reloc = os::Module::Relocation(*this, trap_reloc);
-        auto got_entry = reloc.get_got_entry();
-        if (got_entry != nullptr)
-            idx++;
-    });
-    os::API::DebugPrintf<1>("GOT relocations found: %d\n", idx);
-    if (idx == 0)
-        return;
-
     trap_info->for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
         auto reloc = os::Module::Relocation(*this, trap_reloc);
         auto got_entry = reloc.get_got_entry();
         if (got_entry != nullptr)
             m_got_entries.append(got_entry);
     });
+    os::API::DebugPrintf<1>("GOT relocations found: %d\n", m_got_entries.num_elems);
+    if (m_got_entries.num_elems == 0)
+        return;
 
     // Sort and eliminate duplicates
     m_got_entries.sort([] (const void *pa, const void *pb) {
