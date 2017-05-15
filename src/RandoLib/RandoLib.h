@@ -94,34 +94,39 @@ template<typename T>
 struct RANDO_SECTION Vector {
     T *elems;
     size_t num_elems;
+    size_t capacity;
 
-    Vector() : elems(nullptr), num_elems(0) { }
+    Vector() : elems(nullptr), num_elems(0), capacity(0) { }
     Vector(const Vector&) = delete;
     Vector(const Vector&&) = delete;
     Vector &operator=(const Vector&) = delete;
     Vector &operator=(const Vector&&) = delete;
 
-    void allocate() {
-        elems = reinterpret_cast<T*>(os::API::MemReAlloc(elems, num_elems * sizeof(T), true));
-    }
-
     void free() {
         if (elems != nullptr)
             os::API::MemFree(elems);
         elems = nullptr;
+        num_elems = 0;
+        capacity = 0;
     }
 
-    void extend(size_t num_extra) {
-        if (num_extra == 0)
+    void reserve(size_t new_capacity) {
+        if (new_capacity < capacity)
             return;
-        if (elems == nullptr) {
-            num_elems = num_extra;
-            allocate();
-            return;
-        }
 
-        num_elems += num_extra;
-        elems = reinterpret_cast<T*>(os::API::MemReAlloc(elems, num_elems * sizeof(T), true));
+        auto old_capacity = capacity;
+        capacity = new_capacity;
+        if (old_capacity == 0) {
+            elems = reinterpret_cast<T*>(os::API::MemAlloc(capacity * sizeof(T), true));
+        } else {
+            elems = reinterpret_cast<T*>(os::API::MemReAlloc(elems, capacity * sizeof(T), true));
+        }
+    }
+
+    void append(const T &val) {
+        if (num_elems == capacity)
+            grow();
+        elems[num_elems++] = val;
     }
 
     T &operator[](size_t idx) {
@@ -149,6 +154,18 @@ struct RANDO_SECTION Vector {
         }
         num_elems = out;
         // TODO: shrink the memory region to save space???
+    }
+
+private:
+    static constexpr size_t DEFAULT_CAPACITY = 16;
+
+    void grow() {
+        if (capacity == 0) {
+            capacity = DEFAULT_CAPACITY;
+        } else {
+            capacity <<= 1;
+        }
+        reserve(capacity);
     }
 };
 

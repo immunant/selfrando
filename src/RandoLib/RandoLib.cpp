@@ -268,22 +268,20 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
 }
 
 void ExecSectionProcessor::CountFunctions() {
-    m_functions.num_elems = 0;
-    IterateTrapFunctions([this] (const Function &new_func) {
-        m_functions.num_elems++;
+    size_t count = 0;
+    IterateTrapFunctions([this, &count] (const Function &new_func) {
+        count++;
         return true;
     });
-    os::API::DebugPrintf<1>("Trap functions: %d\n", m_functions.num_elems);
+    os::API::DebugPrintf<1>("Trap functions: %d\n", count);
+    m_functions.reserve(count);
 }
 
 void ExecSectionProcessor::BuildFunctions() {
-    m_functions.allocate();
-    size_t func_idx = 0;
-    IterateTrapFunctions([this, &func_idx] (const Function &new_func) {
-        m_functions.elems[func_idx++] = new_func;
+    IterateTrapFunctions([this] (const Function &new_func) {
+        m_functions.append(new_func);
         return true;
     });
-    RANDO_ASSERT(func_idx == m_functions.num_elems);
 }
 
 template<typename T>

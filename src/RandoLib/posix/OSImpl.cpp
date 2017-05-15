@@ -568,29 +568,18 @@ RANDO_SECTION void Module::build_arch_relocs() {
 
     if (dyn_rels != nullptr && dyn_rel_size != 0) {
         auto dyn_rel_end = dyn_rels + dyn_rel_size;
-        size_t new_arch_relocs = 0;
-        for (auto rel = reinterpret_cast<RelType*>(dyn_rels);
-                  rel < reinterpret_cast<RelType*>(dyn_rel_end); rel++) {
+        for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
+                  rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
             auto rel_type = arch_reloc_type(rel);
-            if (rel_type)
-               new_arch_relocs++;
-        }
-        if (new_arch_relocs > 0) {
-            size_t idx = m_arch_relocs.num_elems;
-            m_arch_relocs.extend(new_arch_relocs);
-            for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
-                      rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
-                auto rel_type = arch_reloc_type(rel);
-                if (rel_type) {
-                    m_arch_relocs[idx].address = RVA2Address(rel->r_offset).to_ptr();
-                    m_arch_relocs[idx].type = rel_type;
-                    m_arch_relocs[idx].applied = false;
-                    idx++;
-                }
+            if (rel_type) {
+                ArchReloc arch_reloc;
+                arch_reloc.address = RVA2Address(rel->r_offset).to_ptr();
+                arch_reloc.type = rel_type;
+                arch_reloc.applied = false;
+                m_arch_relocs.append(arch_reloc);
             }
-            RANDO_ASSERT(idx == m_arch_relocs.num_elems);
-            m_arch_relocs.sort(ArchReloc::sort_compare);
         }
+        m_arch_relocs.sort(ArchReloc::sort_compare);
     }
 #endif
 }
@@ -636,10 +625,8 @@ RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address)
 }
 
 RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
-    if (m_got_entries.num_elems > 0) {
+    if (m_got_entries.num_elems > 0)
         m_got_entries.free();
-        m_got_entries.num_elems = 0;
-    }
 
     size_t idx = 0;
     trap_info->for_all_relocations([this, &idx]
@@ -653,16 +640,12 @@ RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
     if (idx == 0)
         return;
 
-    m_got_entries.extend(idx);
-    idx = 0;
-    trap_info->for_all_relocations([this, &idx]
-                                   (const trap_reloc_t &trap_reloc) {
+    trap_info->for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
         auto reloc = os::Module::Relocation(*this, trap_reloc);
         auto got_entry = reloc.get_got_entry();
         if (got_entry != nullptr)
-            m_got_entries.elems[idx++] = got_entry;
+            m_got_entries.append(got_entry);
     });
-    RANDO_ASSERT(idx == m_got_entries.num_elems);
 
     // Sort and eliminate duplicates
     m_got_entries.sort([] (const void *pa, const void *pb) {
