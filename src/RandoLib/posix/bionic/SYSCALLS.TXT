@@ -349,6 +349,7 @@ int unlinkat(int, const char*, int)   all
 
 void* __mmap2:mmap2(void*, size_t, int, int, int, long)   arm,x86
 void* mmap|mmap64(void*, size_t, int, int, int, off_t)  arm64,x86_64
+void*       mremap(void*, size_t, size_t, unsigned long)  all
 int         mprotect(const void*, size_t, int)  all
 int         munmap(void*, size_t)  all
 

@@ -33,6 +33,7 @@ extern "C" {
 int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
 
 void *_TRaP_libc_mmap(void*, size_t, int, int, int, off_t);
+void *_TRaP_libc_mremap(void*, size_t, size_t, int, ...);
 int _TRaP_libc_munmap(void*, size_t);
 int _TRaP_libc_mprotect(const void*, size_t, int);
 int _TRaP_libc_unlinkat(int, const char*, int);
@@ -146,6 +147,19 @@ RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
     // We need to remember the size, so we know how much to munmap()
     // FIXME: MemProtect doesn't work on this
     *res = size;
+    return reinterpret_cast<void*>(res + 1);
+}
+
+RANDO_SECTION void *API::MemReAlloc(void *old_ptr, size_t new_size, bool zeroed) {
+    if (old_ptr == nullptr)
+        return MemAlloc(new_size, zeroed);
+
+    auto old_size = reinterpret_cast<size_t*>(old_ptr)[-1];
+    new_size = (new_size + sizeof(new_size) + kPageSize - 1) & ~kPageSize;
+    auto res = reinterpret_cast<size_t*>(_TRaP_libc_mremap(old_ptr, old_size,
+                                                           new_size, MREMAP_MAYMOVE));
+
+    *res = new_size;
     return reinterpret_cast<void*>(res + 1);
 }
 

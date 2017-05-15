@@ -109,6 +109,7 @@ public:
     using APIImpl::kPreserveFunctionOffset;
 
     static void *MemAlloc(size_t, bool zeroed = false);
+    static void *MemReAlloc(void*, size_t, bool zeroed = false);
     static void MemFree(void*);
     static void *MemMap(void*, size_t, PagePermissions, bool); // TODO
     static void MemUnmap(void*, size_t, bool); // TODO
