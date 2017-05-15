@@ -102,9 +102,7 @@ struct RANDO_SECTION Vector {
     Vector &operator=(const Vector&&) = delete;
 
     void allocate() {
-        if (elems != nullptr)
-            os::API::MemFree(elems);
-        elems = reinterpret_cast<T*>(os::API::MemAlloc(num_elems * sizeof(T), true));
+        elems = reinterpret_cast<T*>(os::API::MemReAlloc(elems, num_elems * sizeof(T), true));
     }
 
     void free() {
@@ -122,11 +120,8 @@ struct RANDO_SECTION Vector {
             return;
         }
 
-        T *old_elems = elems;
         num_elems += num_extra;
-        elems = reinterpret_cast<T*>(os::API::MemAlloc(num_elems * sizeof(T), true));
-        os::API::MemCpy(elems, old_elems, (num_elems - num_extra) * sizeof(T));
-        os::API::MemFree(old_elems);
+        elems = reinterpret_cast<T*>(os::API::MemReAlloc(elems, num_elems * sizeof(T), true));
     }
 
     T &operator[](size_t idx) {
