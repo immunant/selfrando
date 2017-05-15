@@ -182,6 +182,15 @@ RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
     return RANDO_SYS_FUNCTION(ntdll, RtlAllocateHeap, global_heap, flags, size);
 }
 
+RANDO_SECTION void *API::MemReAlloc(void *old_ptr, size_t new_size, bool zeroed) {
+    if (old_ptr == nullptr)
+        return MemAlloc(new_size, zeroed);
+
+    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
+    DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
+    return RANDO_SYS_FUNCTION(ntdll, RtlReAllocateHeap, global_heap, flags, old_ptr, new_size);
+}
+
 RANDO_SECTION void API::MemFree(void *ptr) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     RANDO_SYS_FUNCTION(ntdll, RtlFreeHeap, global_heap, 0, ptr);
