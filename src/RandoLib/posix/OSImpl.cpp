@@ -486,7 +486,9 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
         new_dt_init = m_module_info->program_info_table->orig_dt_init;
         Relocation reloc(*this, &new_dt_init,
                          Relocation::get_pointer_reloc_type());
-        add_relocation(reloc);
+        // Apply the relocation immediately, since it's on the stack
+        // and we need it right now
+        functions->AdjustRelocation(&reloc);
     } else {
         // Point the branch to the return instruction
         new_dt_init = m_module_info->program_info_table->rando_return;
@@ -501,7 +503,9 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
         new_entry = m_module_info->program_info_table->orig_entry;
         Relocation reloc(*this, &new_entry,
                          Relocation::get_pointer_reloc_type());
-        add_relocation(reloc);
+        // Apply the relocation immediately, since it's on the stack
+        // and we need it right now
+        functions->AdjustRelocation(&reloc);
     } else {
         // See above
         new_entry = m_module_info->program_info_table->rando_return;
