@@ -147,6 +147,7 @@ public:
         TIME_FUNCTION_CALL(ProcessTrapRelocations);
         TIME_FUNCTION_CALL(FixupExports);
         TIME_FUNCTION_CALL(ApplyRelocations);
+        TIME_FUNCTION_CALL(RunSortTasks);
 #if RANDOLIB_WRITE_LAYOUTS > 0
         TIME_FUNCTION_CALL(WriteLayoutFile);
 #endif
@@ -195,6 +196,7 @@ private:
     void ProcessTrapRelocations();
     void FixupExports();
     void ApplyRelocations();
+    void RunSortTasks();
 #if RANDOLIB_WRITE_LAYOUTS > 0
     void WriteLayoutFile();
 #endif
@@ -540,6 +542,12 @@ void ExecSectionProcessor::ApplyRelocations() {
     auto &relocs = m_module.relocations();
     for (size_t i = 0; i < relocs.num_elems; i++)
         m_functions.AdjustRelocation(const_cast<os::Module::Relocation*>(&relocs[i]));
+}
+
+void ExecSectionProcessor::RunSortTasks() {
+    auto &sort_tasks = m_module.sort_tasks();
+    for (size_t i = 0; i < sort_tasks.num_elems; i++)
+        sort_tasks[i].run();
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0

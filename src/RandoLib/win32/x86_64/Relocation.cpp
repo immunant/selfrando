@@ -313,10 +313,10 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                                 relocate_rva(&scope_record.JumpTarget, functions, false);
                         }
                         // Re-sort the contents of pdata
-                        os::API::QuickSort(&scope_table->ScopeRecord[0],
-                                           scope_table->Count,
-                                           sizeof(SCOPE_TABLE_AMD64::ScopeRecord[0]),
-                                           compare_first_dword);
+                        add_sort_task(&scope_table->ScopeRecord[0],
+                                      scope_table->Count,
+                                      sizeof(SCOPE_TABLE_AMD64::ScopeRecord[0]),
+                                      compare_first_dword);
                     }
                     if (handler_rva == seh_CxxFrameHandler3_rva ||
                         handler_rva == seh_GSHandlerCheck_EH_rva) {
@@ -353,19 +353,19 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                             for (size_t i = 0; i < func_info->num_ip_state_map_entries; i++)
                                 relocate_rva(&ip_state_map[i].ip_rva, functions, false);
                             // The ip_state_map needs to be sorted
-                            os::API::QuickSort(ip_state_map,
-                                               func_info->num_ip_state_map_entries,
-                                               sizeof(IpStateMapEntry),
-                                               compare_first_dword);
+                            add_sort_task(ip_state_map,
+                                          func_info->num_ip_state_map_entries,
+                                          sizeof(IpStateMapEntry),
+                                          compare_first_dword);
                         }
                     }
                 }
             }
             // Re-sort the contents of pdata
-            os::API::QuickSort(pdata_start,
-                               pdata_end - pdata_start,
-                               sizeof(RUNTIME_FUNCTION),
-                               compare_first_dword);
+            add_sort_task(pdata_start,
+                          pdata_end - pdata_start,
+                          sizeof(RUNTIME_FUNCTION),
+                          compare_first_dword);
         }
     }
 }

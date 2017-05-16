@@ -550,8 +550,8 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
                 add_relocation(reloc);
                 ptr[idx] = static_cast<uint32_t>(entry_pc - m_eh_frame_hdr);
             }
-            API::QuickSort(ptr + 3, num_entries, 2 * sizeof(int32_t),
-                           compare_eh_frame_entries);
+            add_sort_task(ptr + 3, num_entries, 2 * sizeof(int32_t),
+                          compare_eh_frame_entries);
         }
     }
 }

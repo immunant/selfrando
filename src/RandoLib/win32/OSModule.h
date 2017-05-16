@@ -286,6 +286,15 @@ public:
         return m_relocs;
     }
 
+    RANDO_SECTION void add_sort_task(void *base, size_t num, size_t size,
+                                     SortTask::CompareFunc cmp) const {
+        m_sort_tasks.append(SortTask(base, num, size, cmp));
+    }
+
+    const Vector<SortTask> &sort_tasks() const {
+        return m_sort_tasks;
+    }
+
 private:
     ModuleInfo *m_info;
     HANDLE m_handle;
@@ -321,6 +330,7 @@ private:
 private:
     // FIXME: this shouldn't be mutable, Module should be non-const
     mutable Vector<Relocation> m_relocs;
+    mutable Vector<SortTask> m_sort_tasks;
 
 private:
     // Architecture-specific fields

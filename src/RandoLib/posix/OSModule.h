@@ -284,6 +284,15 @@ public:
         return m_relocs;
     }
 
+    RANDO_SECTION void add_sort_task(void *base, size_t num, size_t size,
+                                     SortTask::CompareFunc cmp) const {
+        m_sort_tasks.append(SortTask(base, num, size, cmp));
+    }
+
+    const Vector<SortTask> &sort_tasks() const {
+        return m_sort_tasks;
+    }
+
 private:
     ModuleInfo *m_module_info;
     BytePointer m_image_base;
@@ -317,6 +326,7 @@ private:
     Vector<ArchReloc> m_arch_relocs;
     Vector<BytePointer> m_got_entries;
     size_t m_linker_stubs;
+    mutable Vector<SortTask> m_sort_tasks;
 };
 
 } // namespace os

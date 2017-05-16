@@ -124,6 +124,25 @@ public:
 #endif
 };
 
+struct SortTask {
+    typedef int(*CompareFunc)(const void*, const void*);
+
+    SortTask() = delete;
+    SortTask(void *base, size_t num, size_t size, CompareFunc cmp)
+        : m_base(base), m_num(num), m_size(size), m_cmp(cmp) {
+    }
+
+    void run() const {
+        API::QuickSort(m_base, m_num, m_size, m_cmp);
+    }
+
+private:
+    void *m_base;
+    size_t m_num;
+    size_t m_size;
+    CompareFunc m_cmp;
+};
+
 }
 
 #if RANDOLIB_IS_WIN32
