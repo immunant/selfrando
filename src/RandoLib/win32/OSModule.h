@@ -151,6 +151,7 @@ public:
         void set_target_ptr(BytePointer);
 
         static Type get_pointer_reloc_type();
+        static Type get_rva_reloc_type(bool subtract_one);
 
         static Type type_from_based(Type based_type);
 
@@ -188,20 +189,8 @@ public:
     inline RANDO_SECTION void relocate_rva(T *rva,
                                            FunctionList *functions,
                                            bool subtract_one) const {
-        auto full_addr = reinterpret_cast<uintptr_t>(m_handle) + *rva;
-        // If we're relocating an RVA that points to one byte past the end
-        // of something (like a function), subtract one byte so we land inside
-        // the object we're relocating
-        if (subtract_one)
-            full_addr--;
-        Relocation rva_reloc(*this, &full_addr, Relocation::get_pointer_reloc_type());
+        Relocation rva_reloc(*this, rva, Relocation::get_rva_reloc_type(subtract_one));
         add_relocation(rva_reloc);
-        if (subtract_one)
-            full_addr++;
-
-        auto new_rva = full_addr - reinterpret_cast<uintptr_t>(m_handle);
-        RANDO_ASSERT(static_cast<T>(new_rva) == new_rva);
-        *rva = static_cast<T>(new_rva);
     }
 
     class RANDO_SECTION Section {

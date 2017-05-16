@@ -10,6 +10,8 @@
 #include <RandoLib.h>
 #include <TrapInfo.h>
 
+#define IMAGE_REL_AMD64_ADDR32NB_SUBONE     0x1000
+
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
@@ -18,6 +20,8 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
         return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint64_t*>(m_src_ptr));
     case IMAGE_REL_AMD64_ADDR32NB:
         return reinterpret_cast<os::BytePointer>(m_module->m_handle) + *reinterpret_cast<uint32_t*>(m_src_ptr);
+    case IMAGE_REL_AMD64_ADDR32NB_SUBONE:
+        return reinterpret_cast<os::BytePointer>(m_module->m_handle) + *reinterpret_cast<uint32_t*>(m_src_ptr) - 1;
     case IMAGE_REL_AMD64_REL32:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
@@ -44,6 +48,9 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         break;
     case IMAGE_REL_AMD64_ADDR32NB:
         *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target - reinterpret_cast<os::BytePointer>(m_module->m_handle));
+        break;
+    case IMAGE_REL_AMD64_ADDR32NB_SUBONE:
+        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target - reinterpret_cast<os::BytePointer>(m_module->m_handle) + 1);
         break;
     case IMAGE_REL_AMD64_REL32:
         // FIXME: check for overflow here???
@@ -77,6 +84,10 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
 
 os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
     return IMAGE_REL_AMD64_ADDR64;
+}
+
+os::Module::Relocation::Type os::Module::Relocation::get_rva_reloc_type(bool subtract_one) {
+    return subtract_one ? IMAGE_REL_AMD64_ADDR32NB_SUBONE : IMAGE_REL_AMD64_ADDR32NB;
 }
 
 os::Module::Relocation::Type
