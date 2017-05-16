@@ -646,8 +646,9 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
 
     // Patch the entry loop jump
     // FIXME: this is x86-specific
-    relocate_rva(&m_info->original_entry_rva, functions, false);
     BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
+    Relocation entry_reloc(*this, &new_entry, Relocation::get_pointer_reloc_type());
+    functions->AdjustRelocation(&entry_reloc);
     *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
     API::DebugPrintf<1>("New program entry:%p\n", new_entry);
 
