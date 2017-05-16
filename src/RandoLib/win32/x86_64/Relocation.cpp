@@ -95,7 +95,7 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                      FunctionList *functions) {
     RANDO_ASSERT(**export_ptr == 0xE9);
     os::Module::Relocation reloc(module, *export_ptr + 1, IMAGE_REL_AMD64_REL32);
-    functions->AdjustRelocation(&reloc);
+    add_relocation(reloc);
     *export_ptr += 5;
 }
 
@@ -202,7 +202,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                 os::API::DebugPrintf<10>("Found import trampoline @%p/%p\n",
                                          undiv_ptr, div_ptr);
                 os::Module::Relocation reloc(*this, undiv_ptr + 2, IMAGE_REL_AMD64_REL32);
-                functions->AdjustRelocation(&reloc);
+                add_relocation(reloc);
                 div_ptr += 6;
                 undiv_ptr += 6;
                 continue;
@@ -217,8 +217,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                                          undiv_ptr, div_ptr);
                 os::Module::Relocation reloc1(*this, undiv_ptr + 3, IMAGE_REL_AMD64_REL32);
                 os::Module::Relocation reloc2(*this, undiv_ptr + 8, IMAGE_REL_AMD64_REL32);
-                functions->AdjustRelocation(&reloc1);
-                functions->AdjustRelocation(&reloc2);
+                add_relocation(reloc1);
+                add_relocation(reloc2);
                 div_ptr += 12;
                 undiv_ptr += 12;
                 continue;
@@ -245,8 +245,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                                          undiv_ptr, div_ptr);
                 os::Module::Relocation reloc1(*this, undiv_ptr + 54, IMAGE_REL_AMD64_REL32);
                 os::Module::Relocation reloc2(*this, undiv_ptr + 59, IMAGE_REL_AMD64_REL32);
-                functions->AdjustRelocation(&reloc1);
-                functions->AdjustRelocation(&reloc2);
+                add_relocation(reloc1);
+                add_relocation(reloc2);
                 div_ptr += 121;
                 undiv_ptr += 121;
                 continue;

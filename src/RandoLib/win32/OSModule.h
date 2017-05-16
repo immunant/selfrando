@@ -121,12 +121,12 @@ public:
 
         template<typename Ptr>
         Relocation(const Module &mod, Ptr ptr, Type type)
-            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
+            : m_module(&mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
               m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type) {
         }
 
         Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-            : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+            : m_module(&mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
               m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type) {
         }
 
@@ -162,8 +162,8 @@ public:
         void mark_applied() {}
 
     private:
-        const Module &m_module;
-        const BytePointer m_orig_src_ptr;
+        const Module *m_module;
+        BytePointer m_orig_src_ptr;
         BytePointer m_src_ptr;
         Type m_type;
     };
@@ -194,7 +194,7 @@ public:
         if (subtract_one)
             full_addr--;
         Relocation rva_reloc(*this, &full_addr, Relocation::get_pointer_reloc_type());
-        functions->AdjustRelocation(&rva_reloc);
+        add_relocation(rva_reloc);
         if (subtract_one)
             full_addr++;
 
@@ -277,6 +277,14 @@ public:
         return m_file_name;
     }
 
+    RANDO_SECTION void add_relocation(const Relocation &reloc) const {
+        m_relocs.append(reloc);
+    }
+
+    const Vector<Relocation> &relocations() const {
+        return m_relocs;
+    }
+
 private:
     ModuleInfo *m_info;
     HANDLE m_handle;
@@ -308,6 +316,10 @@ private:
     void fixup_target_relocations(FunctionList*) const;
 
     void get_file_name() const;
+
+private:
+    // FIXME: this shouldn't be mutable, Module should be non-const
+    mutable Vector<Relocation> m_relocs;
 
 private:
     // Architecture-specific fields

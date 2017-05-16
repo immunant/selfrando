@@ -672,7 +672,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
                 continue;
             auto reloc_rva = fixup_block->VirtualAddress + reloc_offset;
             Relocation reloc(*this, RVA2Address(reloc_rva).to_ptr(), reloc_arch_type);
-            functions->AdjustRelocation(&reloc);
+            add_relocation(reloc);
         }
     }
     fixup_target_relocations(functions);

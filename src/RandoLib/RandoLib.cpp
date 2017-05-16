@@ -146,6 +146,7 @@ public:
         TIME_FUNCTION_CALL(FixupRelocations);
         TIME_FUNCTION_CALL(ProcessTrapRelocations);
         TIME_FUNCTION_CALL(FixupExports);
+        TIME_FUNCTION_CALL(ApplyRelocations);
 #if RANDOLIB_WRITE_LAYOUTS > 0
         TIME_FUNCTION_CALL(WriteLayoutFile);
 #endif
@@ -193,6 +194,7 @@ private:
     void FixupRelocations();
     void ProcessTrapRelocations();
     void FixupExports();
+    void ApplyRelocations();
 #if RANDOLIB_WRITE_LAYOUTS > 0
     void WriteLayoutFile();
 #endif
@@ -515,7 +517,7 @@ void ExecSectionProcessor::FixupRelocations() {
 void ExecSectionProcessor::ProcessTrapRelocations() {
     m_trap_info.for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
         auto reloc = os::Module::Relocation(m_module, trap_reloc);
-        m_functions.AdjustRelocation(&reloc);
+        m_module.add_relocation(reloc);
     });
 }
 
@@ -532,6 +534,12 @@ void ExecSectionProcessor::FixupExports() {
         os::Module::Relocation::fixup_export_trampoline(&export_ptr,
                                                         m_module,
                                                         &m_functions);
+}
+
+void ExecSectionProcessor::ApplyRelocations() {
+    auto &relocs = m_module.relocations();
+    for (size_t i = 0; i < relocs.num_elems; i++)
+        m_functions.AdjustRelocation(const_cast<os::Module::Relocation*>(&relocs[i]));
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0

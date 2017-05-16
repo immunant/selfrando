@@ -88,18 +88,18 @@ public:
 
         template<typename Ptr>
         Relocation(const Module &mod, Ptr ptr, Type type)
-            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
+            : m_module(&mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
               m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(0) { }
 
         template<typename Ptr>
         Relocation(const Module &mod, Ptr ptr, Type type, ptrdiff_t addend)
-            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
+            : m_module(&mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
               m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(addend) { }
 
         Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-            : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+            : m_module(&mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
               m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
               m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
             m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
@@ -134,12 +134,12 @@ public:
         }
 
         bool already_applied() const {
-            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_ptr);
+            auto *arch_reloc = m_module->find_arch_reloc(m_orig_src_ptr);
             return arch_reloc != nullptr && arch_reloc->applied;
         }
 
         void mark_applied() {
-            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_ptr);
+            auto *arch_reloc = m_module->find_arch_reloc(m_orig_src_ptr);
             if (arch_reloc != nullptr)
                 arch_reloc->applied = true;
         }
@@ -147,13 +147,13 @@ public:
         BytePointer get_got_entry() const;
 
     private:
-        const Module &m_module;
-        const BytePointer m_orig_src_ptr;
+        const Module *m_module;
+        BytePointer m_orig_src_ptr;
         BytePointer m_src_ptr;
         Type m_type;
 
         bool m_has_symbol_ptr;
-        const BytePointer m_symbol_ptr;
+        BytePointer m_symbol_ptr;
         ptrdiff_t m_addend;
     };
 
@@ -276,6 +276,14 @@ public:
 
     RANDO_SECTION void read_got_relocations(const TrapInfo *trap_info);
 
+    RANDO_SECTION void add_relocation(const Relocation &reloc) const {
+        m_relocs.append(reloc);
+    }
+
+    const Vector<Relocation> &relocations() const {
+        return m_relocs;
+    }
+
 private:
     ModuleInfo *m_module_info;
     BytePointer m_image_base;
@@ -304,6 +312,8 @@ private:
     // We set this flag if the addresses have the base.
     bool m_dynamic_has_base;
 
+    // FIXME: this shouldn't be mutable, Module should be non-const everywhere
+    mutable Vector<Relocation> m_relocs;
     Vector<ArchReloc> m_arch_relocs;
     Vector<BytePointer> m_got_entries;
     size_t m_linker_stubs;

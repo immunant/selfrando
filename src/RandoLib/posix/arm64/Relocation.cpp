@@ -131,11 +131,11 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_AARCH64_CALL26:
         return orig_ptr + sign_extend<28>(read_insn_operand(at_ptr, Instruction::JUMPCALL) << 2);
     case R_AARCH64_GOTREL64:
-        return m_module.get_got_ptr() + *reinterpret_cast<int64_t*>(at_ptr);
+        return m_module->get_got_ptr() + *reinterpret_cast<int64_t*>(at_ptr);
     case R_AARCH64_GOTREL32:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
-        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr);
+        return m_module->get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr);
     case R_AARCH64_ADR_GOT_PAGE:
     case R_AARCH64_TLSGD_ADR_PAGE21:
     case R_AARCH64_TLSLD_ADR_PAGE21:
@@ -321,11 +321,11 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         RANDO_ASSERT(pcrel_delta == sign_extend<28>(read_insn_operand(at_ptr, Instruction::JUMPCALL) << 2));
         break;
     case R_AARCH64_GOTREL64:
-	*reinterpret_cast<int64_t*>(at_ptr) = static_cast<int64_t>(new_target - m_module.get_got_ptr());
+	*reinterpret_cast<int64_t*>(at_ptr) = static_cast<int64_t>(new_target - m_module->get_got_ptr());
         break;
     case R_AARCH64_GOTREL32:
-        RANDO_ASSERT_DELTA_SIZE(32, new_target - m_module.get_got_ptr());
-        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - m_module.get_got_ptr());
+        RANDO_ASSERT_DELTA_SIZE(32, new_target - m_module->get_got_ptr());
+        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - m_module->get_got_ptr());
         break;
     case R_AARCH64_ADR_GOT_PAGE:
     case R_AARCH64_TLSGD_ADR_PAGE21:
@@ -369,7 +369,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     //RANDO_ASSERT(**export_ptr == 0xff ||**export_ptr == 0xfe ||**export_ptr == 0x94 || **export_ptr == 0x97 ||
     //             **export_ptr == 0x14 || **export_ptr == 0x17);
     Module::Relocation reloc(module, *export_ptr, R_AARCH64_JUMP26);
-    functions->AdjustRelocation(&reloc);
+    module.add_relocation(reloc);
     *export_ptr += 4;
 }
 

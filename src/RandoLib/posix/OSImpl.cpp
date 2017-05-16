@@ -486,7 +486,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
         new_dt_init = m_module_info->program_info_table->orig_dt_init;
         Relocation reloc(*this, &new_dt_init,
                          Relocation::get_pointer_reloc_type());
-        functions->AdjustRelocation(&reloc);
+        add_relocation(reloc);
     } else {
         // Point the branch to the return instruction
         new_dt_init = m_module_info->program_info_table->rando_return;
@@ -501,7 +501,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
         new_entry = m_module_info->program_info_table->orig_entry;
         Relocation reloc(*this, &new_entry,
                          Relocation::get_pointer_reloc_type());
-        functions->AdjustRelocation(&reloc);
+        add_relocation(reloc);
     } else {
         // See above
         new_entry = m_module_info->program_info_table->rando_return;
@@ -518,7 +518,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
             if (!m_arch_relocs[i].applied) {
                 Relocation reloc(*this, m_arch_relocs[i].address,
                                  m_arch_relocs[i].type);
-                functions->AdjustRelocation(&reloc);
+                add_relocation(reloc);
             }
     }
 
@@ -527,7 +527,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
         API::DebugPrintf<5>("GOT entry@%p\n", m_got_entries.elems[i]);
         Relocation reloc(*this, m_got_entries.elems[i],
                          Relocation::get_pointer_reloc_type());
-        functions->AdjustRelocation(&reloc);
+        add_relocation(reloc);
     }
 
     // Fix up .eh_frame_hdr, if it exists
@@ -543,7 +543,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
                 BytePointer entry_pc = m_eh_frame_hdr + entry_pc_delta;
                 Relocation reloc(*this, &entry_pc,
                                  Relocation::get_pointer_reloc_type());
-                functions->AdjustRelocation(&reloc);
+                add_relocation(reloc);
                 ptr[idx] = static_cast<uint32_t>(entry_pc - m_eh_frame_hdr);
             }
             API::QuickSort(ptr + 3, num_entries, 2 * sizeof(int32_t),

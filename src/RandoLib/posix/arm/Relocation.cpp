@@ -137,7 +137,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_ARM_PREL31:
         return signextend<int32_t, 31>(reloc_contents & 0x7fffffff) + orig_address - m_addend;
     case R_ARM_GOTOFF:
-        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(cur_address) - m_addend;
+        return m_module->get_got_ptr() + *reinterpret_cast<int32_t*>(cur_address) - m_addend;
     // Instruction relocs
     case R_ARM_CALL:
         if (arm_bl_isX(reloc_contents))
@@ -197,7 +197,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         *reinterpret_cast<int32_t*>(cur_address) = static_cast<int32_t>(addend_pcrel_delta) & 0x7fffffff;
         break;
     case R_ARM_GOTOFF:
-        *reinterpret_cast<int32_t*>(cur_address) = static_cast<int32_t>(new_target + m_addend - m_module.get_got_ptr());
+        *reinterpret_cast<int32_t*>(cur_address) = static_cast<int32_t>(new_target + m_addend - m_module->get_got_ptr());
         break;
     case R_ARM_THM_PC11:
         pcrel_delta -= 4;
@@ -290,7 +290,7 @@ BytePointer Module::Relocation::get_got_entry() const {
     auto at_ptr = m_src_ptr;
     switch(m_type) {
     case R_ARM_GOT32:
-        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
+        return m_module->get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_ARM_GOT_PREL:
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     default:
@@ -314,7 +314,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
         reloc_type = R_ARM_THM_JUMP24;
     }
     Module::Relocation reloc(module, *export_ptr, reloc_type);
-    functions->AdjustRelocation(&reloc);
+    module.add_relocation(reloc);
     *export_ptr += 4;
 }
 
@@ -371,7 +371,7 @@ void Module::relocate_arch(FunctionList *functions) const {
                                              undiv_ptr, div_ptr);
                     undiv_ptr += 1, div_ptr += 1;
                     Relocation reloc(*this, undiv_ptr, R_ARM_ABS32, 0);
-                    functions->AdjustRelocation(&reloc);
+                    add_relocation(reloc);
                     break;
                 }
                 case 0xe59fc000: {
@@ -383,10 +383,10 @@ void Module::relocate_arch(FunctionList *functions) const {
                     undiv_ptr += 2, div_ptr += 2;
                     if (div_ptr[-1] == 0xe12fff1c) {
                         Relocation reloc(*this, undiv_ptr, R_ARM_ABS32, 0);
-                        functions->AdjustRelocation(&reloc);
+                        add_relocation(reloc);
                     } else {
                         Relocation reloc(*this, undiv_ptr, R_ARM_REL32, -4);
-                        functions->AdjustRelocation(&reloc);
+                        add_relocation(reloc);
                     }
                     break;
                 }
@@ -397,7 +397,7 @@ void Module::relocate_arch(FunctionList *functions) const {
                     RANDO_ASSERT(div_ptr[2] == 0xe12fff1c);
                     undiv_ptr += 3, div_ptr += 3;
                     Relocation reloc(*this, undiv_ptr, R_ARM_REL32, 0);
-                    functions->AdjustRelocation(&reloc);
+                    add_relocation(reloc);
                     break;
                 }
                 default: {
@@ -406,14 +406,14 @@ void Module::relocate_arch(FunctionList *functions) const {
                         API::DebugPrintf<10>("Found Thumb short branch stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
                         Relocation reloc(*this, undiv_ptr, R_ARM_JUMP24, -8);
-                        functions->AdjustRelocation(&reloc);
+                        add_relocation(reloc);
                         break;
                     }
                     if ((div_ptr[0] & 0xd000f800) == 0x9000f000) {
                         API::DebugPrintf<10>("Found A8 veneer stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
                         Relocation reloc(*this, undiv_ptr, R_ARM_THM_JUMP24, -4);
-                        functions->AdjustRelocation(&reloc);
+                        add_relocation(reloc);
                         break;
                     }
                     break;

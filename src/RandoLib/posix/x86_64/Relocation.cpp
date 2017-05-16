@@ -58,7 +58,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint64_t*>(m_src_ptr));
     case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
-        return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
+        return m_module->get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
     case 42: // R_X86_64_REX_GOTPCRELX
@@ -109,7 +109,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         break;
     case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
-        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
+        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module->get_got_ptr();
         break;
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
@@ -159,10 +159,10 @@ BytePointer Module::Relocation::get_got_entry() const {
     auto at_ptr = m_src_ptr;
     switch(m_type) {
     case R_X86_64_GOT32:
-        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
+        return m_module->get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_X86_64_GOT64:
     case R_X86_64_GOTPLT64:
-        return m_module.get_got_ptr() + *reinterpret_cast<int64_t*>(at_ptr) - m_addend;
+        return m_module->get_got_ptr() + *reinterpret_cast<int64_t*>(at_ptr) - m_addend;
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
     case 42: // R_X86_64_REX_GOTPCRELX
@@ -177,13 +177,13 @@ BytePointer Module::Relocation::get_got_entry() const {
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_X86_64_GOTPC32:
         at_ptr += *reinterpret_cast<int32_t*>(at_ptr);
-        RANDO_ASSERT(at_ptr == m_module.get_got_ptr());
+        RANDO_ASSERT(at_ptr == m_module->get_got_ptr());
         return nullptr;
     case R_X86_64_GOTPCREL64:
         return at_ptr + *reinterpret_cast<int64_t*>(at_ptr) - m_addend;
     case R_X86_64_GOTPC64:
         at_ptr += *reinterpret_cast<int64_t*>(at_ptr);
-        RANDO_ASSERT(at_ptr == m_module.get_got_ptr());
+        RANDO_ASSERT(at_ptr == m_module->get_got_ptr());
         return nullptr;
     default:
         return nullptr;
@@ -207,7 +207,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     RANDO_ASSERT(**export_ptr == 0xE9 || **export_ptr == 0xCC);
     RANDO_ASSERT((reinterpret_cast<uintptr_t>(*export_ptr) & 1) == 0);
     Module::Relocation reloc(module, *export_ptr + 1, R_X86_64_PC32, -4);
-    functions->AdjustRelocation(&reloc);
+    module.add_relocation(reloc);
     *export_ptr += 6;
 }
 

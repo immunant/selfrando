@@ -24,7 +24,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_386_GOT32:
     case R_386_GOTOFF:
-        return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
+        return m_module->get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
     case R_386_PC32:
     case R_386_PLT32:
     case R_386_GOTPC:
@@ -46,7 +46,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         break;
     case R_386_GOT32:
     case R_386_GOTOFF:
-        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
+        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module->get_got_ptr();
         break;
     case R_386_PC32:
     case R_386_PLT32:
@@ -85,7 +85,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     RANDO_ASSERT(**export_ptr == 0xE9 || **export_ptr == 0xCC);
     RANDO_ASSERT((reinterpret_cast<uintptr_t>(*export_ptr) & 1) == 0);
     Module::Relocation reloc(module, *export_ptr + 1, R_386_PC32);
-    functions->AdjustRelocation(&reloc);
+    module.add_relocation(reloc);
     *export_ptr += 6;
 }
 
