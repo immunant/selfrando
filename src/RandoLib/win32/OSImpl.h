@@ -55,8 +55,8 @@
     } while (0)
 
 #ifdef __cplusplus
-class TrapInfo;
-struct trap_reloc_t;
+
+#include <TrapInfo.h>
 
 struct FunctionList;
 struct Function;
@@ -196,7 +196,11 @@ public:
             : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
               m_src_ptr(addr.to_ptr()), m_type(type) { }
 
-        Relocation(const os::Module&, const trap_reloc_t&);
+        Relocation(const os::Module&, const trap_reloc_t&)
+            : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+              m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type) {
+        }
+
 
         Type get_type() const {
             return m_type;

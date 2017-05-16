@@ -9,9 +9,7 @@
 #pragma once
 
 #include <RandoLib.h>
-
-class TrapInfo;
-struct trap_reloc_t;
+#include <TrapInfo.h>
 
 struct FunctionList;
 struct Function;
@@ -98,7 +96,12 @@ public:
               m_src_ptr(addr.to_ptr()), m_type(type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(addend) { }
 
-        Relocation(const os::Module&, const trap_reloc_t&);
+        Relocation(const os::Module &mod, const trap_reloc_t &reloc)
+            : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+              m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
+              m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
+            m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
+        }
 
         Type get_type() const {
             return m_type;

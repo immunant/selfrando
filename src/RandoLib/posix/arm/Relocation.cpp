@@ -327,13 +327,6 @@ void Module::Relocation::fixup_entry_point(const Module &module,
     *reinterpret_cast<uint32_t*>(entry_point-4) = static_cast<uint32_t>(target);
 }
 
-Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
-      m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
-      m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
-    m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
-}
-
 template<>
 size_t Module::arch_reloc_type<Elf32_Rel>(const Elf32_Rel *rel) {
     auto rel_type = ELF32_R_TYPE(rel->r_info);

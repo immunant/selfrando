@@ -14,13 +14,6 @@
 
 namespace os {
 
-Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
-      m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
-      m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
-    m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
-}
-
 template<typename Value>
 static inline RANDO_SECTION
 uintptr_t page_address(Value val) {

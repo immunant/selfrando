@@ -13,13 +13,6 @@
 
 namespace os {
 
-Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
-      m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
-      m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
-    m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
-}
-
 BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
