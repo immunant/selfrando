@@ -163,7 +163,8 @@ private:
         if (capacity == 0) {
             capacity = DEFAULT_CAPACITY;
         } else {
-            capacity <<= 1;
+            // Growth factor of 1.5
+            capacity += capacity >> 1;
         }
         reserve(capacity);
     }
