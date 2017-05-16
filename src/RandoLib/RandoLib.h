@@ -160,7 +160,7 @@ private:
     static constexpr size_t DEFAULT_CAPACITY = 16;
 
     void grow() {
-        if (capacity == 0) {
+        if (capacity < DEFAULT_CAPACITY) {
             capacity = DEFAULT_CAPACITY;
         } else {
             // Growth factor of 1.5
