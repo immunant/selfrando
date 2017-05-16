@@ -161,6 +161,7 @@ private:
 
     void grow() {
         if (capacity < DEFAULT_CAPACITY) {
+            static_assert(DEFAULT_CAPACITY > 1, "Default vector capacity too small");
             capacity = DEFAULT_CAPACITY;
         } else {
             // Growth factor of 1.5
