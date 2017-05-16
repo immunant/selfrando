@@ -600,7 +600,7 @@ template
 RANDO_SECTION void Module::build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 #endif
 
-RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address) const {
+RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(BytePointer address_ptr) const {
     // Given a memory address, find the ArchReloc that covers that address
     // using binary search (assuming the architecture code pre-sorted them)
     if (m_arch_relocs.elems == nullptr) {
@@ -608,7 +608,6 @@ RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(const Address &address)
         return nullptr;
     }
 
-    auto address_ptr = address.to_ptr();
     // return null if no function contains addr
     if (address_ptr < m_arch_relocs[0].address ||
         address_ptr > m_arch_relocs[m_arch_relocs.num_elems - 1].address)

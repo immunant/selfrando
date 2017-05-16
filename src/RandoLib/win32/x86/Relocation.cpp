@@ -11,37 +11,34 @@
 #include <TrapInfo.h>
 
 os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
-      m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type) { }
+    : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+      m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type) { }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
-
-    auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case IMAGE_REL_I386_DIR32:
     case IMAGE_REL_I386_DIR32NB: // FIXME: is this correct???
-        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case IMAGE_REL_I386_REL32:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
-        return m_orig_src_addr.to_ptr() + sizeof(int32_t) + *reinterpret_cast<int32_t*>(at_ptr);
+        return m_orig_src_ptr + sizeof(int32_t) + *reinterpret_cast<int32_t*>(m_src_ptr);
     default:
         return nullptr;
     }
 }
 
 void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
-    auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case IMAGE_REL_I386_DIR32:
     case IMAGE_REL_I386_DIR32NB:
-        *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case IMAGE_REL_I386_REL32:
         // FIXME: check for overflow here???
-        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target - (at_ptr + sizeof(int32_t)));
+        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t)));
         break;
     default:
         RANDO_ASSERT(false);

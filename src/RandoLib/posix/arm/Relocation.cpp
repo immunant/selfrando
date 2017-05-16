@@ -121,9 +121,9 @@ BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
-    auto cur_address = m_src_addr.to_ptr();
+    auto cur_address = m_src_ptr;
     auto reloc_contents = *reinterpret_cast<uint32_t*>(cur_address);
-    auto orig_address = m_orig_src_addr.to_ptr();
+    auto orig_address = m_orig_src_ptr;
     switch(m_type) {
     // Data relocs
     case R_ARM_ABS32:
@@ -161,8 +161,8 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_ARM_THM_MOVW_ABS_NC:
     case R_ARM_MOVT_ABS:
     case R_ARM_THM_MOVT_ABS:
-        RANDO_ASSERT(m_has_symbol_addr);
-        return m_symbol_addr.to_ptr() + m_addend;
+        RANDO_ASSERT(m_has_symbol_ptr);
+        return m_symbol_ptr.to_ptr() + m_addend;
     case R_ARM_GOT32:
         // Nothing to do here, we just need this for get_got_entry()
         return nullptr;
@@ -181,7 +181,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     } while (0)
 
 void Module::Relocation::set_target_ptr(BytePointer new_target) {
-    auto cur_address = m_src_addr.to_ptr();
+    auto cur_address = m_src_ptr;
     auto reloc_contents = *reinterpret_cast<uint32_t*>(cur_address);
     ptrdiff_t        pcrel_delta = new_target - cur_address;
     ptrdiff_t addend_pcrel_delta = pcrel_delta + m_addend;
@@ -260,22 +260,22 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         // Ignore these
         break;
     case R_ARM_MOVW_ABS_NC:
-        if (m_has_symbol_addr)
+        if (m_has_symbol_ptr)
             *reinterpret_cast<uint32_t*>(cur_address) =
                movwt_set(*reinterpret_cast<uint32_t*>(cur_address), reinterpret_cast<uint32_t>(new_target));
         break;
     case R_ARM_MOVT_ABS:
-        if (m_has_symbol_addr)
+        if (m_has_symbol_ptr)
             *reinterpret_cast<uint32_t*>(cur_address) =
                movwt_set(*reinterpret_cast<uint32_t*>(cur_address), reinterpret_cast<uint32_t>(new_target) >> 16);
         break;
     case R_ARM_THM_MOVW_ABS_NC:
-        if (m_has_symbol_addr)
+        if (m_has_symbol_ptr)
             *reinterpret_cast<uint32_t*>(cur_address) =
                thm_movwt_set(*reinterpret_cast<uint32_t*>(cur_address), reinterpret_cast<uint32_t>(new_target));
         break;
     case R_ARM_THM_MOVT_ABS:
-        if (m_has_symbol_addr)
+        if (m_has_symbol_ptr)
             *reinterpret_cast<uint32_t*>(cur_address) =
                thm_movwt_set(*reinterpret_cast<uint32_t*>(cur_address), reinterpret_cast<uint32_t>(new_target) >> 16);
         break;
@@ -287,7 +287,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 }
 
 BytePointer Module::Relocation::get_got_entry() const {
-    auto at_ptr = m_src_addr.to_ptr();
+    auto at_ptr = m_src_ptr;
     switch(m_type) {
     case R_ARM_GOT32:
         return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
@@ -328,10 +328,10 @@ void Module::Relocation::fixup_entry_point(const Module &module,
 }
 
 Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
-      m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
-      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
-    m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
+    : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+      m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
+      m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
+    m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
 template<>

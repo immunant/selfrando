@@ -75,7 +75,7 @@ RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc)
     os::BytePointer target_ptr = reloc->get_target_ptr();
     os::API::DebugPrintf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n",
                             reloc->get_type(),
-                            reloc->get_original_source_address().to_ptr(),
+                            reloc->get_original_source_ptr(),
                             source_ptr, *reinterpret_cast<uint32_t*>(source_ptr),
                             *reinterpret_cast<uintptr_t*>(source_ptr), target_ptr);
     // Compute new target address

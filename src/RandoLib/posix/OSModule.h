@@ -89,14 +89,14 @@ public:
         Relocation() = delete;
 
         Relocation(const Module &mod, const Address &addr, Type type)
-            : m_module(mod), m_orig_src_addr(addr),
-              m_src_addr(addr), m_type(type),
-              m_has_symbol_addr(false), m_symbol_addr(mod), m_addend(0) { }
+            : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
+              m_src_ptr(addr.to_ptr()), m_type(type),
+              m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(0) { }
 
         Relocation(const Module &mod, const Address &addr, Type type, ptrdiff_t addend)
-            : m_module(mod), m_orig_src_addr(addr),
-              m_src_addr(addr), m_type(type),
-              m_has_symbol_addr(false), m_symbol_addr(mod), m_addend(addend) { }
+            : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
+              m_src_ptr(addr.to_ptr()), m_type(type),
+              m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(addend) { }
 
         Relocation(const os::Module&, const trap_reloc_t&);
 
@@ -104,20 +104,16 @@ public:
             return m_type;
         }
 
-        Address get_original_source_address() const {
-            return m_orig_src_addr;
-        }
-
-        Address get_source_address() const {
-            return m_src_addr;
+        BytePointer get_original_source_ptr() const {
+            return m_orig_src_ptr;
         }
 
         BytePointer get_source_ptr() const {
-            return m_src_addr.to_ptr();
+            return m_src_ptr;
         }
 
         void set_source_ptr(BytePointer new_source) {
-            m_src_addr.Reset(m_module, reinterpret_cast<uintptr_t>(new_source));
+            m_src_ptr = new_source;
         }
 
         BytePointer get_target_ptr() const;
@@ -133,12 +129,12 @@ public:
         }
 
         bool already_applied() const {
-            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_addr);
+            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_ptr);
             return arch_reloc != nullptr && arch_reloc->applied;
         }
 
         void mark_applied() {
-            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_addr);
+            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_ptr);
             if (arch_reloc != nullptr)
                 arch_reloc->applied = true;
         }
@@ -147,12 +143,12 @@ public:
 
     private:
         const Module &m_module;
-        const Address m_orig_src_addr;
-        Address m_src_addr;
+        const BytePointer m_orig_src_ptr;
+        BytePointer m_src_ptr;
         Type m_type;
 
-        bool m_has_symbol_addr;
-        const Address m_symbol_addr;
+        bool m_has_symbol_ptr;
+        const BytePointer m_symbol_ptr;
         ptrdiff_t m_addend;
     };
 
@@ -266,7 +262,7 @@ public:
         return m_phdr_info.dlpi_name;
     }
 
-    RANDO_SECTION ArchReloc *find_arch_reloc(const Address &address) const;
+    RANDO_SECTION ArchReloc *find_arch_reloc(BytePointer address_ptr) const;
 
 #if RANDOLIB_WRITE_LAYOUTS
     void write_layout_file(FunctionList *functions,

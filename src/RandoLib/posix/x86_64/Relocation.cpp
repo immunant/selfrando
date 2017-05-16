@@ -15,10 +15,10 @@
 namespace os {
 
 Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
-      m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
-      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
-    m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
+    : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
+      m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
+      m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
+    m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
 static inline bool is_patched_gotpcrel(BytePointer at_ptr,
@@ -57,48 +57,46 @@ static inline bool is_pcrel_gotpc_tlsdesc(BytePointer at_ptr) {
 BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
-
-    auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case R_X86_64_32:
     case R_X86_64_32S: // FIXME: is this correct???
-        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_X86_64_64:
-        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint64_t*>(m_src_ptr));
     case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
-        return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(at_ptr);
+        return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
     case 42: // R_X86_64_REX_GOTPCRELX
-        if (is_patched_gotpcrel(at_ptr, m_addend))
-            return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+        if (is_patched_gotpcrel(m_src_ptr, m_addend))
+            return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
         goto pcrel_reloc;
     case R_X86_64_PC32:
     case R_X86_64_PLT32:
     case R_X86_64_GOTPC32:
-        if (is_patched_tls_get_addr_call(at_ptr))
+        if (is_patched_tls_get_addr_call(m_src_ptr))
             return nullptr;
     pcrel_reloc:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
-        return m_orig_src_addr.to_ptr() - m_addend + *reinterpret_cast<int32_t*>(at_ptr);
+        return m_orig_src_ptr - m_addend + *reinterpret_cast<int32_t*>(m_src_ptr);
     case R_X86_64_PC64:
     case R_X86_64_GOTPCREL64:
     case R_X86_64_GOTPC64:
-        return m_orig_src_addr.to_ptr() - m_addend + *reinterpret_cast<int64_t*>(at_ptr);
+        return m_orig_src_ptr - m_addend + *reinterpret_cast<int64_t*>(m_src_ptr);
     // TLS relocations may get mutated to other instructions
     case R_X86_64_TLSGD:
     case R_X86_64_TLSLD:
-        if (is_pcrel_tlsxd(at_ptr))
+        if (is_pcrel_tlsxd(m_src_ptr))
             goto pcrel_reloc;
         break;
     case R_X86_64_GOTTPOFF:
-        if (is_pcrel_gottpoff(at_ptr))
+        if (is_pcrel_gottpoff(m_src_ptr))
             goto pcrel_reloc;
         break;
     case R_X86_64_GOTPC32_TLSDESC:
-        if (is_pcrel_gotpc_tlsdesc(at_ptr))
+        if (is_pcrel_gotpc_tlsdesc(m_src_ptr))
             goto pcrel_reloc;
         break;
     default:
@@ -108,52 +106,51 @@ BytePointer Module::Relocation::get_target_ptr() const {
 }
 
 void Module::Relocation::set_target_ptr(BytePointer new_target) {
-    auto at_ptr = m_src_addr.to_ptr();
     switch(m_type) {
     case R_X86_64_32:
     case R_X86_64_32S: // FIXME: is this correct???
-        *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case R_X86_64_64:
-        *reinterpret_cast<uint64_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        *reinterpret_cast<uint64_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
-        *reinterpret_cast<ptrdiff_t*>(at_ptr) = new_target - m_module.get_got_ptr();
+        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
         break;
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
     case 42: // R_X86_64_REX_GOTPCRELX
-        if (is_patched_gotpcrel(at_ptr, m_addend)) {
-            *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        if (is_patched_gotpcrel(m_src_ptr, m_addend)) {
+            *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
             return;
         }
         goto pcrel_reloc;
     case R_X86_64_PC32:
     case R_X86_64_PLT32:
     case R_X86_64_GOTPC32:
-        if (is_patched_tls_get_addr_call(at_ptr))
+        if (is_patched_tls_get_addr_call(m_src_ptr))
             break;
     pcrel_reloc:
-        *reinterpret_cast<int32_t*>(at_ptr) = static_cast<int32_t>(new_target + m_addend - at_ptr);
+        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target + m_addend - m_src_ptr);
         break;
     case R_X86_64_PC64:
     case R_X86_64_GOTPCREL64:
     case R_X86_64_GOTPC64:
         // FIXME: check for overflow here???
-        *reinterpret_cast<int64_t*>(at_ptr) = static_cast<int64_t>(new_target + m_addend - at_ptr);
+        *reinterpret_cast<int64_t*>(m_src_ptr) = static_cast<int64_t>(new_target + m_addend - m_src_ptr);
         break;
     case R_X86_64_TLSGD:
     case R_X86_64_TLSLD:
-        if (is_pcrel_tlsxd(at_ptr))
+        if (is_pcrel_tlsxd(m_src_ptr))
             goto pcrel_reloc;
         break;
     case R_X86_64_GOTTPOFF:
-        if (is_pcrel_gottpoff(at_ptr))
+        if (is_pcrel_gottpoff(m_src_ptr))
             goto pcrel_reloc;
         break;
     case R_X86_64_GOTPC32_TLSDESC:
-        if (is_pcrel_gotpc_tlsdesc(at_ptr))
+        if (is_pcrel_gotpc_tlsdesc(m_src_ptr))
             goto pcrel_reloc;
         break;
     default:
@@ -166,7 +163,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 BytePointer Module::Relocation::get_got_entry() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
-    auto at_ptr = m_src_addr.to_ptr();
+    auto at_ptr = m_src_ptr;
     switch(m_type) {
     case R_X86_64_GOT32:
         return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;

@@ -193,8 +193,8 @@ public:
         Relocation() = delete;
 
         Relocation(const Module &mod, const Address &addr, Type type)
-            : m_module(mod), m_orig_src_addr(addr),
-              m_src_addr(addr), m_type(type) { }
+            : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
+              m_src_ptr(addr.to_ptr()), m_type(type) { }
 
         Relocation(const os::Module&, const trap_reloc_t&);
 
@@ -202,20 +202,16 @@ public:
             return m_type;
         }
 
-        Address get_original_source_address() const {
-            return m_orig_src_addr;
-        }
-
-        Address get_source_address() const {
-            return m_src_addr;
+        BytePointer get_original_source_ptr() const {
+            return m_orig_src_ptr;
         }
 
         BytePointer get_source_ptr() const {
-            return m_src_addr.to_ptr();
+            return m_src_ptr;
         }
 
         void set_source_ptr(BytePointer new_source) {
-            m_src_addr.Reset(m_module, reinterpret_cast<uintptr_t>(new_source));
+            m_src_ptr = new_source;
         }
 
         BytePointer get_target_ptr() const;
@@ -235,8 +231,8 @@ public:
 
     private:
         const Module &m_module;
-        const Address m_orig_src_addr;
-        Address m_src_addr;
+        const BytePointer m_orig_src_addr;
+        BytePointer m_src_addr;
         Type m_type;
     };
 
