@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include <RandoLib.h>
 #include <TrapInfo.h>
 
 struct FunctionList;
