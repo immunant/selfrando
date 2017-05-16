@@ -86,14 +86,16 @@ public:
 
         Relocation() = delete;
 
-        Relocation(const Module &mod, const Address &addr, Type type)
-            : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
-              m_src_ptr(addr.to_ptr()), m_type(type),
+        template<typename Ptr>
+        Relocation(const Module &mod, Ptr ptr, Type type)
+            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
+              m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(0) { }
 
-        Relocation(const Module &mod, const Address &addr, Type type, ptrdiff_t addend)
-            : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
-              m_src_ptr(addr.to_ptr()), m_type(type),
+        template<typename Ptr>
+        Relocation(const Module &mod, Ptr ptr, Type type, ptrdiff_t addend)
+            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
+              m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(addend) { }
 
         Relocation(const os::Module &mod, const trap_reloc_t &reloc)

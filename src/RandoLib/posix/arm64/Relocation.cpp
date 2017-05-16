@@ -368,9 +368,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     //RANDO_ASSERT((**export_ptr >> 26) == 0x5);
     //RANDO_ASSERT(**export_ptr == 0xff ||**export_ptr == 0xfe ||**export_ptr == 0x94 || **export_ptr == 0x97 ||
     //             **export_ptr == 0x14 || **export_ptr == 0x17);
-    Module::Relocation reloc(module,
-                             module.address_from_ptr(*export_ptr),
-                             R_AARCH64_JUMP26);
+    Module::Relocation reloc(module, *export_ptr, R_AARCH64_JUMP26);
     functions->AdjustRelocation(&reloc);
     *export_ptr += 4;
 }
@@ -379,9 +377,7 @@ void Module::Relocation::fixup_entry_point(const Module &module,
                                            uintptr_t entry_point,
                                            uintptr_t target) {
     RANDO_ASSERT(*reinterpret_cast<uint32_t*>(entry_point) == 0x14000001);
-    Module::Relocation reloc(module,
-                             module.address_from_ptr(entry_point),
-                             R_AARCH64_JUMP26);
+    Module::Relocation reloc(module, entry_point, R_AARCH64_JUMP26);
     reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 
     // Flush the icache line containing this entry point

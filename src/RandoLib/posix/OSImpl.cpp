@@ -484,7 +484,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     uintptr_t new_dt_init;
     if (m_module_info->program_info_table->orig_dt_init != 0) {
         new_dt_init = m_module_info->program_info_table->orig_dt_init;
-        Relocation reloc(*this, address_from_ptr(&new_dt_init),
+        Relocation reloc(*this, &new_dt_init,
                          Relocation::get_pointer_reloc_type());
         functions->AdjustRelocation(&reloc);
     } else {
@@ -499,7 +499,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     uintptr_t new_entry;
     if (m_module_info->program_info_table->orig_entry != 0) {
         new_entry = m_module_info->program_info_table->orig_entry;
-        Relocation reloc(*this, address_from_ptr(&new_entry),
+        Relocation reloc(*this, &new_entry,
                          Relocation::get_pointer_reloc_type());
         functions->AdjustRelocation(&reloc);
     } else {
@@ -516,7 +516,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     if (m_arch_relocs.elems != nullptr) {
         for (size_t i = 0; i < m_arch_relocs.num_elems; i++)
             if (!m_arch_relocs[i].applied) {
-                Relocation reloc(*this, address_from_ptr(m_arch_relocs[i].address),
+                Relocation reloc(*this, m_arch_relocs[i].address,
                                  m_arch_relocs[i].type);
                 functions->AdjustRelocation(&reloc);
             }
@@ -525,7 +525,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     // Apply relocations to known GOT entries
     for (size_t i = 0; i < m_got_entries.num_elems; i++) {
         API::DebugPrintf<5>("GOT entry@%p\n", m_got_entries.elems[i]);
-        Relocation reloc(*this, address_from_ptr(m_got_entries.elems[i]),
+        Relocation reloc(*this, m_got_entries.elems[i],
                          Relocation::get_pointer_reloc_type());
         functions->AdjustRelocation(&reloc);
     }
@@ -541,7 +541,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
             for (size_t i = 0, idx = 3; i < num_entries; i++, idx += 2) {
                 int32_t entry_pc_delta = static_cast<int32_t>(ptr[idx]);
                 BytePointer entry_pc = m_eh_frame_hdr + entry_pc_delta;
-                Relocation reloc(*this, address_from_ptr(&entry_pc),
+                Relocation reloc(*this, &entry_pc,
                                  Relocation::get_pointer_reloc_type());
                 functions->AdjustRelocation(&reloc);
                 ptr[idx] = static_cast<uint32_t>(entry_pc - m_eh_frame_hdr);

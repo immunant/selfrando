@@ -206,9 +206,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     // is the opcode for the breakpoint instruction that gdb uses (INT 3)
     RANDO_ASSERT(**export_ptr == 0xE9 || **export_ptr == 0xCC);
     RANDO_ASSERT((reinterpret_cast<uintptr_t>(*export_ptr) & 1) == 0);
-    Module::Relocation reloc(module,
-                             module.address_from_ptr(*export_ptr + 1),
-                             R_X86_64_PC32, -4);
+    Module::Relocation reloc(module, *export_ptr + 1, R_X86_64_PC32, -4);
     functions->AdjustRelocation(&reloc);
     *export_ptr += 6;
 }
@@ -217,9 +215,7 @@ void Module::Relocation::fixup_entry_point(const Module &module,
                                            uintptr_t entry_point,
                                            uintptr_t target) {
     RANDO_ASSERT(*reinterpret_cast<uint8_t*>(entry_point) == 0xE9);
-    Module::Relocation reloc(module,
-                             module.address_from_ptr(entry_point + 1),
-                             R_X86_64_PC32, -4);
+    Module::Relocation reloc(module, entry_point + 1, R_X86_64_PC32, -4);
     reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 }
 

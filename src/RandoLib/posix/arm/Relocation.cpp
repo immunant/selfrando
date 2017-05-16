@@ -313,9 +313,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
         API::DebugPrintf<5>("Export tramp (thumb): %p\n", *export_ptr);
         reloc_type = R_ARM_THM_JUMP24;
     }
-    Module::Relocation reloc(module,
-                             module.address_from_ptr(*export_ptr),
-                             reloc_type);
+    Module::Relocation reloc(module, *export_ptr, reloc_type);
     functions->AdjustRelocation(&reloc);
     *export_ptr += 4;
 }
@@ -372,7 +370,7 @@ void Module::relocate_arch(FunctionList *functions) const {
                     API::DebugPrintf<10>("Found ARM/Thumb linker stub A@%p/%p\n",
                                              undiv_ptr, div_ptr);
                     undiv_ptr += 1, div_ptr += 1;
-                    Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_ABS32, 0);
+                    Relocation reloc(*this, undiv_ptr, R_ARM_ABS32, 0);
                     functions->AdjustRelocation(&reloc);
                     break;
                 }
@@ -384,10 +382,10 @@ void Module::relocate_arch(FunctionList *functions) const {
                                              undiv_ptr, div_ptr);
                     undiv_ptr += 2, div_ptr += 2;
                     if (div_ptr[-1] == 0xe12fff1c) {
-                        Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_ABS32, 0);
+                        Relocation reloc(*this, undiv_ptr, R_ARM_ABS32, 0);
                         functions->AdjustRelocation(&reloc);
                     } else {
-                        Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_REL32, -4);
+                        Relocation reloc(*this, undiv_ptr, R_ARM_REL32, -4);
                         functions->AdjustRelocation(&reloc);
                     }
                     break;
@@ -398,7 +396,7 @@ void Module::relocate_arch(FunctionList *functions) const {
                     RANDO_ASSERT(div_ptr[1] == 0xe08fc00c);
                     RANDO_ASSERT(div_ptr[2] == 0xe12fff1c);
                     undiv_ptr += 3, div_ptr += 3;
-                    Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_REL32, 0);
+                    Relocation reloc(*this, undiv_ptr, R_ARM_REL32, 0);
                     functions->AdjustRelocation(&reloc);
                     break;
                 }
@@ -407,14 +405,14 @@ void Module::relocate_arch(FunctionList *functions) const {
                         RANDO_ASSERT((div_ptr[0] >> 24) == 0xea); // Make sure we're patching a B instruction
                         API::DebugPrintf<10>("Found Thumb short branch stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
-                        Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_JUMP24, -8);
+                        Relocation reloc(*this, undiv_ptr, R_ARM_JUMP24, -8);
                         functions->AdjustRelocation(&reloc);
                         break;
                     }
                     if ((div_ptr[0] & 0xd000f800) == 0x9000f000) {
                         API::DebugPrintf<10>("Found A8 veneer stub @%p/%p\n",
                                                  undiv_ptr, div_ptr);
-                        Relocation reloc(*this, address_from_ptr(undiv_ptr), R_ARM_THM_JUMP24, -4);
+                        Relocation reloc(*this, undiv_ptr, R_ARM_THM_JUMP24, -4);
                         functions->AdjustRelocation(&reloc);
                         break;
                     }
