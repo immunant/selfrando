@@ -61,9 +61,7 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                      const Module &module,
                                                      FunctionList *functions) {
     RANDO_ASSERT(**export_ptr == 0xE9);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(*export_ptr + 1),
-                                 IMAGE_REL_I386_REL32);
+    os::Module::Relocation reloc(module, *export_ptr + 1, IMAGE_REL_I386_REL32);
     functions->AdjustRelocation(&reloc);
     *export_ptr += 5;
 }

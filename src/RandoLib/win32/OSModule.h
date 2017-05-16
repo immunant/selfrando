@@ -119,9 +119,10 @@ public:
 
         Relocation() = delete;
 
-        Relocation(const Module &mod, const Address &addr, Type type)
-            : m_module(mod), m_orig_src_ptr(addr.to_ptr()),
-            m_src_ptr(addr.to_ptr()), m_type(type) {
+        template<typename Ptr>
+        Relocation(const Module &mod, Ptr ptr, Type type)
+            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
+              m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type) {
         }
 
         Relocation(const os::Module &mod, const trap_reloc_t &reloc)
@@ -192,8 +193,7 @@ public:
         // the object we're relocating
         if (subtract_one)
             full_addr--;
-        Relocation rva_reloc(*this, address_from_ptr(&full_addr),
-                             Relocation::get_pointer_reloc_type());
+        Relocation rva_reloc(*this, &full_addr, Relocation::get_pointer_reloc_type());
         functions->AdjustRelocation(&rva_reloc);
         if (subtract_one)
             full_addr++;

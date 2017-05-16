@@ -94,9 +94,7 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
                                                      const Module &module,
                                                      FunctionList *functions) {
     RANDO_ASSERT(**export_ptr == 0xE9);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(*export_ptr + 1),
-                                 IMAGE_REL_AMD64_REL32);
+    os::Module::Relocation reloc(module, *export_ptr + 1, IMAGE_REL_AMD64_REL32);
     functions->AdjustRelocation(&reloc);
     *export_ptr += 5;
 }
@@ -203,9 +201,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                 div_ptr[0] == 0xFF || div_ptr[1] == 0x25) {
                 os::API::DebugPrintf<10>("Found import trampoline @%p/%p\n",
                                          undiv_ptr, div_ptr);
-                os::Module::Relocation reloc(*this,
-                                             address_from_ptr(undiv_ptr + 2),
-                                             IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc(*this, undiv_ptr + 2, IMAGE_REL_AMD64_REL32);
                 functions->AdjustRelocation(&reloc);
                 div_ptr += 6;
                 undiv_ptr += 6;
@@ -219,12 +215,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                 //   E9 nn nn nn nn         JMP __tailMerge_NNN_dll
                 os::API::DebugPrintf<10>("Found delay-loading import trampoline @%p/%p\n",
                                          undiv_ptr, div_ptr);
-                os::Module::Relocation reloc1(*this,
-                                              address_from_ptr(undiv_ptr + 3),
-                                              IMAGE_REL_AMD64_REL32);
-                os::Module::Relocation reloc2(*this,
-                                              address_from_ptr(undiv_ptr + 8),
-                                              IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc1(*this, undiv_ptr + 3, IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc2(*this, undiv_ptr + 8, IMAGE_REL_AMD64_REL32);
                 functions->AdjustRelocation(&reloc1);
                 functions->AdjustRelocation(&reloc2);
                 div_ptr += 12;
@@ -251,12 +243,8 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                 // FIXME: figure out why the EB 00 jump is there
                 os::API::DebugPrintf<10>("Found __tailMerge import trampoline @%p/%p\n",
                                          undiv_ptr, div_ptr);
-                os::Module::Relocation reloc1(*this,
-                                              address_from_ptr(undiv_ptr + 54),
-                                              IMAGE_REL_AMD64_REL32);
-                os::Module::Relocation reloc2(*this,
-                                              address_from_ptr(undiv_ptr + 59),
-                                              IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc1(*this, undiv_ptr + 54, IMAGE_REL_AMD64_REL32);
+                os::Module::Relocation reloc2(*this, undiv_ptr + 59, IMAGE_REL_AMD64_REL32);
                 functions->AdjustRelocation(&reloc1);
                 functions->AdjustRelocation(&reloc2);
                 div_ptr += 121;
