@@ -517,6 +517,12 @@ void ExecSectionProcessor::FixupRelocations() {
 }
 
 void ExecSectionProcessor::ProcessTrapRelocations() {
+    size_t cnt = 0;
+    m_trap_info.for_all_relocations([this, &cnt] (const trap_reloc_t &trap_reloc) {
+        cnt++;
+    });
+    auto &relocs = const_cast<Vector<os::Module::Relocation>&>(m_module.relocations());
+    relocs.reserve(relocs.num_elems + cnt);
     m_trap_info.for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
         auto reloc = os::Module::Relocation(m_module, trap_reloc);
         m_module.add_relocation(reloc);
