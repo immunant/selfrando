@@ -157,10 +157,13 @@ RANDO_SECTION void *API::MemReAlloc(void *old_ptr, size_t new_size, bool zeroed)
     auto *old_size_ptr = reinterpret_cast<size_t*>(old_ptr);
     old_size_ptr--;
 
+    auto old_size = *old_size_ptr;
     new_size = (new_size + sizeof(new_size) + kPageSize - 1) & ~kPageSize;
-    auto res = reinterpret_cast<size_t*>(_TRaP_libc_mremap(old_size_ptr, *old_size_ptr,
-                                                           new_size, MREMAP_MAYMOVE));
+    if (new_size == old_size)
+        return old_ptr;
 
+    auto res = reinterpret_cast<size_t*>(_TRaP_libc_mremap(old_size_ptr, old_size,
+                                                           new_size, MREMAP_MAYMOVE));
     *res = new_size;
     return reinterpret_cast<void*>(res + 1);
 }
