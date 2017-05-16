@@ -231,8 +231,8 @@ public:
 
     private:
         const Module &m_module;
-        const BytePointer m_orig_src_addr;
-        BytePointer m_src_addr;
+        const BytePointer m_orig_src_ptr;
+        BytePointer m_src_ptr;
         Type m_type;
     };
 
