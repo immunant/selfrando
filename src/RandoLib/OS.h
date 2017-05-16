@@ -127,7 +127,7 @@ public:
 }
 
 #if RANDOLIB_IS_WIN32
-//#include "win32/OSModule.h"
+#include "win32/OSModule.h"
 #elif RANDOLIB_IS_POSIX
 #include "posix/OSModule.h"
 #else

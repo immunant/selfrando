@@ -91,6 +91,9 @@
     <ClInclude Include="OSImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OSModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\SConscript" />
