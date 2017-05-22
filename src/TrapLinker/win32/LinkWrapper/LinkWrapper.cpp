@@ -124,9 +124,9 @@ static void ProcessInputFile(const _TCHAR *file) {
     COFFObject coff_file;
     if (!coff_file.readFromFile(file))
         return;
-    if (!coff_file.createTRaPInfo())
-        return;
-    coff_file.writeToFile(file);
+    if (coff_file.createTRaPInfo()) {
+        coff_file.writeToFile(file);
+    }
 
     // Mark this input file if it's the first
     if (first_object_name.empty())
