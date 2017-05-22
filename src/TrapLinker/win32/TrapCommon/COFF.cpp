@@ -165,11 +165,13 @@ bool TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file) {
 }
 
 bool TRaPCOFFLibrary(COFFLibrary *lib) {
+    bool added_txtrp = false;
     for (auto &obj_ptr : lib->objects()) {
         if (obj_ptr)
-            obj_ptr->createTRaPInfo();
+            added_txtrp |= obj_ptr->createTRaPInfo();
     }
-    return true;
+    // If any object file receives a .txtrp section, return true
+    return added_txtrp;
 }
 
 bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file) {
