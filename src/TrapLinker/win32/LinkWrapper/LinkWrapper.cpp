@@ -43,42 +43,42 @@ static _TCHAR kLinkerExtraArg1[] = TEXT("/INCLUDE:__TRaP_RandoEntry");
 static _TCHAR kLinkerExtraArg2[] = TEXT("/INCLUDE:__TRaP_Header");
 static _TCHAR kLinkerNoIncrementalArg[] = TEXT("/INCREMENTAL:NO");
 
-static void ProcessArg(const _TCHAR *arg);
-static void ProcessCommands(const _TCHAR *file);
-static void ProcessInputFile(const _TCHAR *file);
+static TString ProcessArg(const _TCHAR *arg);
+static TString ProcessCommands(const _TCHAR *file);
+static TString ProcessInputFile(const _TCHAR *file);
 
 bool lib_mode = false;
 TString first_object_name;
 TString out_argument;
 
-static void ProcessArg(const _TCHAR *arg) {
+static TString ProcessArg(const _TCHAR *arg) {
     if (arg[0] == _T('@')) {
-        ProcessCommands(arg + 1);
+        TString res{ arg[0] };
+        res += ProcessCommands(arg + 1);
+        return res;
     } else if (arg[0] == _T('/') || arg[0] == _T('-')) {
         const _TCHAR *opt = arg + 1;
         if (_tcsicmp(opt, kLibOption) == 0) {
             lib_mode = true;
-            return;
-        }
-        if (_tcsnicmp(opt, kOutOption, _tcslen(kOutOption)) == 0) {
+        } else if (_tcsnicmp(opt, kOutOption, _tcslen(kOutOption)) == 0) {
             out_argument.assign(opt + _tcslen(kOutOption));
-            return;
         }
+        return TString(arg);
     } else {
         // Input file, process
-        ProcessInputFile(arg);
+       return ProcessInputFile(arg);
     }
 }
 
-static void ProcessCommands(const _TCHAR *file) {
+static TString ProcessCommands(const _TCHAR *file) {
 	FILE *f;
 #ifdef UNICODE
     int err = _wfopen_s(&f, file, L"r,ccs=unicode");
 #else
     int err = fopen_s(&f, file, "r");
 #endif
-	if (err)
-		return;
+    if (err)
+        return TString(file);
 
 	_TINT ch = _gettc(f);
 	while (ch != _TEOF) {
@@ -99,23 +99,23 @@ static void ProcessCommands(const _TCHAR *file) {
 		}
 	}
 	fclose(f);
+    return TString(file);
 }
 
-static void ProcessInputFile(const _TCHAR *file) {
+static TString ProcessInputFile(const _TCHAR *file) {
 	// If the file ends something other than .obj, skip it
-	TString tmp;
+    TString output_file(file);
     auto dot = PathFindExtension(file);
 	if (dot == nullptr) {
 		// MSDN says that files without an extension get .obj appended
-		tmp.append(file);
-		tmp.append(TEXT(".obj"));
-		file = tmp.data();
+		output_file.append(TEXT(".obj"));
+		file = output_file.data();
 	} else if (_tcsicmp(dot, TEXT(".lib")) == 0) {
-        TRaPCOFFLibrary(file, file);
-        return;
+        TRaPCOFFLibrary(file, output_file.data());
+        return output_file;
     } else if (_tcsicmp(dot, TEXT(".obj")) != 0 &&
              _tcsicmp(dot, TEXT(".o")) != 0) // FIXME: create a list of allowed object file extensions (or let TRaPCOFFObject detect object files itself)
-		return;
+		return output_file;
 
 	// Run TrapObj.exe <file.obj> <file.obj>
 	// TODO: parallelize this (using WaitForMultipleObjects)
@@ -123,14 +123,15 @@ static void ProcessInputFile(const _TCHAR *file) {
     // FIXME: Trap.cpp leaks some memory
     COFFObject coff_file;
     if (!coff_file.readFromFile(file))
-        return;
+        return output_file;
     if (coff_file.createTRaPInfo()) {
-        coff_file.writeToFile(file);
+        coff_file.writeToFile(output_file.data());
     }
 
     // Mark this input file if it's the first
     if (first_object_name.empty())
         first_object_name = TString(file);
+    return output_file;
 }
 
 static TString EmitExports(const std::vector<TString> &escaped_args) {
@@ -228,8 +229,8 @@ int _tmain(int argc, _TCHAR* argv[])
     auto linker_exe_esc = QuoteSpaces(linker_exe.data());
     linker_args.push_back(linker_exe_esc.data()); // Needed by _tspawnvp
     for (int i = 1; i < argc; i++) {
-        ProcessArg(argv[i]);
-        escaped_args.push_back(QuoteSpaces(argv[i]));
+        auto trap_file = ProcessArg(argv[i]);
+        escaped_args.push_back(QuoteSpaces(trap_file.data()));
     }
     for (auto &escaped_arg : escaped_args)
         linker_args.push_back(escaped_arg.data());
