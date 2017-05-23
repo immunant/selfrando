@@ -71,35 +71,51 @@ static TString ProcessArg(const _TCHAR *arg) {
 }
 
 static TString ProcessCommands(const _TCHAR *file) {
-	FILE *f;
+	FILE *fin;
 #ifdef UNICODE
-    int err = _wfopen_s(&f, file, L"r,ccs=unicode");
+    int err = _wfopen_s(&fin, file, L"r,ccs=unicode");
 #else
-    int err = fopen_s(&f, file, "r");
+    int err = fopen_s(&fin, file, "r");
 #endif
     if (err)
         return TString(file);
 
-	_TINT ch = _gettc(f);
+    FILE *fout;
+    auto output_file = TempFile::Create(TEXT(".txt"), true);
+#ifdef UNICODE
+    err = _wfopen_s(&fout, output_file.data(), L"w,ccs=unicode");
+#else
+    err = fopen_s(&fout, output_file.data(), "w");
+#endif
+    if (err) {
+        perror("LinkWrapper:ProcessCommands");
+        exit(err);
+    }
+
+    _TINT ch = _gettc(fin);
 	while (ch != _TEOF) {
-		while (ch != _TEOF && _istspace(ch))
-			ch = _gettc(f);
+        while (ch != _TEOF && _istspace(ch)) {
+            _puttc(ch, fout);
+            ch = _gettc(fin);
+        }
 
         // FIXME: input files with spaces in them??? (are they quoted???)
 		TString word;
 		while (ch != _TEOF && !_istspace(ch)) {
 			word.push_back(ch);
-			ch = _gettc(f);
+			ch = _gettc(fin);
 		}
         // FIXME: handle comments (starting with ';')
         auto comment_pos = word.find(TCHAR(';'));
         assert(comment_pos == -1 && "Found comment in command file");
 		if (!word.empty()) {
-			ProcessArg(word.data());
+			auto new_word = ProcessArg(word.data());
+            _fputts(new_word.data(), fout);
 		}
 	}
-	fclose(f);
-    return TString(file);
+	fclose(fin);
+    fclose(fout);
+    return output_file;
 }
 
 static TString ProcessInputFile(const _TCHAR *file) {
