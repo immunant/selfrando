@@ -41,10 +41,16 @@ class COFFObject;
 class COFFSection;
 class COFFSymbol;
 
-extern bool TRaPCOFFObject(COFFObject *coff);
-extern bool TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file);
-extern bool TRaPCOFFLibrary(COFFLibrary *lib);
-extern bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file);
+enum TRaPStatus : uint8_t {
+    TRAP_ADDED,
+    TRAP_FOUND,
+    TRAP_ERROR,
+};
+
+extern TRaPStatus TRaPCOFFObject(COFFObject *coff);
+extern TRaPStatus TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file);
+extern TRaPStatus TRaPCOFFLibrary(COFFLibrary *lib);
+extern TRaPStatus TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file);
 extern bool ConvertExports(COFFObject *exp, COFFObject *tramp);
 extern bool ConvertExports(const _TCHAR *input_file, const _TCHAR *output_file);
 

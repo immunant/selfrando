@@ -41,7 +41,7 @@ int _tmain(int argc, _TCHAR* argv[])
         return 1;
     }
     auto trap_res = TRaPCOFFLibrary(argv[1], argv[2]);
-    if (!trap_res)
+    if (trap_res == TRaPStatus::TRAP_ERROR)
         return 1;
     return 0;
 }

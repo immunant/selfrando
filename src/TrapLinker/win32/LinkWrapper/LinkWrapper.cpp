@@ -127,7 +127,16 @@ static TString ProcessInputFile(const _TCHAR *file) {
 		output_file.append(TEXT(".obj"));
 		file = output_file.data();
 	} else if (_tcsicmp(dot, TEXT(".lib")) == 0) {
-        TRaPCOFFLibrary(file, output_file.data());
+        auto tmp_file = TempFile::Create(TEXT(".lib"), true);
+        auto trap_status = TRaPCOFFLibrary(file, tmp_file.data());
+#if 0
+        if (trap_status == TRaPStatus::TRAP_ERROR) {
+            perror("LinkWrapper:ProcessInputFile:TRaPCOFFLibrary");
+            exit(-1);
+        }
+#endif
+        if (trap_status == TRaPStatus::TRAP_ADDED)
+            return tmp_file;
         return output_file;
     } else if (_tcsicmp(dot, TEXT(".obj")) != 0 &&
              _tcsicmp(dot, TEXT(".o")) != 0) // FIXME: create a list of allowed object file extensions (or let TRaPCOFFObject detect object files itself)
@@ -141,6 +150,7 @@ static TString ProcessInputFile(const _TCHAR *file) {
     if (!coff_file.readFromFile(file))
         return output_file;
     if (coff_file.createTRaPInfo()) {
+        output_file = TempFile::Create(TEXT(".obj"), true);
         coff_file.writeToFile(output_file.data());
     }
 
