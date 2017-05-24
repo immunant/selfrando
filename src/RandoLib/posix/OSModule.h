@@ -108,7 +108,7 @@ public:
     public:
         using ModuleBase<Module>::SectionBase<Address>::SectionBase;
 
-        RANDO_SECTION PagePermissions mem_protect(PagePermissions perms) const;
+        RANDO_SECTION PagePermissions change_permissions(PagePermissions perms) const;
 
         RANDO_SECTION void flush_icache();
     };

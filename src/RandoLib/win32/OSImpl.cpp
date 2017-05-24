@@ -421,7 +421,7 @@ RANDO_SECTION void Buffer<T>::release_buffer(Buffer<T> *buf) {
     API::mem_free(buf);
 }
 
-RANDO_SECTION PagePermissions Module::Section::mem_protect(PagePermissions perms) const {
+RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermissions perms) const {
     if (empty())
         return PagePermissions::NONE;
     return API::mem_protect(m_start.to_ptr(), m_size, perms);
@@ -573,7 +573,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++)
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_WRITE) == 0) {
             Module::Section section(*this, &m_sections[i]);
-            old_sec_perms[i] = section.mem_protect(PagePermissions::RWX);
+            old_sec_perms[i] = section.change_permissions(PagePermissions::RWX);
         }
 
     // Go through all executable sections and match them against .txtrp
@@ -602,7 +602,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++)
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_WRITE) == 0) {
             Module::Section section(*this, &m_sections[i]);
-            section.mem_protect(old_sec_perms[i]);
+            section.change_permissions(old_sec_perms[i]);
         }
     // Un-map .txtrp from memory to prevent leaks
     if (textrap_data != nullptr)

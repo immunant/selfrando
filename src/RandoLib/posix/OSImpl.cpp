@@ -264,7 +264,7 @@ RANDO_SECTION void _TRaP_Linux_delete_layout_file(void) {
 #endif // RANDOLIB_DELETE_LAYOUTS
 #endif // RANDOLIB_WRITE_LAYOUTS
 
-RANDO_SECTION PagePermissions Module::Section::mem_protect(PagePermissions perms) const {
+RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermissions perms) const {
     // FIXME: on Linux, we might not need to do anything
     if (empty())
         return PagePermissions::NONE;
