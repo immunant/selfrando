@@ -374,14 +374,14 @@ RANDO_SECTION Module::~Module() {
     m_arch_relocs.free();
 }
 
-RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
+RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {
     // TODO: implement
     // TODO: find some unused bit inside the ELF header (somewhere) or phdr
     // FIXME: since we don't support system libraries right now,
     // we don't need to mark the randomized ones (yet)
 }
 
-RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
+RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
     // Re-map the read-only segments as RWX
     for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
         auto phdr = &m_phdr_info.dlpi_phdr[i];
@@ -447,7 +447,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
                   PagePermissions::RX);
 }
 
-RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback_arg) {
+RANDO_SECTION void Module::for_all_modules(ModuleCallback callback, void *callback_arg) {
     // FIXME: we don't currently support system libraries
     // that don't provide a m_module_info->program_info_table-> and the ones
     // that do provide that table also do their own randomization
@@ -473,7 +473,7 @@ static RANDO_SECTION int compare_eh_frame_entries(const void *pa, const void *pb
     return (pca[0] < pcb[0]) ? -1 : ((pca[0] == pcb[0]) ? 0 : 1);
 }
 
-RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
+RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     // Fix up the original entry point and init addresses
     uintptr_t new_dt_init;
     if (m_module_info->program_info_table->orig_dt_init != 0) {

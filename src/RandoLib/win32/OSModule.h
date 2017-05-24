@@ -152,12 +152,12 @@ public:
 
     // FIXME: TrapInfo could be pre-computed, and accessed via a function
     typedef void(*ExecSectionCallback)(const Module&, const Section&, ::TrapInfo&, bool, void*);
-    RANDO_SECTION void ForAllExecSections(bool, ExecSectionCallback, void*);
+    RANDO_SECTION void for_all_exec_sections(bool, ExecSectionCallback, void*);
 
     typedef void(*ModuleCallback)(Module&, void*);
-    static RANDO_SECTION void ForAllModules(ModuleCallback, void*);
+    static RANDO_SECTION void for_all_modules(ModuleCallback, void*);
 
-    RANDO_SECTION void ForAllRelocations(FunctionList*) const;
+    RANDO_SECTION void for_all_relocations(FunctionList*) const;
 
     inline RANDO_SECTION Section export_section() const {
         return Section(*this, m_export_section);
@@ -193,7 +193,7 @@ private:
         SELF_RANDOMIZE = 3,
     };
 
-    RANDO_SECTION void MarkRandomized(RandoState);
+    RANDO_SECTION void mark_randomized(RandoState);
 
     void arch_init();
 

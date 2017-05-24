@@ -485,7 +485,7 @@ RANDO_SECTION void Module::get_file_name() const {
     API::debug_printf<1>("Module@%p:'%s'\n", m_handle, m_file_name);
 }
 
-RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
+RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {
     auto old_perms = API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), PagePermissions::RW);
     // FIXME: it would be nice if we had somewhere else to put this, to avoid the copy-on-write
     // LoaderFlags works for now, because it's an obsolete flag (always set to zero)
@@ -531,7 +531,7 @@ static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
 }
 
 // FIXME: self_rando should be passed as part of callback_arg, not separately
-RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
+RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
     auto rando_state = m_nt_hdr->OptionalHeader.LoaderFlags;
     bool force_self_rando = (self_rando && rando_state == RandoState::SELF_RANDOMIZE);
     if (rando_state != RandoState::NOT_RANDOMIZED && !force_self_rando)
@@ -539,7 +539,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
 
     if (m_reloc_section == nullptr) {
         API::debug_printf<1>("Error: module not randomized due to missing relocation information.\n");
-        MarkRandomized(RandoState::CANT_RANDOMIZE);
+        mark_randomized(RandoState::CANT_RANDOMIZE);
         return;
     }
 
@@ -552,14 +552,14 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         auto read_ok = ReadTrapFile(m_name, &textrap_data, &textrap_size);
         if (!read_ok) {
             API::debug_printf<1>("Error: module not randomized due to missing Trap information.\n");
-            MarkRandomized(RandoState::CANT_RANDOMIZE);
+            mark_randomized(RandoState::CANT_RANDOMIZE);
             return;
         }
         API::debug_printf<1>("Read %d external Trap bytes\n", textrap_size);
         release_textrap = true;
     } else if (!self_rando) {
         // Modules that have a .txtrp section must randomize themselves
-        MarkRandomized(RandoState::SELF_RANDOMIZE);
+        mark_randomized(RandoState::SELF_RANDOMIZE);
         return;
     } else {
         textrap_data = RVA2Address(m_textrap_section->VirtualAddress).to_ptr();
@@ -608,12 +608,12 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     if (textrap_data != nullptr)
         API::mprotect(textrap_data, textrap_size, PagePermissions::NONE);
         
-    MarkRandomized(RandoState::RANDOMIZED);
+    mark_randomized(RandoState::RANDOMIZED);
     if (release_textrap)
         API::mem_free(textrap_data);
 }
 
-RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback_arg) {
+RANDO_SECTION void Module::for_all_modules(ModuleCallback callback, void *callback_arg) {
 #if 0
     PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
     // Reserved3[1] == ImageBaseAddress
@@ -633,7 +633,7 @@ RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback
 #endif
 }
 
-RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
+RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     // Fix up the entry point
     RANDO_ASSERT(m_info->entry_loop != nullptr);
     RANDO_ASSERT(m_info->entry_loop[0] == 0xE9);

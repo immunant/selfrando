@@ -131,13 +131,12 @@ public:
 public:
     // FIXME: TrapInfo could be pre-computed, and accessed via a function
     typedef void(*ExecSectionCallback)(const Module&, const Section&, ::TrapInfo&, bool, void*);
-
-    RANDO_SECTION void ForAllExecSections(bool, ExecSectionCallback, void*);
+    RANDO_SECTION void for_all_exec_sections(bool, ExecSectionCallback, void*);
 
     typedef void(*ModuleCallback)(Module&, void*);
-    static RANDO_SECTION void ForAllModules(ModuleCallback, void*);
+    static RANDO_SECTION void for_all_modules(ModuleCallback, void*);
 
-    RANDO_SECTION void ForAllRelocations(FunctionList *functions) const;
+    RANDO_SECTION void for_all_relocations(FunctionList *functions) const;
 
     template<typename RelType>
     RANDO_SECTION Relocation::Type arch_reloc_type(const RelType *dyn_reloc);
@@ -192,7 +191,7 @@ private:
         SELF_RANDOMIZE = 3,
     };
 
-    RANDO_SECTION void MarkRandomized(RandoState);
+    RANDO_SECTION void mark_randomized(RandoState);
 
     // Some loaders add the module base to all entries in .dynamic,
     // e.g., the glibc loaders, while others don't, e.g., the Android one.

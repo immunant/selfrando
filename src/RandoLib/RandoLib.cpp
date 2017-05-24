@@ -509,7 +509,7 @@ void ExecSectionProcessor::shuffle_code() {
 
 void ExecSectionProcessor::fixup_relocations() {
     // FIXME(performance): this is pretty slow (profile confirms it)
-    m_module.ForAllRelocations(&m_functions);
+    m_module.for_all_relocations(&m_functions);
 }
 
 void ExecSectionProcessor::process_trap_relocations() {
@@ -585,7 +585,7 @@ static RANDO_SECTION void randomize_exec_section(const os::Module &mod,
 }
 
 static RANDO_SECTION void randomize_module(os::Module &mod2, void *arg) {
-    mod2.ForAllExecSections(false, randomize_exec_section, nullptr);
+    mod2.for_all_exec_sections(false, randomize_exec_section, nullptr);
 }
 
 RANDO_MAIN_FUNCTION() {
@@ -595,8 +595,8 @@ RANDO_MAIN_FUNCTION() {
         // so that its destructor gets called before os::API::Finish
         os::Module mod(asm_module);
         // For every section in the current program...
-        mod.ForAllExecSections(true, randomize_exec_section, nullptr);
-        os::Module::ForAllModules(randomize_module, nullptr);
+        mod.for_all_exec_sections(true, randomize_exec_section, nullptr);
+        os::Module::for_all_modules(randomize_module, nullptr);
         // FIXME: we could make .rndtext non-executable here
     }
     os::API::finish();
