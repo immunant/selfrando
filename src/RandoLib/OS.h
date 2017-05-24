@@ -153,9 +153,22 @@ protected:
         }
 
         inline RANDO_SECTION bool inside_range(const Address &start,
-                                               const Address &end) const;
-        inline RANDO_SECTION bool operator==(const Address &other) const;
-        inline RANDO_SECTION bool operator<(const Address &other) const;
+                                               const Address &end) const {
+            auto  this_addr = os_address().template to_ptr<uintptr_t>();
+            auto start_addr = start.template to_ptr<uintptr_t>();
+            auto   end_addr = end.template to_ptr<uintptr_t>();
+            return (this_addr >= start_addr) && (this_addr < end_addr);
+        }
+
+        inline RANDO_SECTION bool operator==(const Address &other) const {
+            return os_address().template to_ptr<uintptr_t>() ==
+                          other.template to_ptr<uintptr_t>();
+        }
+
+        inline RANDO_SECTION bool operator<(const Address &other) const {
+            return os_address().template to_ptr<uintptr_t>() <
+                          other.template to_ptr<uintptr_t>();
+        }
 
         static inline RANDO_SECTION
         Address from_trap(const Module &mod, uintptr_t addr) {
@@ -273,38 +286,6 @@ private:
 #else
 #error "Unrecognized OS"
 #endif
-
-namespace os {
-
-// Implement some of the inline functions that depend on os::Module
-template<>
-template<>
-inline RANDO_SECTION
-bool ModuleBase<Module>::AddressBase<Module::Address>::inside_range(
-        const Module::Address &start, const Module::Address &end) const {
-    auto  this_addr = os_address().to_ptr<uintptr_t>();
-    auto start_addr = start.to_ptr<uintptr_t>();
-    auto   end_addr = end.to_ptr<uintptr_t>();
-    return (this_addr >= start_addr) && (this_addr < end_addr);
-}
-
-template<>
-template<>
-inline RANDO_SECTION
-bool ModuleBase<Module>::AddressBase<Module::Address>::operator==(
-        const Module::Address &other) const {
-    return os_address().to_ptr<uintptr_t>() == other.to_ptr<uintptr_t>();
-}
-
-template<>
-template<>
-inline RANDO_SECTION
-bool ModuleBase<Module>::AddressBase<Module::Address>::operator<(
-        const Module::Address &other) const {
-    return os_address().to_ptr<uintptr_t>() < other.to_ptr<uintptr_t>();
-}
-
-} // namespace os
 
 #endif  // __cplusplus
 
