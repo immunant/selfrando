@@ -146,7 +146,12 @@ protected:
             : m_address(addr), m_space(space), m_module(mod) {}
 
         inline RANDO_SECTION void reset(const Module &mod, uintptr_t addr = 0,
-                                        AddressSpace space = AddressSpace::MEMORY);
+                                        AddressSpace space = AddressSpace::MEMORY) {
+            RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
+            m_address = addr;
+            m_space = space;
+        }
+
         inline RANDO_SECTION bool inside_range(const Address &start,
                                                const Address &end) const;
         inline RANDO_SECTION bool operator==(const Address &other) const;
@@ -272,16 +277,6 @@ private:
 namespace os {
 
 // Implement some of the inline functions that depend on os::Module
-template<>
-template<>
-inline RANDO_SECTION
-void ModuleBase<Module>::AddressBase<Module::Address>::reset(
-        const Module &mod, uintptr_t addr, AddressSpace space) {
-    RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
-    m_address = addr;
-    m_space = space;
-}
-
 template<>
 template<>
 inline RANDO_SECTION
