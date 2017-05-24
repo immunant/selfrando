@@ -39,7 +39,7 @@ struct Function;
 
 namespace os {
 
-class RANDO_SECTION Module {
+class RANDO_SECTION Module : public ModuleBase<Module> {
 public:
     struct ModuleInfo {
         uintptr_t original_entry_rva;
@@ -53,18 +53,9 @@ public:
     Module(Handle info, UNICODE_STRING *name = nullptr);
     ~Module();
 
-    class RANDO_SECTION Address {
+    class RANDO_SECTION Address : public AddressBase<Address> {
     public:
-        // No default construction (addresses should always have a module)
-        Address() = delete;
-
-        Address(const Module &mod, uintptr_t addr = 0,
-                AddressSpace space = AddressSpace::MEMORY)
-            : m_address(addr), m_space(space), m_module(mod) {
-        }
-
-        RANDO_SECTION void Reset(const Module &mod, uintptr_t addr = 0,
-                                 AddressSpace space = AddressSpace::MEMORY);
+        using ModuleBase<Module>::AddressBase<Address>::AddressBase;
 
         template<typename T = BytePointer>
         inline RANDO_SECTION T to_ptr() const {
@@ -91,59 +82,19 @@ public:
                 return 0;
             }
         }
-
-        inline RANDO_SECTION bool inside_range(const Address &start, const Address &end) const {
-            auto  this_addr = to_ptr<uintptr_t>();
-            auto start_addr = start.to_ptr<uintptr_t>();
-            auto   end_addr = end.to_ptr<uintptr_t>();
-            return (this_addr >= start_addr) && (this_addr < end_addr);
-        }
-
-        inline RANDO_SECTION bool operator==(const Address &other) const {
-            return to_ptr<uintptr_t>() == other.to_ptr<uintptr_t>();
-        }
-
-        inline RANDO_SECTION bool operator<(const Address &other) const {
-            return to_ptr<uintptr_t>() < other.to_ptr<uintptr_t>();
-        }
-
-    private:
-        uintptr_t m_address;
-        AddressSpace m_space;
-        const Module &m_module;
     };
 
-    class Relocation {
+    class RANDO_SECTION Relocation : public RelocationBase<DWORD> {
     public:
-        typedef DWORD Type;
-
         Relocation() = delete;
 
         template<typename Ptr>
         Relocation(const Module &mod, Ptr ptr, Type type)
-            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
-              m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type) {
+            : RelocationBase(mod, ptr, type) {
         }
 
         Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-            : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
-              m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type) {
-        }
-
-        Type get_type() const {
-            return m_type;
-        }
-
-        BytePointer get_original_source_ptr() const {
-            return m_orig_src_ptr;
-        }
-
-        BytePointer get_source_ptr() const {
-            return m_src_ptr;
-        }
-
-        void set_source_ptr(BytePointer new_source) {
-            m_src_ptr = new_source;
+            : RelocationBase(mod, Address::from_trap(mod, reloc.address).to_ptr(), reloc.type) {
         }
 
         BytePointer get_target_ptr() const;
@@ -160,28 +111,7 @@ public:
         }
 
         void mark_applied() {}
-
-    private:
-        const Module &m_module;
-        const BytePointer m_orig_src_ptr;
-        BytePointer m_src_ptr;
-        Type m_type;
     };
-
-    // Get an Address for a RVA; no outside functions should call this
-    // FIXME: make this a private function, after removing all outside refs
-    inline RANDO_SECTION Address address_from_ptr(uintptr_t addr) const {
-        return Address(*this, addr, AddressSpace::MEMORY);
-    }
-
-    template<typename T>
-    inline RANDO_SECTION Address address_from_ptr(T* ptr) const {
-        return Address(*this, reinterpret_cast<uintptr_t>(ptr), AddressSpace::MEMORY);
-    }
-
-    inline RANDO_SECTION Address address_from_trap(uintptr_t addr) const {
-        return Address(*this, addr, AddressSpace::TRAP);
-    }
 
     template<typename T>
     inline RANDO_SECTION void relocate_rva(T *rva,
@@ -203,59 +133,21 @@ public:
         *rva = static_cast<T>(new_rva);
     }
 
-    class RANDO_SECTION Section {
+    class RANDO_SECTION Section : public SectionBase<Address> {
     public:
-        // No default construction (sections should always have a module)
-        Section() = delete;
-
         Section(const Module &mod, uintptr_t rva = 0, size_t size = 0)
-            : m_module(mod),
-            m_start(mod, rva, AddressSpace::RVA),
-            m_end(mod, rva + size, AddressSpace::RVA),
-            m_size(size) {
-        }
+            : SectionBase(mod, rva, size, AddressSpace::RVA) { }
 
         Section(const Module &mod, IMAGE_SECTION_HEADER *sec_ptr)
-            : m_module(mod), m_start(mod), m_end(mod), m_size(0) {
+            : SectionBase(mod, 0) {
             if (sec_ptr != nullptr) {
                 m_size = sec_ptr->Misc.VirtualSize;
-                m_start.Reset(m_module, sec_ptr->VirtualAddress, AddressSpace::RVA);
-                m_end.Reset(m_module, sec_ptr->VirtualAddress + m_size, AddressSpace::RVA);
+                m_start.reset(m_module, sec_ptr->VirtualAddress, AddressSpace::RVA);
+                m_end.reset(m_module, sec_ptr->VirtualAddress + m_size, AddressSpace::RVA);
             }
         }
 
-        template<typename T>
-        inline RANDO_SECTION bool contains_addr(const T* ptr) const {
-            Address addr(m_module, reinterpret_cast<uintptr_t>(ptr), os::AddressSpace::MEMORY);
-            return contains_addr(addr);
-        }
-
-        inline RANDO_SECTION bool contains_addr(const Address &addr) const {
-            return addr.inside_range(m_start, m_end);
-        }
-
-        inline RANDO_SECTION Address start() const {
-            return m_start;
-        }
-
-        inline RANDO_SECTION Address end() const {
-            return m_end;
-        }
-
-        inline RANDO_SECTION size_t size() const {
-            return m_size;
-        }
-
-        inline RANDO_SECTION bool empty() const {
-            return m_size == 0;
-        }
-
         RANDO_SECTION PagePermissions MemProtect(PagePermissions perms) const;
-
-    private:
-        const Module &m_module;
-        Address m_start, m_end;
-        size_t m_size;
     };
 
     // FIXME: TrapInfo could be pre-computed, and accessed via a function

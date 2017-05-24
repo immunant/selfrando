@@ -421,12 +421,6 @@ RANDO_SECTION void Buffer<T>::release_buffer(Buffer<T> *buf) {
     API::MemFree(buf);
 }
 
-RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
-    RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
-    m_address = addr;
-    m_space = space;
-}
-
 RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms) const {
     if (empty())
         return PagePermissions::NONE;

@@ -210,11 +210,12 @@ protected:
         // No default construction (sections should always have a module)
         SectionBase() = delete;
 
-        SectionBase(const Module &mod, uintptr_t rva = 0, size_t size = 0)
-            : m_module(mod),
-              m_start(mod, rva, AddressSpace::MEMORY), // FIXME
-              m_end(mod, rva + size, AddressSpace::MEMORY),
-              m_size(size) {}
+        SectionBase(const Module &mod, uintptr_t rva = 0, size_t size = 0,
+                    AddressSpace space = AddressSpace::MEMORY)
+            : m_module(mod), 
+              m_start(mod, rva, space),
+              m_end(mod, rva + size, space),
+              m_size(size) { }
 
         template<typename T>
         inline RANDO_SECTION bool contains_addr(const T* ptr) const {
