@@ -54,7 +54,7 @@ enum class AddressSpace : uint8_t {
 #endif
 
 #ifdef __cplusplus
-class FunctionList;
+struct RANDO_SECTION FunctionList;
 class TrapInfo;
 
 namespace os {
