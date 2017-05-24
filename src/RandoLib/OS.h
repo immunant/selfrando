@@ -129,14 +129,14 @@ public:
 
 // Use the CRTP pattern to implement the OS-independent parts as superclasses
 template<typename Module>
-class ModuleBase {
+class RANDO_SECTION ModuleBase {
 protected:
     // Only subclasses can instantiate this
     ModuleBase() = default;
     ~ModuleBase() = default;
 
     template<typename Address>
-    class AddressBase {
+    class RANDO_SECTION AddressBase {
     public:
         // No default construction (addresses should always have a module)
         AddressBase() = delete;
@@ -169,7 +169,7 @@ protected:
     };
 
     template<typename RelocType>
-    class RelocationBase {
+    class RANDO_SECTION RelocationBase {
     public:
         typedef RelocType Type;
 
@@ -205,7 +205,7 @@ protected:
     };
 
     template<typename Address>
-    class SectionBase {
+    class RANDO_SECTION SectionBase {
     public:
         // No default construction (sections should always have a module)
         SectionBase() = delete;
