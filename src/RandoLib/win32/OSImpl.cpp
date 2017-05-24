@@ -212,7 +212,7 @@ static inline RANDO_SECTION HANDLE GetCurrentProcess() {
     return reinterpret_cast<HANDLE>(-1);
 }
 
-RANDO_SECTION void *API::mem_map(void *addr, size_t size, PagePermissions perms, bool commit) {
+RANDO_SECTION void *API::mmap(void *addr, size_t size, PagePermissions perms, bool commit) {
     SIZE_T wsize = size;
     DWORD alloc_type = commit ? (MEM_RESERVE | MEM_COMMIT) : MEM_RESERVE;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
@@ -221,7 +221,7 @@ RANDO_SECTION void *API::mem_map(void *addr, size_t size, PagePermissions perms,
     return addr;
 }
 
-RANDO_SECTION void API::mem_unmap(void *addr, size_t size, bool commit) {
+RANDO_SECTION void API::munmap(void *addr, size_t size, bool commit) {
     SIZE_T wsize = size;
     if (commit) {
         RANDO_SYS_FUNCTION(ntdll, NtFreeVirtualMemory,
@@ -232,7 +232,7 @@ RANDO_SECTION void API::mem_unmap(void *addr, size_t size, bool commit) {
     }
 }
 
-RANDO_SECTION PagePermissions API::mem_protect(void *addr, size_t size, PagePermissions perms) {
+RANDO_SECTION PagePermissions API::mprotect(void *addr, size_t size, PagePermissions perms) {
     SIZE_T wsize = size;
     ULONG old_win_perms = 0;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
@@ -424,7 +424,7 @@ RANDO_SECTION void Buffer<T>::release_buffer(Buffer<T> *buf) {
 RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermissions perms) const {
     if (empty())
         return PagePermissions::NONE;
-    return API::mem_protect(m_start.to_ptr(), m_size, perms);
+    return API::mprotect(m_start.to_ptr(), m_size, perms);
 }
 
 RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_file_name(nullptr), m_name(name) {
@@ -486,11 +486,11 @@ RANDO_SECTION void Module::get_file_name() const {
 }
 
 RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
-    auto old_perms = API::mem_protect(m_nt_hdr, sizeof(*m_nt_hdr), PagePermissions::RW);
+    auto old_perms = API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), PagePermissions::RW);
     // FIXME: it would be nice if we had somewhere else to put this, to avoid the copy-on-write
     // LoaderFlags works for now, because it's an obsolete flag (always set to zero)
     m_nt_hdr->OptionalHeader.LoaderFlags = static_cast<DWORD>(state);
-    API::mem_protect(m_nt_hdr, sizeof(*m_nt_hdr), old_perms);
+    API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), old_perms);
 }
 
 static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
@@ -606,7 +606,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         }
     // Un-map .txtrp from memory to prevent leaks
     if (textrap_data != nullptr)
-        API::mem_protect(textrap_data, textrap_size, PagePermissions::NONE);
+        API::mprotect(textrap_data, textrap_size, PagePermissions::NONE);
         
     MarkRandomized(RandoState::RANDOMIZED);
     if (release_textrap)

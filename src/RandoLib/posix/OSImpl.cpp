@@ -145,7 +145,7 @@ RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
     auto res = reinterpret_cast<size_t*>(_TRaP_libc_mmap(nullptr, size, PROT_READ | PROT_WRITE,
                                                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
     // We need to remember the size, so we know how much to munmap()
-    // FIXME: mem_protect doesn't work on this
+    // FIXME: mprotect doesn't work on this
     *res = size;
     return reinterpret_cast<void*>(res + 1);
 }
@@ -186,7 +186,7 @@ static const int PermissionsTable[] = {
     PROT_READ  | PROT_WRITE | PROT_EXEC
 };
 
-RANDO_SECTION void *API::mem_map(void *addr, size_t size, PagePermissions perms, bool commit) {
+RANDO_SECTION void *API::mmap(void *addr, size_t size, PagePermissions perms, bool commit) {
     RANDO_ASSERT(perms != PagePermissions::UNKNOWN);
     int prot_perms = PermissionsTable[static_cast<uint8_t>(perms)];
     int flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -199,11 +199,11 @@ RANDO_SECTION void *API::mem_map(void *addr, size_t size, PagePermissions perms,
     return new_addr == MAP_FAILED ? nullptr : new_addr;
 }
 
-RANDO_SECTION void API::mem_unmap(void *addr, size_t size, bool commit) {
+RANDO_SECTION void API::munmap(void *addr, size_t size, bool commit) {
     _TRaP_libc_munmap(addr, size);
 }
 
-RANDO_SECTION PagePermissions API::mem_protect(void *addr, size_t size, PagePermissions perms) {
+RANDO_SECTION PagePermissions API::mprotect(void *addr, size_t size, PagePermissions perms) {
     RANDO_ASSERT(perms != PagePermissions::UNKNOWN);
     int prot_perms = PermissionsTable[static_cast<uint8_t>(perms)];
     auto paged_addr = (reinterpret_cast<uintptr_t>(addr) & ~(kPageSize - 1));
@@ -268,7 +268,7 @@ RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermission
     // FIXME: on Linux, we might not need to do anything
     if (empty())
         return PagePermissions::NONE;
-    return API::mem_protect(m_start.to_ptr(), m_size, perms);
+    return API::mprotect(m_start.to_ptr(), m_size, perms);
 }
 
 RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
@@ -390,7 +390,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             auto seg_start = RVA2Address(phdr->p_vaddr).to_ptr();
             auto seg_perms = (phdr->p_flags & PF_X) != 0 ? PagePermissions::RWX
                                                          : PagePermissions::RW;
-            API::mem_protect(seg_start, phdr->p_memsz, seg_perms);
+            API::mprotect(seg_start, phdr->p_memsz, seg_perms);
         }
     }
     // FIXME: unfortunately, the loader doesn't seem to load
@@ -431,7 +431,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             auto seg_start = RVA2Address(phdr->p_vaddr).to_ptr();
             auto seg_perms = (phdr->p_flags & PF_X) != 0 ? PagePermissions::RX
                                                          : PagePermissions::R;
-            API::mem_protect(seg_start, phdr->p_memsz, seg_perms);
+            API::mprotect(seg_start, phdr->p_memsz, seg_perms);
         }
     }
     // FIXME: if we're not in in-place mode (we moved the copy to a
@@ -442,9 +442,9 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     // Re-map .xptramp as executable
     auto xptramp_sec = export_section();
     xptramp_sec.flush_icache();
-    API::mem_protect(xptramp_sec.start().to_ptr(),
-                     xptramp_sec.size(),
-                    PagePermissions::RX);
+    API::mprotect(xptramp_sec.start().to_ptr(),
+                  xptramp_sec.size(),
+                  PagePermissions::RX);
 }
 
 RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback_arg) {
@@ -540,8 +540,8 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
                 functions->adjust_relocation(&reloc);
                 ptr[idx] = static_cast<uint32_t>(entry_pc - m_eh_frame_hdr);
             }
-            API::quick_sort(ptr + 3, num_entries, 2 * sizeof(int32_t),
-                            compare_eh_frame_entries);
+            API::qsort(ptr + 3, num_entries, 2 * sizeof(int32_t),
+                       compare_eh_frame_entries);
         }
     }
 }

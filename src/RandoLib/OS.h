@@ -84,7 +84,7 @@ public:
     }
 
     // Explicitly list functions inherited from APIImpl, so compilation fails if they're missing
-    using APIImpl::quick_sort;
+    using APIImpl::qsort;
     using APIImpl::memcpy;
     using APIImpl::memcmp;
     using APIImpl::random;
@@ -114,9 +114,10 @@ public:
     static void *mem_alloc(size_t, bool zeroed = false);
     static void *mem_realloc(void*, size_t, bool zeroed = false);
     static void mem_free(void*);
-    static void *mem_map(void*, size_t, PagePermissions, bool); // TODO
-    static void mem_unmap(void*, size_t, bool); // TODO
-    static PagePermissions mem_protect(void*, size_t, PagePermissions);
+
+    static void *mmap(void*, size_t, PagePermissions, bool); // TODO
+    static void munmap(void*, size_t, bool); // TODO
+    static PagePermissions mprotect(void*, size_t, PagePermissions);
 
     static File open_file(const char *name, bool write, bool create);
     static ssize_t write_file(File file, const void *buf, size_t len);

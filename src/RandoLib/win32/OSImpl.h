@@ -114,8 +114,8 @@ public:
     static void SystemMessage(const char *fmt, ...);
 
     // C library functions
-    static inline void quick_sort(void* base, size_t num, size_t size,
-                                  int(__cdecl *cmp)(const void*, const void*)) {
+    static inline void qsort(void* base, size_t num, size_t size,
+                             int(__cdecl *cmp)(const void*, const void*)) {
         _TRaP_qsort(base, num, size, cmp);
     }
 

@@ -155,10 +155,10 @@ public:
         if (m_exec_copy != nullptr) {
             if (m_in_place) {
                 // We're doing in-place randomization, so release the copy
-                os::API::mem_unmap(m_exec_copy, m_exec_code_size, true);
+                os::API::munmap(m_exec_copy, m_exec_code_size, true);
             } else {
                 // Not in-place, so we need to keep the copy, so map it as executable
-                os::API::mem_protect(m_exec_copy, m_exec_code_size, os::PagePermissions::RX);
+                os::API::mprotect(m_exec_copy, m_exec_code_size, os::PagePermissions::RX);
             }
         }
         if (m_shuffled_order != nullptr)
@@ -418,7 +418,7 @@ void ExecSectionProcessor::shuffle_code() {
         // If we're randomizing in-place, we don't care
         // where the copy is in memory, since we release
         // it shortly anyway
-        auto copy_addr = os::API::mem_map(nullptr, m_exec_code_size,
+        auto copy_addr = os::API::mmap(nullptr, m_exec_code_size,
                                           os::PagePermissions::RW, true);
         m_exec_copy = reinterpret_cast<os::BytePointer>(copy_addr);
     }
@@ -434,7 +434,7 @@ void ExecSectionProcessor::shuffle_code() {
             auto max_copy_delta = (2U << 30) - m_exec_section.size();
             auto copy_page = start_page + os::API::random(max_copy_delta >> os::kPageShift);
             auto hint_addr = reinterpret_cast<void*>(copy_page << os::kPageShift);
-            auto copy_addr = os::API::mem_map(hint_addr, m_exec_code_size,
+            auto copy_addr = os::API::mmap(hint_addr, m_exec_code_size,
                                               os::PagePermissions::RW, true);
             m_exec_copy = reinterpret_cast<os::BytePointer>(copy_addr);
         } while (m_exec_copy == nullptr);

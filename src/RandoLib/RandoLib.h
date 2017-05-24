@@ -139,7 +139,7 @@ struct RANDO_SECTION Vector {
 
     template<typename Func>
     void sort(Func compare) {
-        os::API::quick_sort(elems, num_elems, sizeof(T), compare);
+        os::API::qsort(elems, num_elems, sizeof(T), compare);
     }
 
     template<typename Func>
