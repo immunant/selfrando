@@ -202,10 +202,10 @@ template<typename FunctionPredicate>
 RANDO_ALWAYS_INLINE
 void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
     for (auto trap_entry : m_trap_info) {
-        auto entry_addr = m_module.address_from_trap(trap_entry.address);
+        auto entry_addr = os::Module::Address::from_trap(m_module, trap_entry.address);
         if (m_exec_section.contains_addr(entry_addr)) {
             for (auto sym : trap_entry.symbols()) {
-                auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
+                auto start_addr = os::Module::Address::from_trap(m_module, sym.address).to_ptr();
 #if RANDOLIB_IS_ARM
                 if (((uint32_t) start_addr & 1) == 1) {
                     // This is a thumb function that actually starts one byte earlier
@@ -246,7 +246,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 new_func.skip_copy = true;
                 new_func.is_padding = true;
                 new_func.undiv_start =
-                    m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
+                    os::Module::Address::from_trap(m_module, trap_entry.padding_address()).to_ptr();
                 new_func.undiv_p2align = 0;
                 new_func.has_size = true;
                 new_func.size = trap_entry.padding_size;
@@ -493,10 +493,10 @@ void ExecSectionProcessor::ShuffleCode() {
         }
         if (m_trap_info.header()->has_data_refs()) {
             for (auto trap_entry : m_trap_info) {
-                auto entry_addr = m_module.address_from_trap(trap_entry.address);
+                auto entry_addr = os::Module::Address::from_trap(m_module, trap_entry.address);
                 if (m_exec_section.contains_addr(entry_addr)) {
                     for (auto ref : trap_entry.data_refs()) {
-                        auto ref_addr = m_module.address_from_trap(ref).to_ptr();
+                        auto ref_addr = os::Module::Address::from_trap(m_module, ref).to_ptr();
                         auto ref_func = m_functions.FindFunction(ref_addr);
                         if (ref_func != nullptr && ref_func->undiv_contains(ref_addr))
                             PatchInTrampoline(ref_addr, ref_addr + ref_func->div_delta());

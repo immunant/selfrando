@@ -23,7 +23,7 @@ extern "C" {
 #include "ModuleInfo.h"
 }
 
-class Module {
+class Module : public ModuleBase<Module> {
 public:
     typedef ModuleInfo *Handle;
     typedef struct dl_phdr_info *PHdrInfoPointer;
@@ -32,17 +32,9 @@ public:
     RANDO_SECTION Module(Handle dynamic_ptr, PHdrInfoPointer phdr_info = nullptr);
     RANDO_SECTION ~Module();
 
-    class Address {
+    class Address : public ModuleBase<Module>::AddressBase<Address> {
     public:
-        // No default construction (addresses should always have a module)
-        Address() = delete;
-
-        Address(const Module &mod, uintptr_t addr = 0,
-                AddressSpace space = AddressSpace::MEMORY)
-            : m_address(addr), m_space(space), m_module(mod) {}
-
-        RANDO_SECTION void Reset(const Module &mod, uintptr_t addr = 0,
-                                 AddressSpace space = AddressSpace::MEMORY);
+        using ModuleBase<Module>::AddressBase<Address>::AddressBase;
 
         template<typename T = BytePointer>
         inline RANDO_SECTION T to_ptr() const {
@@ -58,69 +50,29 @@ public:
                 return 0;
             }
         }
-
-        inline RANDO_SECTION bool inside_range(const Address &start, const Address &end) const {
-            auto  this_addr = to_ptr<uintptr_t>();
-            auto start_addr = start.to_ptr<uintptr_t>();
-            auto   end_addr = end.to_ptr<uintptr_t>();
-            return (this_addr >= start_addr) && (this_addr < end_addr);
-        }
-
-        inline RANDO_SECTION bool operator==(const Address &other) const {
-            return to_ptr<uintptr_t>() == other.to_ptr<uintptr_t>();
-        }
-
-        inline RANDO_SECTION bool operator<(const Address &other) const {
-            return to_ptr<uintptr_t>() < other.to_ptr<uintptr_t>();
-        }
-
-    private:
-        uintptr_t m_address;
-        AddressSpace m_space;
-        const Module &m_module;
     };
 
-    class Relocation {
+    class Relocation : public ModuleBase<Module>::RelocationBase<size_t> {
     public:
-        typedef size_t Type;
-
         Relocation() = delete;
 
         template<typename Ptr>
         Relocation(const Module &mod, Ptr ptr, Type type)
-            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
-              m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type),
+            : RelocationBase(mod, ptr, type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(0) { }
 
         template<typename Ptr>
         Relocation(const Module &mod, Ptr ptr, Type type, ptrdiff_t addend)
-            : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
-              m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type),
+            : RelocationBase(mod, ptr, type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(addend) { }
 
-        Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-            : m_module(mod), m_orig_src_ptr(mod.address_from_trap(reloc.address).to_ptr()),
-              m_src_ptr(mod.address_from_trap(reloc.address).to_ptr()), m_type(reloc.type),
-              m_symbol_ptr(mod.address_from_trap(reloc.symbol).to_ptr()), m_addend(reloc.addend) {
+        Relocation(const Module &mod, const trap_reloc_t &reloc)
+            : RelocationBase(mod, Address::from_trap(mod, reloc.address).to_ptr(), reloc.type),
+              m_symbol_ptr(Address::from_trap(mod, reloc.symbol).to_ptr()), m_addend(reloc.addend) {
             m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
         }
 
-        Type get_type() const {
-            return m_type;
-        }
-
-        BytePointer get_original_source_ptr() const {
-            return m_orig_src_ptr;
-        }
-
-        BytePointer get_source_ptr() const {
-            return m_src_ptr;
-        }
-
-        void set_source_ptr(BytePointer new_source) {
-            m_src_ptr = new_source;
-        }
-
+        // TODO: would be nice to move these into RelocationBase
         BytePointer get_target_ptr() const;
         void set_target_ptr(BytePointer);
 
@@ -147,77 +99,18 @@ public:
         BytePointer get_got_entry() const;
 
     private:
-        const Module &m_module;
-        const BytePointer m_orig_src_ptr;
-        BytePointer m_src_ptr;
-        Type m_type;
-
         bool m_has_symbol_ptr;
         const BytePointer m_symbol_ptr;
         ptrdiff_t m_addend;
     };
 
-    // Get an Address for a RVA; no outside functions should call this
-    // FIXME: make this a private function, after removing all outside refs
-    inline RANDO_SECTION Address address_from_ptr(uintptr_t addr) const {
-        return Address(*this, addr, AddressSpace::MEMORY);
-    }
-
-    template<typename T>
-    inline RANDO_SECTION Address address_from_ptr(T* ptr) const {
-        return Address(*this, reinterpret_cast<uintptr_t>(ptr), AddressSpace::MEMORY);
-    }
-
-    inline RANDO_SECTION Address address_from_trap(uintptr_t addr) const {
-        return Address(*this, addr, AddressSpace::TRAP);
-    }
-
-    class Section {
+    class Section : public ModuleBase<Module>::SectionBase<Address> {
     public:
-        // No default construction (sections should always have a module)
-        Section() = delete;
-
-        Section(const Module &mod, uintptr_t rva = 0, size_t size = 0)
-            : m_module(mod),
-              m_start(mod, rva, AddressSpace::MEMORY),
-              m_end(mod, rva + size, AddressSpace::MEMORY),
-              m_size(size) {}
-
-        template<typename T>
-        inline RANDO_SECTION bool contains_addr(const T* ptr) const {
-            Address addr(m_module, reinterpret_cast<uintptr_t>(ptr), os::AddressSpace::MEMORY);
-            return contains_addr(addr);
-        }
-
-        inline RANDO_SECTION bool contains_addr(const Address &addr) const {
-            return addr.inside_range(m_start, m_end);
-        }
-
-        inline RANDO_SECTION Address start() const {
-            return m_start;
-        }
-
-        inline RANDO_SECTION Address end() const {
-            return m_end;
-        }
-
-        inline RANDO_SECTION size_t size() const {
-            return m_size;
-        }
-
-        inline RANDO_SECTION bool empty() const {
-            return m_size == 0;
-        }
+        using ModuleBase<Module>::SectionBase<Address>::SectionBase;
 
         RANDO_SECTION PagePermissions MemProtect(PagePermissions perms) const;
 
-        // This flushes the icache/dcache for this section.
         RANDO_SECTION void flush_icache();
-
-    private:
-        const Module &m_module;
-        Address m_start, m_end;
-        size_t m_size;
     };
 
     struct ArchReloc {
@@ -235,8 +128,10 @@ public:
         }
     };
 
+public:
     // FIXME: TrapInfo could be pre-computed, and accessed via a function
     typedef void(*ExecSectionCallback)(const Module&, const Section&, ::TrapInfo&, bool, void*);
+
     RANDO_SECTION void ForAllExecSections(bool, ExecSectionCallback, void*);
 
     typedef void(*ModuleCallback)(Module&, void*);

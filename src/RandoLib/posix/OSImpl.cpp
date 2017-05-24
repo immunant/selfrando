@@ -264,12 +264,6 @@ RANDO_SECTION void _TRaP_Linux_delete_layout_file(void) {
 #endif // RANDOLIB_DELETE_LAYOUTS
 #endif // RANDOLIB_WRITE_LAYOUTS
 
-RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
-    RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
-    m_address = addr;
-    m_space = space;
-}
-
 RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms) const {
     // FIXME: on Linux, we might not need to do anything
     if (empty())
@@ -278,7 +272,7 @@ RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms)
 }
 
 RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
-        : m_module_info(module_info) {
+        : ModuleBase(), m_module_info(module_info) {
     RANDO_ASSERT(m_module_info != nullptr);
     RANDO_ASSERT(phdr_info != nullptr || m_module_info->dynamic != nullptr);
     os::API::DebugPrintf<5>("Program info table:\n");
