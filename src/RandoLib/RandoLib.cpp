@@ -541,7 +541,7 @@ void ExecSectionProcessor::write_layout_file() {
         return;
 #endif
 
-    auto fd = os::API::open_layout_file((true);
+    auto fd = os::API::open_layout_file(true);
     if (fd == os::kInvalidFile) {
         os::API::debug_printf<1>("Error opening layout file!\n");
         return;

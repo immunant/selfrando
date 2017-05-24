@@ -246,7 +246,7 @@ static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...
     return res;
 }
 
-RANDO_SECTION File API::open_layout_file((bool write) {
+RANDO_SECTION File API::open_layout_file(bool write) {
     char filename[32];
     build_pid_filename(filename, "/tmp/%d.mlf", API::getpid());
     return API::open_file(filename, write, true);
