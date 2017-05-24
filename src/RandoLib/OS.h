@@ -124,7 +124,7 @@ public:
     static void close_file(File file);
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
-    static File open_layout_file((bool write);
+    static File open_layout_file(bool write);
 #endif
 };
 
