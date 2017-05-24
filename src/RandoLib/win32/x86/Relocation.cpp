@@ -53,7 +53,7 @@ os::Module::Relocation::type_from_based(os::Module::Relocation::Type based_type)
     if (based_type == IMAGE_REL_BASED_HIGHLOW)
         return IMAGE_REL_I386_DIR32;
 
-    API::DebugPrintf<1>("Unknown relocation type: %d\n", (int) based_type);
+    API::debug_printf<1>("Unknown relocation type: %d\n", (int) based_type);
     return 0;
 }
 

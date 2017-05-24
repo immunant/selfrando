@@ -61,8 +61,8 @@ namespace os {
 
 class RANDO_SECTION API : public APIImpl {
 public:
-    static void Init();
-    static void Finish();
+    static void init();
+    static void finish();
 
     // Debugging functions and settings
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
@@ -77,26 +77,26 @@ public:
     static const bool kEnableAsserts = true;
 
     template<int level, typename... Args>
-    static inline void DebugPrintf(Args... args) {
+    static inline void debug_printf(Args... args) {
         // FIXME: this should use std::forward, but can we pull in <utility>???
         if (level <= debug_level)
-            DebugPrintfImpl(args...);
+            debug_printf_impl(args...);
     }
 
     // Explicitly list functions inherited from APIImpl, so compilation fails if they're missing
-    using APIImpl::QuickSort;
-    using APIImpl::MemCpy;
-    using APIImpl::MemCmp;
-    using APIImpl::GetRandom;
-    using APIImpl::GetTime;
-    using APIImpl::GetEnv;
-    using APIImpl::GetPid;
-    using APIImpl::TimeDeltaMicroSec;
-    using APIImpl::DebugPrintfImpl;
+    using APIImpl::quick_sort;
+    using APIImpl::memcpy;
+    using APIImpl::memcmp;
+    using APIImpl::random;
+    using APIImpl::time;
+    using APIImpl::getenv;
+    using APIImpl::getpid;
+    using APIImpl::usec_between;
+    using APIImpl::debug_printf_impl;
 
     // Architecture-specific functions/constants
-    using APIImpl::Is1ByteNOP;
-    using APIImpl::InsertNOPs;
+    using APIImpl::is_one_byte_nop;
+    using APIImpl::insert_nops;
 
     // Align function addresses to multiples of this values
     using APIImpl::kFunctionP2Align;
@@ -111,19 +111,19 @@ public:
     // of kFunctionAlignment after randomization
     using APIImpl::kPreserveFunctionOffset;
 
-    static void *MemAlloc(size_t, bool zeroed = false);
-    static void *MemReAlloc(void*, size_t, bool zeroed = false);
-    static void MemFree(void*);
-    static void *MemMap(void*, size_t, PagePermissions, bool); // TODO
-    static void MemUnmap(void*, size_t, bool); // TODO
-    static PagePermissions MemProtect(void*, size_t, PagePermissions);
+    static void *mem_alloc(size_t, bool zeroed = false);
+    static void *mem_realloc(void*, size_t, bool zeroed = false);
+    static void mem_free(void*);
+    static void *mem_map(void*, size_t, PagePermissions, bool); // TODO
+    static void mem_unmap(void*, size_t, bool); // TODO
+    static PagePermissions mem_protect(void*, size_t, PagePermissions);
 
-    static File OpenFile(const char *name, bool write, bool create);
-    static ssize_t WriteFile(File file, const void *buf, size_t len);
-    static void CloseFile(File file);
+    static File open_file(const char *name, bool write, bool create);
+    static ssize_t write_file(File file, const void *buf, size_t len);
+    static void close_file(File file);
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
-    static File OpenLayoutFile(bool write);
+    static File open_layout_file((bool write);
 #endif
 };
 

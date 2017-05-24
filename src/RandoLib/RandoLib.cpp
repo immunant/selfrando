@@ -73,11 +73,11 @@ RANDO_SECTION void FunctionList::adjust_relocation(os::Module::Relocation *reloc
 
     // Get target address
     os::BytePointer target_ptr = reloc->get_target_ptr();
-    os::API::DebugPrintf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n",
-                            reloc->get_type(),
-                            reloc->get_original_source_ptr(),
-                            source_ptr, *reinterpret_cast<uint32_t*>(source_ptr),
-                            *reinterpret_cast<uintptr_t*>(source_ptr), target_ptr);
+    os::API::debug_printf<5>("Reloc type %u @ %p/%p - orig contents: %x/%p => target: %p \n",
+                             reloc->get_type(),
+                             reloc->get_original_source_ptr(),
+                             source_ptr, *reinterpret_cast<uint32_t*>(source_ptr),
+                             *reinterpret_cast<uintptr_t*>(source_ptr), target_ptr);
     // Compute new target address
     auto target_func = find_function(target_ptr);
     // Check if either source or target addresses fall inside a moved function
@@ -87,7 +87,7 @@ RANDO_SECTION void FunctionList::adjust_relocation(os::Module::Relocation *reloc
     if (target_func != nullptr)
         target_ptr = target_func->post_div_address(target_ptr);
     // Update the relocation entry
-    os::API::DebugPrintf<6>("  setting => %p\n", target_ptr);
+    os::API::debug_printf<6>("  setting => %p\n", target_ptr);
     reloc->set_target_ptr(target_ptr);
     reloc->mark_applied();
 }
@@ -95,12 +95,12 @@ RANDO_SECTION void FunctionList::adjust_relocation(os::Module::Relocation *reloc
 #if RANDOLIB_MEASURE_TIME
 class RANDO_SECTION FunctionCallTimer {
 public:
-    FunctionCallTimer() : m_start_time(os::API::GetTime()) { }
+    FunctionCallTimer() : m_start_time(os::API::time()) { }
 
     void print_duration(const char *call_name) {
-        auto end_time = os::API::GetTime();
-        auto duration = os::API::TimeDeltaMicroSec(m_start_time, end_time);
-        os::API::DebugPrintf<1>("Step %s time:%dus\n", call_name, static_cast<int>(duration));
+        auto end_time = os::API::time();
+        auto duration = os::API::usec_between(m_start_time, end_time);
+        os::API::debug_printf<1>("Step %s time:%dus\n", call_name, static_cast<int>(duration));
     }
 
 private:
@@ -121,8 +121,8 @@ public:
                            m_trap_info(trap_info), m_in_place(in_place),
                            m_exec_copy(nullptr), m_exec_code_size(0),
                            m_shuffled_order(nullptr) {
-        os::API::DebugPrintf<1>("Found exec section @%p[%u]\n",
-                                m_exec_section.start().to_ptr(), m_exec_section.size());
+        os::API::debug_printf<1>("Found exec section @%p[%u]\n",
+                                 m_exec_section.start().to_ptr(), m_exec_section.size());
     }
 
     void run() {
@@ -155,14 +155,14 @@ public:
         if (m_exec_copy != nullptr) {
             if (m_in_place) {
                 // We're doing in-place randomization, so release the copy
-                os::API::MemUnmap(m_exec_copy, m_exec_code_size, true);
+                os::API::mem_unmap(m_exec_copy, m_exec_code_size, true);
             } else {
                 // Not in-place, so we need to keep the copy, so map it as executable
-                os::API::MemProtect(m_exec_copy, m_exec_code_size, os::PagePermissions::RX);
+                os::API::mem_protect(m_exec_copy, m_exec_code_size, os::PagePermissions::RX);
             }
         }
         if (m_shuffled_order != nullptr)
-            os::API::MemFree(m_shuffled_order);
+            os::API::mem_free(m_shuffled_order);
         m_functions.free();
     }
 
@@ -273,7 +273,7 @@ void ExecSectionProcessor::count_functions() {
         count++;
         return true;
     });
-    os::API::DebugPrintf<1>("Trap functions: %d\n", count);
+    os::API::debug_printf<1>("Trap functions: %d\n", count);
     m_functions.reserve(count);
 }
 
@@ -322,8 +322,8 @@ void ExecSectionProcessor::remove_empty_functions() {
         RANDO_ASSERT(m_functions[idx].has_size);
         return m_functions[idx].size == 0;
     });
-    os::API::DebugPrintf<2>("Removed %d empty functions\n",
-                            orig_num_funcs - m_functions.num_elems);
+    os::API::debug_printf<2>("Removed %d empty functions\n",
+                             orig_num_funcs - m_functions.num_elems);
 }
 
 void ExecSectionProcessor::trim_gaps() {
@@ -331,7 +331,7 @@ void ExecSectionProcessor::trim_gaps() {
     for (size_t i = 0; i < m_functions.num_elems; i++) {
         if (!m_functions[i].is_gap)
             continue;
-        while (m_functions[i].size > 0 && os::API::Is1ByteNOP(m_functions[i].undiv_start)) {
+        while (m_functions[i].size > 0 && os::API::is_one_byte_nop(m_functions[i].undiv_start)) {
             m_functions[i].undiv_start++;
             m_functions[i].size--;
         }
@@ -339,20 +339,20 @@ void ExecSectionProcessor::trim_gaps() {
 }
 
 void ExecSectionProcessor::shuffle_functions() {
-    bool skip_shuffle = os::API::GetEnv("SELFRANDO_skip_shuffle") != nullptr;
+    bool skip_shuffle = os::API::getenv("SELFRANDO_skip_shuffle") != nullptr;
     // FIXME: it would be nice to only disable shuffling
     // when the variable is set to "1" or "true"
     if (skip_shuffle) {
-        os::API::DebugPrintf<1>("Selfrando: warning: applying identity transformation. No real protection!\n");
+        os::API::debug_printf<1>("Selfrando: warning: applying identity transformation. No real protection!\n");
     }
 
     // Shuffle the order of the functions, using a Fisher-Yates shuffle
-    m_shuffled_order = reinterpret_cast<size_t*>(os::API::MemAlloc(m_functions.num_elems * sizeof(size_t)));
+    m_shuffled_order = reinterpret_cast<size_t*>(os::API::mem_alloc(m_functions.num_elems * sizeof(size_t)));
     for (size_t i = 0; i < m_functions.num_elems; i++)
         m_shuffled_order[i] = i;
     for (size_t i = 0; i < m_functions.num_elems - 1; i++) {
         // Pick shuffled_order[i] at random from the remaining elements
-        auto j = skip_shuffle ? 0 : os::API::GetRandom(m_functions.num_elems - i);
+        auto j = skip_shuffle ? 0 : os::API::random(m_functions.num_elems - i);
         if (j == 0) {
             continue;
         }
@@ -398,11 +398,11 @@ void ExecSectionProcessor::layout_code() {
         curr_addr += func.size;
     }
     m_exec_code_size = curr_addr - orig_code;
-    os::API::DebugPrintf<1>("Divcode size:%d\n", m_exec_code_size);
+    os::API::debug_printf<1>("Divcode size:%d\n", m_exec_code_size);
 
     // If we don't have enough room, we can't randomize in-place
     if (m_exec_code_size > m_exec_section.size()) {
-        os::API::DebugPrintf<1>("Cannot randomize in place!\n");
+        os::API::debug_printf<1>("Cannot randomize in place!\n");
         m_in_place = false;
     }
 #if RANDOLIB_FORCE_INPLACE
@@ -418,8 +418,8 @@ void ExecSectionProcessor::shuffle_code() {
         // If we're randomizing in-place, we don't care
         // where the copy is in memory, since we release
         // it shortly anyway
-        auto copy_addr = os::API::MemMap(nullptr, m_exec_code_size,
-                                         os::PagePermissions::RW, true);
+        auto copy_addr = os::API::mem_map(nullptr, m_exec_code_size,
+                                          os::PagePermissions::RW, true);
         m_exec_copy = reinterpret_cast<os::BytePointer>(copy_addr);
     }
     else {
@@ -432,14 +432,14 @@ void ExecSectionProcessor::shuffle_code() {
             // a jump from the start of m_exec_data can reach
             // the end of m_exec_copy without overflowing
             auto max_copy_delta = (2U << 30) - m_exec_section.size();
-            auto copy_page = start_page + os::API::GetRandom(max_copy_delta >> os::kPageShift);
+            auto copy_page = start_page + os::API::random(max_copy_delta >> os::kPageShift);
             auto hint_addr = reinterpret_cast<void*>(copy_page << os::kPageShift);
-            auto copy_addr = os::API::MemMap(hint_addr, m_exec_code_size,
-                                             os::PagePermissions::RW, true);
+            auto copy_addr = os::API::mem_map(hint_addr, m_exec_code_size,
+                                              os::PagePermissions::RW, true);
             m_exec_copy = reinterpret_cast<os::BytePointer>(copy_addr);
         } while (m_exec_copy == nullptr);
     }
-    os::API::DebugPrintf<1>("Divcode@%p\n", m_exec_copy);
+    os::API::debug_printf<1>("Divcode@%p\n", m_exec_copy);
 
     auto copy_delta = m_exec_copy - orig_code;
     auto last_addr = m_exec_copy;
@@ -449,25 +449,25 @@ void ExecSectionProcessor::shuffle_code() {
         if (func.skip_copy) continue;
 
         // TODO: also add in Windows-specific function hot-patch trampolines
-        os::API::DebugPrintf<3>("Moving %p[%d]=>%p@%p\n",
-            func.undiv_start, func.size,
-            func.div_start, func.div_start + copy_delta);
+        os::API::debug_printf<3>("Moving %p[%d]=>%p@%p\n",
+                                 func.undiv_start, func.size,
+                                 func.div_start, func.div_start + copy_delta);
         func.div_start += copy_delta;
         if (func.div_start > last_addr) {
             // There is a gap between the last function and this one,
             // so we fill the gap with NOP instructions
             auto padding = func.div_start - last_addr;
-            os::API::InsertNOPs(last_addr, padding);
+            os::API::insert_nops(last_addr, padding);
         } else {
             RANDO_ASSERT(func.div_start == last_addr);
         }
-        os::API::MemCpy(func.div_start, func.undiv_start, func.size);
+        os::API::memcpy(func.div_start, func.undiv_start, func.size);
         last_addr = func.div_end();
     }
     if (m_in_place) {
-        os::API::DebugPrintf<3>("Copying code back %p[%u]=>%p\n",
-                                m_exec_copy, m_exec_code_size, orig_code);
-        os::API::MemCpy(orig_code, m_exec_copy, m_exec_code_size);
+        os::API::debug_printf<3>("Copying code back %p[%u]=>%p\n",
+                                 m_exec_copy, m_exec_code_size, orig_code);
+        os::API::memcpy(orig_code, m_exec_copy, m_exec_code_size);
         // TODO: zero out the space left over
         // Revert the div_start addresses to the original section
         for (size_t i = 0; i < m_functions.num_elems; i++)
@@ -477,7 +477,7 @@ void ExecSectionProcessor::shuffle_code() {
 #ifdef WIN32 // For now, we only replace the original code with CC's on Windows
             auto &func = m_functions[i];
             if (func.size < 7) {
-                os::API::DebugPrintf<2>("Smallfunc@%p[%d]\n", func.undiv_start, func.size);
+                os::API::debug_printf<2>("Smallfunc@%p[%d]\n", func.undiv_start, func.size);
                 continue;
             }
             // FIXME: this could create a race condition
@@ -537,13 +537,13 @@ void ExecSectionProcessor::fixup_exports() {
 #if RANDOLIB_WRITE_LAYOUTS > 0
 void ExecSectionProcessor::write_layout_file() {
 #if RANDOLIB_WRITE_LAYOUTS == 1
-    if (os::API::GetEnv("SELFRANDO_write_layout_file") == nullptr)
+    if (os::API::getenv("SELFRANDO_write_layout_file") == nullptr)
         return;
 #endif
 
-    auto fd = os::API::OpenLayoutFile(true);
+    auto fd = os::API::open_layout_file((true);
     if (fd == os::kInvalidFile) {
-        os::API::DebugPrintf<1>("Error opening layout file!\n");
+        os::API::debug_printf<1>("Error opening layout file!\n");
         return;
     }
 
@@ -554,12 +554,12 @@ void ExecSectionProcessor::write_layout_file() {
     ptrdiff_t func_size = func_end - func_base;
     const char *module_name = m_module.get_module_name();
     nullptr_t np = nullptr;
-    os::API::WriteFile(fd, &version, sizeof(version));
-    os::API::WriteFile(fd, &seed, sizeof(seed));
-    os::API::WriteFile(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
-    os::API::WriteFile(fd, &func_base, sizeof(func_base));
-    os::API::WriteFile(fd, &func_size, sizeof(func_size));
-    os::API::WriteFile(fd, module_name, strlen(module_name) + 1);
+    os::API::write_file(fd, &version, sizeof(version));
+    os::API::write_file(fd, &seed, sizeof(seed));
+    os::API::write_file(fd, &func_base, sizeof(func_base)); // FIXME: fake file_base
+    os::API::write_file(fd, &func_base, sizeof(func_base));
+    os::API::write_file(fd, &func_size, sizeof(func_size));
+    os::API::write_file(fd, module_name, strlen(module_name) + 1);
     for (size_t i = 0; i < m_functions.num_elems; i++) {
         auto si = m_shuffled_order[i];
         auto &func = m_functions.elems[si];
@@ -567,12 +567,12 @@ void ExecSectionProcessor::write_layout_file() {
             continue;
 
         uint32_t size32 = static_cast<uint32_t>(func.size);
-        os::API::WriteFile(fd, &func.undiv_start, sizeof(func.undiv_start));
-        os::API::WriteFile(fd, &func.div_start, sizeof(func.div_start));
-        os::API::WriteFile(fd, &size32, sizeof(size32));
+        os::API::write_file(fd, &func.undiv_start, sizeof(func.undiv_start));
+        os::API::write_file(fd, &func.div_start, sizeof(func.div_start));
+        os::API::write_file(fd, &size32, sizeof(size32));
     }
-    os::API::WriteFile(fd, &np, sizeof(np));
-    os::API::CloseFile(fd);
+    os::API::write_file(fd, &np, sizeof(np));
+    os::API::close_file(fd);
 }
 #endif
 
@@ -589,7 +589,7 @@ static RANDO_SECTION void randomize_module(os::Module &mod2, void *arg) {
 }
 
 RANDO_MAIN_FUNCTION() {
-    os::API::Init();
+    os::API::init();
     {
         // os::Module needs to be in a deep scope,
         // so that its destructor gets called before os::API::Finish
@@ -599,5 +599,5 @@ RANDO_MAIN_FUNCTION() {
         os::Module::ForAllModules(randomize_module, nullptr);
         // FIXME: we could make .rndtext non-executable here
     }
-    os::API::Finish();
+    os::API::finish();
 }

@@ -18,8 +18,8 @@ void os::Module::Section::flush_icache() {
     // Flush the dcache first
     auto sec_start = start().to_ptr();
     auto sec_end = end().to_ptr();
-    os::API::DebugPrintf<1>("Flushing icache range %p-%p\n",
-                            sec_start, sec_end);
+    os::API::debug_printf<1>("Flushing icache range %p-%p\n",
+                             sec_start, sec_end);
     for (auto ptr = sec_start; ptr < sec_end; ptr += dcache_line_size)
         __asm__ volatile ("dc cvau, %0" : : "r"(ptr) : "memory");
 

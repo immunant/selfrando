@@ -104,7 +104,7 @@ struct RANDO_SECTION Vector {
 
     void free() {
         if (elems != nullptr)
-            os::API::MemFree(elems);
+            os::API::mem_free(elems);
         elems = nullptr;
         num_elems = 0;
         capacity = 0;
@@ -117,9 +117,9 @@ struct RANDO_SECTION Vector {
         auto old_capacity = capacity;
         capacity = new_capacity;
         if (old_capacity == 0) {
-            elems = reinterpret_cast<T*>(os::API::MemAlloc(capacity * sizeof(T), true));
+            elems = reinterpret_cast<T*>(os::API::mem_alloc(capacity * sizeof(T), true));
         } else {
-            elems = reinterpret_cast<T*>(os::API::MemReAlloc(elems, capacity * sizeof(T), true));
+            elems = reinterpret_cast<T*>(os::API::mem_realloc(elems, capacity * sizeof(T), true));
         }
     }
 
@@ -139,7 +139,7 @@ struct RANDO_SECTION Vector {
 
     template<typename Func>
     void sort(Func compare) {
-        os::API::QuickSort(elems, num_elems, sizeof(T), compare);
+        os::API::quick_sort(elems, num_elems, sizeof(T), compare);
     }
 
     template<typename Func>

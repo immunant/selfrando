@@ -68,24 +68,24 @@ static const File kInvalidFile = -1;
 
 class APIImpl {
 public:
-    static void DebugPrintfImpl(const char *fmt, ...);
+    static void debug_printf_impl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
 
     // C library functions
-    static inline void QuickSort(void* base, size_t num, size_t size,
-                                 int(*cmp)(const void*, const void*)) {
+    static inline void quick_sort(void* base, size_t num, size_t size,
+                                  int(*cmp)(const void*, const void*)) {
         _TRaP_qsort(base, num, size, cmp);
     }
 
-    static inline void MemCpy(void *dst, const void *src, size_t size) {
+    static inline void memcpy(void *dst, const void *src, size_t size) {
         _TRaP_libc_memcpy(dst, src, size);
     }
 
-    static inline int MemCmp(const void *a, const void *b, size_t size) {
+    static inline int memcmp(const void *a, const void *b, size_t size) {
         return _TRaP_libc_memcmp(a, b, size);
     }
 
-    static inline size_t GetRandom(size_t max) {
+    static inline size_t random(size_t max) {
 #if RANDOLIB_RNG_IS_RAND_R
 #if RANDOLIB_IS_ARM
         // On some architectures, we want to avoid the division below
@@ -110,19 +110,19 @@ public:
 #endif
     }
 
-    static inline Time GetTime() {
+    static inline Time time() {
         return _TRaP_libc_time(nullptr); // FIXME: we need something more precise
     }
 
-    static inline unsigned long long TimeDeltaMicroSec(const Time &from, const Time &to) {
+    static inline unsigned long long usec_between(const Time &from, const Time &to) {
         return to - from; // FIXME
     }
 
-    static char *GetEnv(const char *var) {
+    static char *getenv(const char *var) {
         return _TRaP_libc_getenv(var);
     }
 
-    static Pid GetPid() {
+    static Pid getpid() {
         return _TRaP_libc___getpid();
     }
 
@@ -134,8 +134,8 @@ public:
     static const int kPageAlignment = 4096;
     static const bool kPreserveFunctionOffset = true;
 
-    static bool Is1ByteNOP(BytePointer);
-    static void InsertNOPs(BytePointer, size_t);
+    static bool is_one_byte_nop(BytePointer);
+    static void insert_nops(BytePointer, size_t);
 
 protected:
     static unsigned int rand_seed;
@@ -152,7 +152,7 @@ protected:
 #define RANDO_ASSERT_STR(x)        #x
 #define RANDO_ASSERT_STRM(x)       RANDO_ASSERT_STR(x)
 #define RANDO_ASSERT(cond)  ((cond) ? (void)0 \
-                                    : (os::API::DebugPrintf<0>(__FILE__ ":" RANDO_ASSERT_STRM(__LINE__) " assertion failed: " #cond ), __builtin_trap()))
+                                    : (os::API::debug_printf<0>(__FILE__ ":" RANDO_ASSERT_STRM(__LINE__) " assertion failed: " #cond ), __builtin_trap()))
 
 }
 #endif // __cplusplus

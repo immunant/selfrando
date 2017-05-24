@@ -57,7 +57,7 @@ int API::debug_level = 0;
 #endif
 #endif
 
-RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
+RANDO_SECTION void APIImpl::debug_printf_impl(const char *fmt, ...) {
 #if (RANDOLIB_LOG_TO_DEFAULT || RANDOLIB_LOG_TO_CONSOLE || \
      RANDOLIB_LOG_TO_FILE)
     char tmp[256];
@@ -88,9 +88,9 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     // TODO: implement
 }
 
-RANDO_SECTION void API::Init() {
+RANDO_SECTION void API::init() {
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
-    const char *debug_level_var = GetEnv("SELFRANDO_debug_level");
+    const char *debug_level_var = getenv("SELFRANDO_debug_level");
     if (debug_level_var != nullptr)
         debug_level = _TRaP_libc_strtol(debug_level_var, nullptr, 0);
 #endif
@@ -112,24 +112,24 @@ RANDO_SECTION void API::Init() {
 #ifdef RANDOLIB_DEBUG_SEED
     rand_seed = RANDOLIB_DEBUG_SEED;
 #else // RANDOLIB_DEBUG_SEED
-    const char *seed_var = GetEnv("SELFRANDO_random_seed");
+    const char *seed_var = getenv("SELFRANDO_random_seed");
     if (seed_var != nullptr) {
         rand_seed = _TRaP_libc_strtol(seed_var, nullptr, 0);
     } else {
-        rand_seed = GetTime();
+        rand_seed = API::time();
     }
 #endif // RANDOLIB_DEBUG_SEED
     // TODO: use fnv hash to mix up the seed
-    DebugPrintf<1>("Rand seed:%u\n", rand_seed);
+    debug_printf<1>("Rand seed:%u\n", rand_seed);
 #elif RANDOLIB_RNG_IS_URANDOM
-    DebugPrintf<1>("Using /dev/urandom as RNG\n");
+    debug_printf<1>("Using /dev/urandom as RNG\n");
 #else
 #error Unknown RNG setting
 #endif
 }
 
-RANDO_SECTION void API::Finish() {
-    DebugPrintf<1>("Finished randomizing\n");
+RANDO_SECTION void API::finish() {
+    debug_printf<1>("Finished randomizing\n");
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
     if (log_fd != -1)
         _TRaP_libc____close(log_fd);
@@ -140,19 +140,19 @@ RANDO_SECTION void API::Finish() {
 }
 
 
-RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
+RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
     size = (size + sizeof(size) + kPageSize - 1) & ~kPageSize;
     auto res = reinterpret_cast<size_t*>(_TRaP_libc_mmap(nullptr, size, PROT_READ | PROT_WRITE,
                                                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
     // We need to remember the size, so we know how much to munmap()
-    // FIXME: MemProtect doesn't work on this
+    // FIXME: mem_protect doesn't work on this
     *res = size;
     return reinterpret_cast<void*>(res + 1);
 }
 
-RANDO_SECTION void *API::MemReAlloc(void *old_ptr, size_t new_size, bool zeroed) {
+RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed) {
     if (old_ptr == nullptr)
-        return MemAlloc(new_size, zeroed);
+        return mem_alloc(new_size, zeroed);
 
     auto *old_size_ptr = reinterpret_cast<size_t*>(old_ptr);
     old_size_ptr--;
@@ -168,7 +168,7 @@ RANDO_SECTION void *API::MemReAlloc(void *old_ptr, size_t new_size, bool zeroed)
     return reinterpret_cast<void*>(res + 1);
 }
 
-RANDO_SECTION void API::MemFree(void *ptr) {
+RANDO_SECTION void API::mem_free(void *ptr) {
     auto *size_ptr = reinterpret_cast<size_t*>(ptr);
     size_ptr--;
     _TRaP_libc_munmap(size_ptr, *size_ptr);
@@ -186,7 +186,7 @@ static const int PermissionsTable[] = {
     PROT_READ  | PROT_WRITE | PROT_EXEC
 };
 
-RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, bool commit) {
+RANDO_SECTION void *API::mem_map(void *addr, size_t size, PagePermissions perms, bool commit) {
     RANDO_ASSERT(perms != PagePermissions::UNKNOWN);
     int prot_perms = PermissionsTable[static_cast<uint8_t>(perms)];
     int flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -199,11 +199,11 @@ RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, 
     return new_addr == MAP_FAILED ? nullptr : new_addr;
 }
 
-RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
+RANDO_SECTION void API::mem_unmap(void *addr, size_t size, bool commit) {
     _TRaP_libc_munmap(addr, size);
 }
 
-RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermissions perms) {
+RANDO_SECTION PagePermissions API::mem_protect(void *addr, size_t size, PagePermissions perms) {
     RANDO_ASSERT(perms != PagePermissions::UNKNOWN);
     int prot_perms = PermissionsTable[static_cast<uint8_t>(perms)];
     auto paged_addr = (reinterpret_cast<uintptr_t>(addr) & ~(kPageSize - 1));
@@ -212,7 +212,7 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
     return PagePermissions::UNKNOWN;
 }
 
-RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
+RANDO_SECTION File API::open_file(const char *name, bool write, bool create) {
     int flags = O_CLOEXEC;
     if (write) {
         flags |= O_RDWR | O_APPEND;
@@ -225,12 +225,12 @@ RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
     return fd < 0 ? kInvalidFile : fd;
 }
 
-RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
+RANDO_SECTION ssize_t API::write_file(File file, const void *buf, size_t len) {
     RANDO_ASSERT(file != kInvalidFile);
     return _TRaP_libc_write(file, buf, len);
 }
 
-RANDO_SECTION void API::CloseFile(File file) {
+RANDO_SECTION void API::close_file(File file) {
     RANDO_ASSERT(file != kInvalidFile);
     _TRaP_libc____close(file);
 }
@@ -246,10 +246,10 @@ static inline int build_pid_filename(char (&filename)[len], const char *fmt, ...
     return res;
 }
 
-RANDO_SECTION File API::OpenLayoutFile(bool write) {
+RANDO_SECTION File API::open_layout_file((bool write) {
     char filename[32];
-    build_pid_filename(filename, "/tmp/%d.mlf", API::GetPid());
-    return API::OpenFile(filename, write, true);
+    build_pid_filename(filename, "/tmp/%d.mlf", API::getpid());
+    return API::open_file(filename, write, true);
 }
 
 #if RANDOLIB_DELETE_LAYOUTS > 0
@@ -258,32 +258,32 @@ RANDO_PUBLIC
 RANDO_SECTION void _TRaP_Linux_delete_layout_file(void) {
     // TODO: don't delete if disabled via environment variable
     char filename[32];
-    build_pid_filename(filename, "/tmp/%d.mlf", API::GetPid());
+    build_pid_filename(filename, "/tmp/%d.mlf", API::getpid());
     _TRaP_libc_unlinkat(AT_FDCWD, filename, 0);
 }
 #endif // RANDOLIB_DELETE_LAYOUTS
 #endif // RANDOLIB_WRITE_LAYOUTS
 
-RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms) const {
+RANDO_SECTION PagePermissions Module::Section::mem_protect(PagePermissions perms) const {
     // FIXME: on Linux, we might not need to do anything
     if (empty())
         return PagePermissions::NONE;
-    return API::MemProtect(m_start.to_ptr(), m_size, perms);
+    return API::mem_protect(m_start.to_ptr(), m_size, perms);
 }
 
 RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         : ModuleBase(), m_module_info(module_info) {
     RANDO_ASSERT(m_module_info != nullptr);
     RANDO_ASSERT(phdr_info != nullptr || m_module_info->dynamic != nullptr);
-    os::API::DebugPrintf<5>("Program info table:\n");
-    os::API::DebugPrintf<5>("  orig_dt_init: %p\n", m_module_info->program_info_table->orig_dt_init);
-    os::API::DebugPrintf<5>("  orig_entry: %p\n", m_module_info->program_info_table->orig_entry);
-    os::API::DebugPrintf<5>("  xptramp: %p (%u)\n", m_module_info->program_info_table->xptramp_start,
-                            m_module_info->program_info_table->xptramp_size);
-    os::API::DebugPrintf<5>("  text: %p (%u)\n", m_module_info->program_info_table->sections[0].start,
-                            m_module_info->program_info_table->sections[0].size);
-    os::API::DebugPrintf<5>("  trap: %p (%u)\n", m_module_info->program_info_table->sections[0].trap,
-                            m_module_info->program_info_table->sections[0].trap_size);
+    os::API::debug_printf<5>("Program info table:\n");
+    os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->program_info_table->orig_dt_init);
+    os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->program_info_table->orig_entry);
+    os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->program_info_table->xptramp_start,
+                             m_module_info->program_info_table->xptramp_size);
+    os::API::debug_printf<5>("  text: %p (%u)\n", m_module_info->program_info_table->sections[0].start,
+                             m_module_info->program_info_table->sections[0].size);
+    os::API::debug_printf<5>("  trap: %p (%u)\n", m_module_info->program_info_table->sections[0].trap,
+                             m_module_info->program_info_table->sections[0].trap_size);
     if (phdr_info == nullptr) {
         // Iterate thru the phdr's to find the one for our dynamic_ptr
         dl_iterate_phdr([] (PHdrInfoPointer iter_info, size_t size, void *arg) {
@@ -294,14 +294,14 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
                 if (phdr->p_type == PT_DYNAMIC && mod->m_module_info->dynamic == phdr_start) {
                     // Binaries generally contain a DYNAMIC phdr
                     // so we should find one here
-                    API::MemCpy(&mod->m_phdr_info, iter_info, sizeof(*iter_info));
+                    API::memcpy(&mod->m_phdr_info, iter_info, sizeof(*iter_info));
                     return 1;
                 }
             }
             return 0;
         }, this);
     } else {
-        API::MemCpy(&m_phdr_info, phdr_info, sizeof(*phdr_info));
+        API::memcpy(&m_phdr_info, phdr_info, sizeof(*phdr_info));
     }
     if (m_module_info->dynamic == nullptr) {
         // Extract m_module_info->dynamic from the phdr
@@ -361,11 +361,11 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             break;
         }
     }
-    API::DebugPrintf<1>("Module@%p dynamic:%p PIT:%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
-                        this, m_module_info->dynamic,
-                        m_module_info->program_info_table,
-                        m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
-    API::DebugPrintf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
+    API::debug_printf<1>("Module@%p dynamic:%p PIT:%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
+                         this, m_module_info->dynamic,
+                         m_module_info->program_info_table,
+                         m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
+    API::debug_printf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
 
     preprocess_arch();
 }
@@ -390,7 +390,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             auto seg_start = RVA2Address(phdr->p_vaddr).to_ptr();
             auto seg_perms = (phdr->p_flags & PF_X) != 0 ? PagePermissions::RWX
                                                          : PagePermissions::RW;
-            API::MemProtect(seg_start, phdr->p_memsz, seg_perms);
+            API::mem_protect(seg_start, phdr->p_memsz, seg_perms);
         }
     }
     // FIXME: unfortunately, the loader doesn't seem to load
@@ -405,9 +405,9 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
 
         auto sec_start = sec_info.start;
         auto sec_trap_start = reinterpret_cast<BytePointer>(sec_info.trap);
-        API::DebugPrintf<1>("Module@%p sec@%p[%d] TRaP@%p[%d]\n",
-                            this, sec_start, sec_info.size,
-                            sec_trap_start, sec_info.trap_size);
+        API::debug_printf<1>("Module@%p sec@%p[%d] TRaP@%p[%d]\n",
+                             this, sec_start, sec_info.size,
+                             sec_trap_start, sec_info.trap_size);
         Section section(*this, sec_start, sec_info.size);
         TrapInfo sec_trap_info(sec_trap_start, sec_info.trap_size,
                                reinterpret_cast<trap_address_t>(m_got));
@@ -431,7 +431,7 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
             auto seg_start = RVA2Address(phdr->p_vaddr).to_ptr();
             auto seg_perms = (phdr->p_flags & PF_X) != 0 ? PagePermissions::RX
                                                          : PagePermissions::R;
-            API::MemProtect(seg_start, phdr->p_memsz, seg_perms);
+            API::mem_protect(seg_start, phdr->p_memsz, seg_perms);
         }
     }
     // FIXME: if we're not in in-place mode (we moved the copy to a
@@ -442,8 +442,8 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     // Re-map .xptramp as executable
     auto xptramp_sec = export_section();
     xptramp_sec.flush_icache();
-    API::MemProtect(xptramp_sec.start().to_ptr(),
-                    xptramp_sec.size(),
+    API::mem_protect(xptramp_sec.start().to_ptr(),
+                     xptramp_sec.size(),
                     PagePermissions::RX);
 }
 
@@ -504,7 +504,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     Relocation::fixup_entry_point(*this,
                                   m_module_info->program_info_table->rando_entry,
                                   new_entry);
-    API::DebugPrintf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
+    API::debug_printf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 
     relocate_arch(functions);
     if (m_arch_relocs.elems != nullptr) {
@@ -518,7 +518,7 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
 
     // Apply relocations to known GOT entries
     for (size_t i = 0; i < m_got_entries.num_elems; i++) {
-        API::DebugPrintf<5>("GOT entry@%p\n", m_got_entries.elems[i]);
+        API::debug_printf<5>("GOT entry@%p\n", m_got_entries.elems[i]);
         Relocation reloc(*this, m_got_entries.elems[i],
                          Relocation::get_pointer_reloc_type());
         functions->adjust_relocation(&reloc);
@@ -528,10 +528,10 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
     if (m_eh_frame_hdr != nullptr) {
         uint32_t *ptr = reinterpret_cast<uint32_t*>(m_eh_frame_hdr);
         if (ptr[0] != 0x3b031b01) {
-            API::DebugPrintf<1>("Unknown .eh_frame_hdr encoding: %08x\n", ptr[0]);
+            API::debug_printf<1>("Unknown .eh_frame_hdr encoding: %08x\n", ptr[0]);
         } else {
             uint32_t num_entries = ptr[2];
-            API::DebugPrintf<1>(".eh_frame_hdr found %d entries\n", num_entries);
+            API::debug_printf<1>(".eh_frame_hdr found %d entries\n", num_entries);
             for (size_t i = 0, idx = 3; i < num_entries; i++, idx += 2) {
                 int32_t entry_pc_delta = static_cast<int32_t>(ptr[idx]);
                 BytePointer entry_pc = m_eh_frame_hdr + entry_pc_delta;
@@ -540,8 +540,8 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions) const {
                 functions->adjust_relocation(&reloc);
                 ptr[idx] = static_cast<uint32_t>(entry_pc - m_eh_frame_hdr);
             }
-            API::QuickSort(ptr + 3, num_entries, 2 * sizeof(int32_t),
-                           compare_eh_frame_entries);
+            API::quick_sort(ptr + 3, num_entries, 2 * sizeof(int32_t),
+                            compare_eh_frame_entries);
         }
     }
 }
@@ -632,7 +632,7 @@ RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
         if (got_entry != nullptr)
             m_got_entries.append(got_entry);
     });
-    os::API::DebugPrintf<1>("GOT relocations found: %d\n", m_got_entries.num_elems);
+    os::API::debug_printf<1>("GOT relocations found: %d\n", m_got_entries.num_elems);
     if (m_got_entries.num_elems == 0)
         return;
 
@@ -645,8 +645,8 @@ RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
     m_got_entries.remove_if([this] (size_t idx) {
         return idx > 0 && m_got_entries.elems[idx] == m_got_entries.elems[idx - 1];
     });
-    os::API::DebugPrintf<1>("Final GOT relocations: %d\n",
-                            m_got_entries.num_elems);
+    os::API::debug_printf<1>("Final GOT relocations: %d\n",
+                             m_got_entries.num_elems);
 }
 
 }

@@ -147,7 +147,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
             goto pcrel_reloc;
         break;
     default:
-        API::DebugPrintf<1>("Unknown relocation: %d\n", m_type);
+        API::debug_printf<1>("Unknown relocation: %d\n", m_type);
         RANDO_ASSERT(false);
         break;
     }

@@ -110,37 +110,37 @@ private:
 
 class RANDO_SECTION APIImpl {
 public:
-    static void DebugPrintfImpl(const char *fmt, ...);
+    static void debug_printf_impl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
 
     // C library functions
-    static inline void QuickSort(void* base, size_t num, size_t size,
-                                 int(__cdecl *cmp)(const void*, const void*)) {
+    static inline void quick_sort(void* base, size_t num, size_t size,
+                                  int(__cdecl *cmp)(const void*, const void*)) {
         _TRaP_qsort(base, num, size, cmp);
     }
 
-    static inline void MemCpy(void *dst, const void *src, size_t size) {
+    static inline void memcpy(void *dst, const void *src, size_t size) {
         RANDO_SYS_FUNCTION(ntdll, memcpy, dst, src, size);
     }
 
-    static inline int MemCmp(const void *a, const void *b, size_t size) {
+    static inline int memcmp(const void *a, const void *b, size_t size) {
         return RANDO_SYS_FUNCTION(ntdll, memcmp, a, b, size);
     }
 
-    static inline ULONG GetRandom(ULONG max) {
+    static inline ULONG random(ULONG max) {
         // TODO: do we need the seed???
         auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed);
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
     }
 
-    static inline Time GetTime() {
+    static inline Time time() {
         LARGE_INTEGER res;
         RANDO_SYS_FUNCTION(kernel32, QueryPerformanceCounter, &res);
         return res;
     }
 
-    static inline LONGLONG TimeDeltaMicroSec(const Time &from, const Time &to) {
+    static inline LONGLONG usec_between(const Time &from, const Time &to) {
         LONGLONG res = to.QuadPart - from.QuadPart;
 #if RANDOLIB_IS_X86
         res = RANDO_SYS_FUNCTION(ntdll, allmul, res, 1000000);
@@ -152,9 +152,9 @@ public:
         return res;
     }
 
-    static char *GetEnv(const char *var);
+    static char *getenv(const char *var);
 
-    static Pid GetPid();
+    static Pid getpid();
 
     // TODO: make this into a compile-time value,
     // or maybe a run-time one, and also a TRaP
@@ -164,8 +164,8 @@ public:
     static const int kPageAlignment = 4096;
     static const bool kPreserveFunctionOffset = true;
 
-    static bool Is1ByteNOP(BytePointer);
-    static void InsertNOPs(BytePointer, size_t);
+    static bool is_one_byte_nop(BytePointer);
+    static void insert_nops(BytePointer, size_t);
 
 protected:
     // Other Windows globals

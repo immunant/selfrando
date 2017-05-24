@@ -147,7 +147,7 @@ public:
             }
         }
 
-        RANDO_SECTION PagePermissions MemProtect(PagePermissions perms) const;
+        RANDO_SECTION PagePermissions mem_protect(PagePermissions perms) const;
     };
 
     // FIXME: TrapInfo could be pre-computed, and accessed via a function

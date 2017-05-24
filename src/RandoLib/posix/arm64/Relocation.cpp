@@ -221,7 +221,7 @@ void write_insn_operand(BytePointer at_ptr, Instruction insn,
         insn_is_adrp(insn_ptr[0]) && insn_is_ldst(insn_ptr[1]) &&
         (insn_is_ldst_uimm(insn_ptr[2]) || insn_is_ldst_uimm(insn_ptr[3]))) {
         // We may have an 843419 erratum
-        API::DebugPrintf<1>("Warning: violating erratum 843419 at %p\n", at_ptr);
+        API::debug_printf<1>("Warning: violating erratum 843419 at %p\n", at_ptr);
 #if 0
         RANDO_ASSERT(false);
 #endif
