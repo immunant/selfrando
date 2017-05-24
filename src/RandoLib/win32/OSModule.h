@@ -124,7 +124,7 @@ public:
         if (subtract_one)
             full_addr--;
         Relocation rva_reloc(*this, &full_addr, Relocation::get_pointer_reloc_type());
-        functions->AdjustRelocation(&rva_reloc);
+        functions->adjust_relocation(&rva_reloc);
         if (subtract_one)
             full_addr++;
 

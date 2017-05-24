@@ -38,7 +38,7 @@
 
 // Binary search function that finds function containing given address
 // TODO: move this to a separate .cpp file???
-Function *FunctionList::FindFunction(os::BytePointer addr) const {
+Function *FunctionList::find_function(os::BytePointer addr) const {
     size_t lo = 0, hi = num_elems - 1;
     // return null if no function contains addr
     if (addr <  elems[lo].undiv_start ||
@@ -59,11 +59,11 @@ Function *FunctionList::FindFunction(os::BytePointer addr) const {
 }
 
 template<>
-RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc) const {
+RANDO_SECTION void FunctionList::adjust_relocation(os::Module::Relocation *reloc) const {
     auto source_ptr = reloc->get_source_ptr();
     static_assert(sizeof(*source_ptr) == 1, "Byte size not 8 bits");
     // Update the "source" address if it falls inside a diversified function
-    auto source_func = FindFunction(source_ptr);
+    auto source_func = find_function(source_ptr);
     if (source_func != nullptr) {
         source_ptr = source_func->post_div_address(source_ptr);
         reloc->set_source_ptr(source_ptr);
@@ -79,7 +79,7 @@ RANDO_SECTION void FunctionList::AdjustRelocation(os::Module::Relocation *reloc)
                             source_ptr, *reinterpret_cast<uint32_t*>(source_ptr),
                             *reinterpret_cast<uintptr_t*>(source_ptr), target_ptr);
     // Compute new target address
-    auto target_func = FindFunction(target_ptr);
+    auto target_func = find_function(target_ptr);
     // Check if either source or target addresses fall inside a moved function
     // If not, then we really don't care about this relocation
     if (source_func == nullptr && target_func == nullptr)
@@ -125,29 +125,29 @@ public:
                                 m_exec_section.start().to_ptr(), m_exec_section.size());
     }
 
-    void Run() {
+    void run() {
 #if 0
         for (auto trap_entry : m_trap_info)
             trap_entry.dump();
 #endif
 
-        TIME_FUNCTION_CALL(CountFunctions);
-        TIME_FUNCTION_CALL(BuildFunctions);
+        TIME_FUNCTION_CALL(count_functions);
+        TIME_FUNCTION_CALL(build_functions);
         // Optimization: if only one function, skip shuffling
         if (m_functions.num_elems > 1) {
-            TIME_FUNCTION_CALL(SortFunctions);
-            TIME_FUNCTION_CALL(ComputeFunctionSizes);
-            TIME_FUNCTION_CALL(TrimGaps);
-            TIME_FUNCTION_CALL(RemoveEmptyFunctions);
-            TIME_FUNCTION_CALL(ShuffleFunctions);
-            TIME_FUNCTION_CALL(LayoutCode);
-            TIME_FUNCTION_CALL(ShuffleCode);
+            TIME_FUNCTION_CALL(sort_functions);
+            TIME_FUNCTION_CALL(compute_function_sizes);
+            TIME_FUNCTION_CALL(trim_gaps);
+            TIME_FUNCTION_CALL(remove_empty_functions);
+            TIME_FUNCTION_CALL(shuffle_functions);
+            TIME_FUNCTION_CALL(layout_code);
+            TIME_FUNCTION_CALL(shuffle_code);
         }
-        TIME_FUNCTION_CALL(FixupRelocations);
-        TIME_FUNCTION_CALL(ProcessTrapRelocations);
-        TIME_FUNCTION_CALL(FixupExports);
+        TIME_FUNCTION_CALL(fixup_relocations);
+        TIME_FUNCTION_CALL(process_trap_relocations);
+        TIME_FUNCTION_CALL(fixup_exports);
 #if RANDOLIB_WRITE_LAYOUTS > 0
-        TIME_FUNCTION_CALL(WriteLayoutFile);
+        TIME_FUNCTION_CALL(write_layout_file);
 #endif
 
         // Cleanup
@@ -181,20 +181,20 @@ private:
     template<typename FunctionPredicate>
     void IterateTrapFunctions(FunctionPredicate);
 
-    void CountFunctions();
-    void BuildFunctions();
-    void SortFunctions();
-    void ComputeFunctionSizes();
-    void RemoveEmptyFunctions();
-    void TrimGaps();
-    void ShuffleFunctions();
-    void LayoutCode();
-    void ShuffleCode();
-    void FixupRelocations();
-    void ProcessTrapRelocations();
-    void FixupExports();
+    void count_functions();
+    void build_functions();
+    void sort_functions();
+    void compute_function_sizes();
+    void remove_empty_functions();
+    void trim_gaps();
+    void shuffle_functions();
+    void layout_code();
+    void shuffle_code();
+    void fixup_relocations();
+    void process_trap_relocations();
+    void fixup_exports();
 #if RANDOLIB_WRITE_LAYOUTS > 0
-    void WriteLayoutFile();
+    void write_layout_file();
 #endif
 };
 
@@ -267,7 +267,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
     }
 }
 
-void ExecSectionProcessor::CountFunctions() {
+void ExecSectionProcessor::count_functions() {
     size_t count = 0;
     IterateTrapFunctions([this, &count] (const Function &new_func) {
         count++;
@@ -277,7 +277,7 @@ void ExecSectionProcessor::CountFunctions() {
     m_functions.reserve(count);
 }
 
-void ExecSectionProcessor::BuildFunctions() {
+void ExecSectionProcessor::build_functions() {
     IterateTrapFunctions([this] (const Function &new_func) {
         m_functions.append(new_func);
         return true;
@@ -285,26 +285,26 @@ void ExecSectionProcessor::BuildFunctions() {
 }
 
 template<typename T>
-static inline RANDO_SECTION int CompareIntegers(T a, T b) {
+static inline RANDO_SECTION int compare_int(T a, T b) {
   return (a < b) ? -1 : ((a == b) ? 0 : 1);
 }
 
-static RANDO_SECTION int CompareFunctions(const void *a, const void *b) {
+static RANDO_SECTION int compare_functions(const void *a, const void *b) {
     auto fa = reinterpret_cast<const Function*>(a);
     auto fb = reinterpret_cast<const Function*>(b);
     if (fa->undiv_start == fb->undiv_start)
-        return CompareIntegers(fa->sort_rank(), fb->sort_rank());
-    return CompareIntegers(fa->undiv_start, fb->undiv_start);
+        return compare_int(fa->sort_rank(), fb->sort_rank());
+    return compare_int(fa->undiv_start, fb->undiv_start);
 }
 
-void ExecSectionProcessor::SortFunctions() {
+void ExecSectionProcessor::sort_functions() {
     // Sort by undiversified addresses
     // FIXME: use our own qsort function, or force use of NTDLL!qsort
     if (m_trap_info.header()->needs_sort())
-        m_functions.sort(CompareFunctions);
+        m_functions.sort(compare_functions);
 }
 
-void ExecSectionProcessor::ComputeFunctionSizes() {
+void ExecSectionProcessor::compute_function_sizes() {
     // Build sizes for functions
     auto exec_end = m_exec_section.end().to_ptr();
     for (size_t i = 0; i < m_functions.num_elems; i++) {
@@ -316,7 +316,7 @@ void ExecSectionProcessor::ComputeFunctionSizes() {
     }
 }
 
-void ExecSectionProcessor::RemoveEmptyFunctions() {
+void ExecSectionProcessor::remove_empty_functions() {
     auto orig_num_funcs = m_functions.num_elems;
     m_functions.remove_if([this] (size_t idx) {
         RANDO_ASSERT(m_functions[idx].has_size);
@@ -326,7 +326,7 @@ void ExecSectionProcessor::RemoveEmptyFunctions() {
                             orig_num_funcs - m_functions.num_elems);
 }
 
-void ExecSectionProcessor::TrimGaps() {
+void ExecSectionProcessor::trim_gaps() {
     // Trim all NOPs (0x90 and 0xCCs) at the beginning of gap functions
     for (size_t i = 0; i < m_functions.num_elems; i++) {
         if (!m_functions[i].is_gap)
@@ -338,7 +338,7 @@ void ExecSectionProcessor::TrimGaps() {
     }
 }
 
-void ExecSectionProcessor::ShuffleFunctions() {
+void ExecSectionProcessor::shuffle_functions() {
     bool skip_shuffle = os::API::GetEnv("SELFRANDO_skip_shuffle") != nullptr;
     // FIXME: it would be nice to only disable shuffling
     // when the variable is set to "1" or "true"
@@ -363,7 +363,7 @@ void ExecSectionProcessor::ShuffleFunctions() {
     }
 }
 
-static inline RANDO_SECTION void PatchInTrampoline(os::BytePointer at, os::BytePointer to) {
+static inline RANDO_SECTION void patch_trampoline(os::BytePointer at, os::BytePointer to) {
     // We add the MOV EDI, EDI here to support hot-patching
     // FIXME: only really need this on Windows
     *at++ = 0x8B; // MOV EDI, EDI
@@ -373,7 +373,7 @@ static inline RANDO_SECTION void PatchInTrampoline(os::BytePointer at, os::ByteP
     *call_delta_ptr = static_cast<int32_t>(to - (at + 4));
 }
 
-void ExecSectionProcessor::LayoutCode() {
+void ExecSectionProcessor::layout_code() {
     auto orig_code = m_exec_section.start().to_ptr();
     auto curr_addr = orig_code;
     for (size_t i = 0; i < m_functions.num_elems; i++) {
@@ -410,7 +410,7 @@ void ExecSectionProcessor::LayoutCode() {
 #endif
 }
 
-void ExecSectionProcessor::ShuffleCode() {
+void ExecSectionProcessor::shuffle_code() {
     // Copy the code to a backup
     // FIXME: randomize the base address manually
     auto orig_code = m_exec_section.start().to_ptr();
@@ -488,7 +488,7 @@ void ExecSectionProcessor::ShuffleCode() {
                 func.undiv_start[ofs] = 0xCC; // INT 3 (trap)
             // We skip this for functions whose addresses aren't taken
             if (!m_trap_info.header()->has_data_refs())
-                PatchInTrampoline(func.undiv_start, func.div_start);
+                patch_trampoline(func.undiv_start, func.div_start);
 #endif
         }
         if (m_trap_info.header()->has_data_refs()) {
@@ -497,9 +497,9 @@ void ExecSectionProcessor::ShuffleCode() {
                 if (m_exec_section.contains_addr(entry_addr)) {
                     for (auto ref : trap_entry.data_refs()) {
                         auto ref_addr = os::Module::Address::from_trap(m_module, ref).to_ptr();
-                        auto ref_func = m_functions.FindFunction(ref_addr);
+                        auto ref_func = m_functions.find_function(ref_addr);
                         if (ref_func != nullptr && ref_func->undiv_contains(ref_addr))
-                            PatchInTrampoline(ref_addr, ref_addr + ref_func->div_delta());
+                            patch_trampoline(ref_addr, ref_addr + ref_func->div_delta());
                     }
                 }
             }
@@ -507,19 +507,19 @@ void ExecSectionProcessor::ShuffleCode() {
     }
 }
 
-void ExecSectionProcessor::FixupRelocations() {
+void ExecSectionProcessor::fixup_relocations() {
     // FIXME(performance): this is pretty slow (profile confirms it)
     m_module.ForAllRelocations(&m_functions);
 }
 
-void ExecSectionProcessor::ProcessTrapRelocations() {
+void ExecSectionProcessor::process_trap_relocations() {
     m_trap_info.for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
         auto reloc = os::Module::Relocation(m_module, trap_reloc);
-        m_functions.AdjustRelocation(&reloc);
+        m_functions.adjust_relocation(&reloc);
     });
 }
 
-void ExecSectionProcessor::FixupExports() {
+void ExecSectionProcessor::fixup_exports() {
     // FIXME: these should either be in regular relocs, or in Trap info
     auto export_section = m_module.export_section();
     if (export_section.empty())
@@ -535,7 +535,7 @@ void ExecSectionProcessor::FixupExports() {
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
-void ExecSectionProcessor::WriteLayoutFile() {
+void ExecSectionProcessor::write_layout_file() {
 #if RANDOLIB_WRITE_LAYOUTS == 1
     if (os::API::GetEnv("SELFRANDO_write_layout_file") == nullptr)
         return;
@@ -576,16 +576,16 @@ void ExecSectionProcessor::WriteLayoutFile() {
 }
 #endif
 
-static RANDO_SECTION void RandomizeExecSection(const os::Module &mod,
-                                               const os::Module::Section &sec,
-                                               TrapInfo &trap_info,
-                                               bool in_place, void *arg) {
+static RANDO_SECTION void randomize_exec_section(const os::Module &mod,
+                                                 const os::Module::Section &sec,
+                                                 TrapInfo &trap_info,
+                                                 bool in_place, void *arg) {
     ExecSectionProcessor esp(mod, sec, trap_info, in_place);
-    esp.Run();
+    esp.run();
 }
 
-static RANDO_SECTION void RandomizeModule(os::Module &mod2, void *arg) {
-    mod2.ForAllExecSections(false, RandomizeExecSection, nullptr);
+static RANDO_SECTION void randomize_module(os::Module &mod2, void *arg) {
+    mod2.ForAllExecSections(false, randomize_exec_section, nullptr);
 }
 
 RANDO_MAIN_FUNCTION() {
@@ -595,8 +595,8 @@ RANDO_MAIN_FUNCTION() {
         // so that its destructor gets called before os::API::Finish
         os::Module mod(asm_module);
         // For every section in the current program...
-        mod.ForAllExecSections(true, RandomizeExecSection, nullptr);
-        os::Module::ForAllModules(RandomizeModule, nullptr);
+        mod.ForAllExecSections(true, randomize_exec_section, nullptr);
+        os::Module::ForAllModules(randomize_module, nullptr);
         // FIXME: we could make .rndtext non-executable here
     }
     os::API::Finish();

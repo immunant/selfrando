@@ -172,12 +172,12 @@ private:
 };
 
 struct RANDO_SECTION FunctionList : public Vector<Function> {
-    Function *FindFunction(os::BytePointer) const;
+    Function *find_function(os::BytePointer) const;
 
     // It's unfortunate that we have to use a template here,
     // but it seems we cannot forward-declare os::Module::Relocation
     template<class Reloc>
-    void AdjustRelocation(Reloc*) const;
+    void adjust_relocation(Reloc*) const;
 };
 
 #endif // __RANDOLIB_H

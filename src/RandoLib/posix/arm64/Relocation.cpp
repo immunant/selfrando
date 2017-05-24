@@ -369,7 +369,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     //RANDO_ASSERT(**export_ptr == 0xff ||**export_ptr == 0xfe ||**export_ptr == 0x94 || **export_ptr == 0x97 ||
     //             **export_ptr == 0x14 || **export_ptr == 0x17);
     Module::Relocation reloc(module, *export_ptr, R_AARCH64_JUMP26);
-    functions->AdjustRelocation(&reloc);
+    functions->adjust_relocation(&reloc);
     *export_ptr += 4;
 }
 
