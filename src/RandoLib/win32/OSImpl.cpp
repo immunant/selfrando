@@ -114,6 +114,12 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     RANDO_SYS_FUNCTION(user32, MessageBoxA, NULL, tmp, "RandoLib", 0);
 }
 
+static RANDO_SECTION inline bool cpu_has_rdseed() {
+    int cpu_info[4];
+    __cpuid(cpu_info, 7);
+    return (cpu_info[1] & 0x40000) != 0;
+}
+
 RANDO_SECTION void API::init() {
     ntdll = LoadLibrary(TEXT("ntdll"));
     kernel32 = LoadLibrary(TEXT("kernel32"));
@@ -148,8 +154,19 @@ RANDO_SECTION void API::init() {
 #ifdef RANDOLIB_DEBUG_SEED
     rand_seed = RANDOLIB_DEBUG_SEED;
 #else
-    uint64_t tsc = __rdtsc();
-    rand_seed = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
+    bool seed_from_rdtsc = true;
+    // If we have the RDSEED instruction (which we check for using CPUID), use it
+    if (cpu_has_rdseed()) {
+        unsigned int tmp_seed;
+        if (_rdseed32_step(&tmp_seed)) {
+            rand_seed = tmp_seed;
+            seed_from_rdtsc = false;
+        }
+    }
+    if (seed_from_rdtsc) {
+        uint64_t tsc = __rdtsc();
+        rand_seed = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
+    }
 #endif
 }
 
