@@ -110,7 +110,6 @@ private:
 
 class RANDO_SECTION APIImpl {
 public:
-    static void debug_printf_impl(const char *fmt, ...);
     static void SystemMessage(const char *fmt, ...);
 
     // C library functions
@@ -166,6 +165,9 @@ public:
 
     static bool is_one_byte_nop(BytePointer);
     static void insert_nops(BytePointer, size_t);
+
+protected:
+    static void debug_printf_impl(const char *fmt, ...);
 
 protected:
     // Other Windows globals
