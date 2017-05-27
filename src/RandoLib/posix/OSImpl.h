@@ -39,8 +39,6 @@
 
 // Found in posix/qsort.c
 extern "C" {
-void _TRaP_qsort(void *, size_t, size_t,
-                 int (*)(const void *, const void *));
 time_t _TRaP_libc_time(time_t*);
 extern void *_TRaP_libc_memcpy(void *__restrict, const void *__restrict, size_t);
 extern int _TRaP_libc_memcmp(const void*, const void*, size_t);
@@ -66,15 +64,9 @@ typedef pid_t Pid;
 
 static const File kInvalidFile = -1;
 
-class APIImpl {
+class APIImpl : public APIBase {
 public:
     static void SystemMessage(const char *fmt, ...);
-
-    // C library functions
-    static inline void qsort(void* base, size_t num, size_t size,
-                             int(*cmp)(const void*, const void*)) {
-        _TRaP_qsort(base, num, size, cmp);
-    }
 
     static inline void memcpy(void *dst, const void *src, size_t size) {
         _TRaP_libc_memcpy(dst, src, size);

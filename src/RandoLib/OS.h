@@ -42,6 +42,21 @@ enum class AddressSpace : uint8_t {
     RVA,                  // Windows-specific: address relative to the image base
 };
 
+extern "C" {
+void _TRaP_qsort(void *, size_t, size_t,
+                 int(*)(const void *, const void *));
+}
+
+// Base class for APIImpl subclasses to inherit from
+class APIBase {
+public:
+    // C library functions
+    static inline void qsort(void* base, size_t num, size_t size,
+                             int(*cmp)(const void*, const void*)) {
+        _TRaP_qsort(base, num, size, cmp);
+    }
+};
+
 }
 #endif // __cplusplus
 

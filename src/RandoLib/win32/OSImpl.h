@@ -56,11 +56,6 @@
 
 #ifdef __cplusplus
 
-extern "C" {
-    void _TRaP_qsort(void *, size_t, size_t,
-                     int(*)(const void *, const void *));
-}
-
 namespace os {
 
 // For some reason, MSVC doesn't have ssize_t
@@ -108,16 +103,11 @@ private:
     size_t m_capacity;
 };
 
-class RANDO_SECTION APIImpl {
+class RANDO_SECTION APIImpl : public APIBase {
 public:
     static void SystemMessage(const char *fmt, ...);
 
     // C library functions
-    static inline void qsort(void* base, size_t num, size_t size,
-                             int(__cdecl *cmp)(const void*, const void*)) {
-        _TRaP_qsort(base, num, size, cmp);
-    }
-
     static inline void memcpy(void *dst, const void *src, size_t size) {
         RANDO_SYS_FUNCTION(ntdll, memcpy, dst, src, size);
     }
