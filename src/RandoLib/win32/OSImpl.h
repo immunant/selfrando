@@ -33,27 +33,6 @@
 #include <Windows.h>
 #include <winternl.h>
 
- // Since at some point we're remapping all of .text as non-executable,
- // we need to put all of our code into a separate executable section
- // so it can continue to execute.
-#define RANDO_SECTION   __declspec(code_seg(".rndtext"))
-
-#define RANDO_ALWAYS_INLINE __forceinline
-
-#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
-
-#define RANDO_SYS_FUNCTION(library, function, ...)  (os::APIImpl::library##_##function)(__VA_ARGS__)
-
-#define RANDO_ASSERT(cond)      \
-    do {                        \
-        if (!os::API::kEnableAsserts)\
-            break;              \
-        if (cond)               \
-            break;              \
-        os::API::SystemMessage("RandoLib assertion error: '%s' at %s:%d\n", #cond, __FILE__, __LINE__); \
-        __debugbreak();         \
-    } while (0)
-
 #ifdef __cplusplus
 
 namespace os {

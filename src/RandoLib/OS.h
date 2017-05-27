@@ -13,6 +13,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if RANDOLIB_IS_WIN32
+#include "win32/OSDefs.h"
+#elif RANDOLIB_IS_POSIX
+#include "posix/OSDefs.h"
+#else
+#error "Unrecognized OS"
+#endif
+
 #ifdef __cplusplus
 namespace os {
 
@@ -48,7 +56,7 @@ void _TRaP_qsort(void *, size_t, size_t,
 }
 
 // Base class for APIImpl subclasses to inherit from
-class APIBase {
+class RANDO_SECTION APIBase {
 public:
     // C library functions
     static inline void qsort(void* base, size_t num, size_t size,

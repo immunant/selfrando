@@ -88,6 +88,9 @@
     <ClInclude Include="..\RandoLib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OSDefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="OSImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>

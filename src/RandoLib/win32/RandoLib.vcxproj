@@ -260,6 +260,7 @@
     <ClInclude Include="..\RandoLib.h" />
     <ClInclude Include="..\..\TrapInfo\TrapInfo.h" />
     <ClInclude Include="..\..\TrapInfo\TrapInfoRelocs.h" />
+    <ClInclude Include="OSDefs.h" />
     <ClInclude Include="OSImpl.h" />
     <ClInclude Include="OSModule.h" />
   </ItemGroup>
