@@ -71,12 +71,12 @@ public:
             // Clip rand to next power of 2 after "max"
             // This ensures that we always have
             // P(rand < max) > 0.5
-            auto rand = static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed)) & mask;
+            auto rand = static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed[0])) & mask;
             if (rand < max)
                 return rand;
         }
 #else
-        return static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed)) % max; // FIXME: better RNG
+        return static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed[0])) % max; // FIXME: better RNG
 #endif
 #elif RANDOLIB_RNG_IS_URANDOM
         return _TRaP_rand_linux(max);
@@ -116,7 +116,7 @@ protected:
     static void debug_printf_impl(const char *fmt, ...);
 
 protected:
-    static unsigned int rand_seed;
+    static uint32_t rand_seed[RANDOLIB_SEED_WORDS];
 
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
     static int log_fd;

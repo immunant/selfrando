@@ -43,7 +43,7 @@ void _TRaP_rand_close_fd(void);
 
 namespace os {
 
-unsigned int APIImpl::rand_seed = 0;
+uint32_t APIImpl::rand_seed[RANDOLIB_SEED_WORDS] = {0};
 
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
 int APIImpl::log_fd = -1;
@@ -110,17 +110,17 @@ RANDO_SECTION void API::init() {
 
 #if RANDOLIB_RNG_IS_RAND_R
 #ifdef RANDOLIB_DEBUG_SEED
-    rand_seed = RANDOLIB_DEBUG_SEED;
+    rand_seed[0] = RANDOLIB_DEBUG_SEED;
 #else // RANDOLIB_DEBUG_SEED
     const char *seed_var = getenv("SELFRANDO_random_seed");
     if (seed_var != nullptr) {
-        rand_seed = _TRaP_libc_strtol(seed_var, nullptr, 0);
+        rand_seed[0] = _TRaP_libc_strtol(seed_var, nullptr, 0);
     } else {
-        rand_seed = API::time();
+        rand_seed[0] = API::time();
     }
 #endif // RANDOLIB_DEBUG_SEED
     // TODO: use fnv hash to mix up the seed
-    debug_printf<1>("Rand seed:%u\n", rand_seed);
+    debug_printf<1>("Rand seed:%u\n", rand_seed[0]);
 #elif RANDOLIB_RNG_IS_URANDOM
     debug_printf<1>("Using /dev/urandom as RNG\n");
 #else
@@ -137,6 +137,9 @@ RANDO_SECTION void API::finish() {
 #if RANDOLIB_RNG_IS_URANDOM
     _TRaP_rand_close_fd();
 #endif
+
+    for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
+        rand_seed[i] = 0;
 }
 
 

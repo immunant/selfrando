@@ -97,7 +97,7 @@ public:
 
     static inline ULONG random(ULONG max) {
         // TODO: do we need the seed???
-        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed);
+        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed[0]);
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
     }
@@ -142,7 +142,7 @@ protected:
     // Other Windows globals
     static HMODULE ntdll, kernel32;
     static LARGE_INTEGER timer_freq;
-    static ULONG rand_seed;
+    static uint32_t rand_seed[RANDOLIB_SEED_WORDS];
 
     static Buffer<char> *env_buf;
 

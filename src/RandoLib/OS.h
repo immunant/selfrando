@@ -21,6 +21,14 @@
 #error "Unrecognized OS"
 #endif
 
+#ifndef RANDOLIB_SEED_WORDS
+#if RANDOLIB_RNG_IS_CHACHA
+#define RANDOLIB_SEED_WORDS 8
+#else // RANDOLIB_RNG_IS_CHACHA
+#define RANDOLIB_SEED_WORDS 1
+#endif // RANDOLIB_RNG_IS_CHACHA
+#endif // RANDOLIB_SEED_WORDS
+
 #ifdef __cplusplus
 namespace os {
 

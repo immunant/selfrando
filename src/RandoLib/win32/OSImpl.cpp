@@ -71,7 +71,7 @@ namespace os {
 // Other Windows globals
 HMODULE APIImpl::ntdll, APIImpl::kernel32;
 LARGE_INTEGER APIImpl::timer_freq;
-ULONG APIImpl::rand_seed;
+uint32_t APIImpl::rand_seed[RANDOLIB_SEED_WORDS] = {0};
 
 // Buffer that holds the return values for environment variables
 // We need to hold it in a global variable, since getenv callers may hold
@@ -152,20 +152,20 @@ RANDO_SECTION void API::init() {
     // Initialize the seed as a hash of the current TSC (should be random enough)
     // FIXME: find a better way of computing the seed
 #ifdef RANDOLIB_DEBUG_SEED
-    rand_seed = RANDOLIB_DEBUG_SEED;
+    rand_seed[0] = RANDOLIB_DEBUG_SEED;
 #else
     bool seed_from_rdtsc = true;
     // If we have the RDSEED instruction (which we check for using CPUID), use it
     if (cpu_has_rdseed()) {
         unsigned int tmp_seed;
         if (_rdseed32_step(&tmp_seed)) {
-            rand_seed = tmp_seed;
+            rand_seed[0] = tmp_seed;
             seed_from_rdtsc = false;
         }
     }
     if (seed_from_rdtsc) {
         uint64_t tsc = __rdtsc();
-        rand_seed = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
+        rand_seed[0] = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
     }
 #endif
 }
@@ -186,7 +186,8 @@ RANDO_SECTION void API::finish() {
 #endif
     ntdll = nullptr;
     kernel32 = nullptr;
-    rand_seed = 0;
+    for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
+        rand_seed[i] = 0;
 #define SYS_FUNCTION(library, name, API, result_type, ...)  library##_##name = nullptr;
 #include "SysFunctions.inc"
 #undef SYS_FUNCTION
