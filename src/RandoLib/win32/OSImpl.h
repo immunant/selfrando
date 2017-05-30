@@ -97,7 +97,8 @@ public:
 
     static inline ULONG random(ULONG max) {
         // TODO: do we need the seed???
-        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx, &rand_seed[0]);
+        auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx,
+                                      reinterpret_cast<PULONG>(&rand_seed[0]));
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
     }
