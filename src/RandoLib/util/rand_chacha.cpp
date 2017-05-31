@@ -8,6 +8,10 @@
 
 #include <OS.h>
 
+#if RANDOLIB_IS_WIN32
+#include <intrin.h>
+#endif
+
 #define KEYSTREAM_ONLY
 #include "chacha_private.h"
 
@@ -32,6 +36,7 @@ static RANDO_SECTION void chacha_rekey() {
                          reinterpret_cast<u8*>(chacha_rng_state->words),
                          chacha_rng_state->num_words * sizeof(uint32_t));
 
+    // Use the first 8+2 words of the new keystream as the new key+IV
     chacha_keysetup(&chacha_rng_state->ctx,
                     reinterpret_cast<u8*>(&chacha_rng_state->words[0]),
                     32 * KEY_WORDS,
@@ -71,6 +76,23 @@ RANDO_SECTION uint32_t _TRaP_chacha_random(uint32_t max) {
     if (max == 0)
         return 0;
 
-    // TODO: implement
-    return 0;
+#if RANDOLIB_IS_POSIX
+    auto clz = __builtin_clz(max);
+#elif RANDOLIB_IS_WIN32
+    DWORD clz = 0;
+    if (!_BitScanReverse(&clz, max))
+        return 0;
+    clz = 31 - clz;
+#else
+#error Unknown OS
+#endif
+    auto mask = static_cast<uint32_t>(-1) >> clz;
+    for (;;) {
+        // Clip rand to next power of 2 after "max"
+        // This ensures that we always have
+        // P(rand < max) > 0.5
+        auto rand = _TRaP_chacha_random_u32() & mask;
+        if (rand < max)
+            return rand;
+    }
 }
