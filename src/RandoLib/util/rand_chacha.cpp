@@ -33,8 +33,12 @@ static RANDO_SECTION constexpr size_t chacha_state_size() {
     return CHACHA_PAGES * os::kPageSize;
 }
 
+static RANDO_SECTION constexpr size_t chacha_state_words() {
+    return (chacha_state_size() - sizeof(struct chacha_state)) / sizeof(uint32_t);
+}
+
 static RANDO_SECTION void chacha_rekey() {
-    chacha_rng_state->num_words = (chacha_state_size() - sizeof(struct chacha_state)) / sizeof(uint32_t);
+    chacha_rng_state->num_words = chacha_state_words();
     // FIXME: zero out chacha_rng_state->words???
     chacha_encrypt_bytes(&chacha_rng_state->ctx,
                          reinterpret_cast<u8*>(chacha_rng_state->words),
