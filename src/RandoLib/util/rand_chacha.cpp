@@ -15,8 +15,9 @@
 #define KEYSTREAM_ONLY
 #include "chacha_private.h"
 
-#define KEY_WORDS   8
-#define IV_WORDS    2
+#define KEY_WORDS       8
+#define IV_WORDS        2
+#define CHACHA_PAGES    4
 
 struct chacha_state {
     chacha_ctx ctx;
@@ -28,8 +29,12 @@ struct chacha_state {
 // FIXME: maybe store this inside os::API???
 struct chacha_state *chacha_rng_state;
 
+static RANDO_SECTION constexpr size_t chacha_state_size() {
+    return CHACHA_PAGES * os::kPageSize;
+}
+
 static RANDO_SECTION void chacha_rekey() {
-    chacha_rng_state->num_words = (os::kPageSize - sizeof(struct chacha_state)) / sizeof(uint32_t);
+    chacha_rng_state->num_words = (chacha_state_size() - sizeof(struct chacha_state)) / sizeof(uint32_t);
     // FIXME: zero out chacha_rng_state->words???
     chacha_encrypt_bytes(&chacha_rng_state->ctx,
                          reinterpret_cast<u8*>(chacha_rng_state->words),
@@ -50,7 +55,7 @@ RANDO_SECTION void _TRaP_chacha_init(uint32_t key[KEY_WORDS],
                                      uint32_t iv[IV_WORDS]) {
     if (chacha_rng_state == nullptr) {
         chacha_rng_state = reinterpret_cast<struct chacha_state*>(
-            os::API::mmap(nullptr, os::kPageSize,
+            os::API::mmap(nullptr, chacha_state_size(),
                           os::PagePermissions::RW,
                           true));
     }
@@ -61,7 +66,7 @@ RANDO_SECTION void _TRaP_chacha_init(uint32_t key[KEY_WORDS],
 
 RANDO_SECTION void _TRaP_chacha_finish() {
     if (chacha_rng_state != nullptr) {
-        os::API::munmap(chacha_rng_state, os::kPageSize, true);
+        os::API::munmap(chacha_rng_state, chacha_state_size(), true);
         chacha_rng_state = nullptr;
     }
 }
