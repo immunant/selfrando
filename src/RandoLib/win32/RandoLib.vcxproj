@@ -243,6 +243,7 @@
     <ClCompile Include="..\RandoLib.cpp" />
     <ClCompile Include="..\util\printf.cpp" />
     <ClCompile Include="..\util\qsort.c" />
+    <ClCompile Include="..\util\rand_chacha.cpp" />
     <ClCompile Include="..\util\strtol.c" />
     <ClCompile Include="OSImpl.cpp" />
     <ClCompile Include="x86\Relocation.cpp">
@@ -255,6 +256,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\util\chacha_private.h" />
     <ClInclude Include="..\util\fnv.h" />
     <ClInclude Include="..\OS.h" />
     <ClInclude Include="..\RandoLib.h" />
