@@ -25,32 +25,32 @@ struct chacha_state {
 struct chacha_state *chacha_rng_state;
 
 static RANDO_SECTION void chacha_rekey() {
-    chacha_rng_state->num_words = (kPageSize - sizeof(struct chacha_state)) / sizeof(uint32_t);
+    chacha_rng_state->num_words = (os::kPageSize - sizeof(struct chacha_state)) / sizeof(uint32_t);
     // FIXME: zero out chacha_rng_state->words???
     chacha_encrypt_bytes(&chacha_rng_state->ctx,
-                         chacha_rng_state->words,
-                         chacha_rng_state->words,
+                         reinterpret_cast<u8*>(chacha_rng_state->words),
+                         reinterpret_cast<u8*>(chacha_rng_state->words),
                          chacha_rng_state->num_words * sizeof(uint32_t));
 
     chacha_keysetup(&chacha_rng_state->ctx,
-                    &chacha_rng_state->words[0],
+                    reinterpret_cast<u8*>(&chacha_rng_state->words[0]),
                     32 * KEY_WORDS,
                     0);
     chacha_ivsetup(&chacha_rng_state->ctx,
-                   &chacha_rng_state->words[KEY_WORDS],
-                   32 * IV_WORDS);
+                   reinterpret_cast<u8*>(&chacha_rng_state->words[KEY_WORDS]));
     chacha_rng_state->words_idx = KEY_WORDS + IV_WORDS;
 }
 
 RANDO_SECTION void _TRaP_chacha_init(uint32_t key[KEY_WORDS],
                                      uint32_t iv[IV_WORDS]) {
     if (chacha_rng_state == nullptr) {
-        chacha_rng_state = os::API::mmap(nullptr, os::kPageSize,
-                                         PagePermissions::RW,
-                                         true);
+        chacha_rng_state = reinterpret_cast<struct chacha_state*>(
+            os::API::mmap(nullptr, os::kPageSize,
+                          os::PagePermissions::RW,
+                          true));
     }
-    chacha_keysetup(&chacha_rng_state->ctx, key, 32 * KEY_WORDS, 0);
-    chacha_ivsetup(&chacha_rng_state, iv, 32 * IV_WORDS);
+    chacha_keysetup(&chacha_rng_state->ctx, reinterpret_cast<u8*>(key), 32 * KEY_WORDS, 0);
+    chacha_ivsetup(&chacha_rng_state->ctx, reinterpret_cast<u8*>(iv));
     chacha_rekey();
 }
 
