@@ -170,9 +170,22 @@ RANDO_SECTION void API::init() {
             rand_seed[i] = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
         }
 #endif
+
+#if RANDOLIB_RNG_IS_CHACHA
+    // Initialize the ChaCha RNG if we're using it
+    extern RANDO_SECTION void _TRaP_chacha_init(uint32_t[8], uint32_t[2]);
+    uint32_t chacha_iv[2] = { getpid(), 0x12345678 }; // FIXME: 2nd value for the IV???
+    _TRaP_chacha_init(rand_seed, chacha_iv);
+#endif // RANDOLIB_RNG_IS_CHACHA
 }
 
 RANDO_SECTION void API::finish() {
+#if RANDOLIB_RNG_IS_CHACHA
+    // Shut down the RNG
+    extern RANDO_SECTION void _TRaP_chacha_finish();
+    _TRaP_chacha_finish();
+#endif // RANDOLIB_RNG_IS_CHACHA
+
     Buffer<char>::release_buffer(env_buf);
     env_buf = nullptr;
 

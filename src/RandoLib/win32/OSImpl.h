@@ -96,11 +96,16 @@ public:
     }
 
     static inline ULONG random(ULONG max) {
+#if RANDOLIB_RNG_IS_CHACHA
+        extern RANDO_SECTION uint32_t _TRaP_chacha_random(uint32_t);
+        return _TRaP_chacha_random(max);
+#else // RANDOLIB_RNG_IS_CHACHA
         // TODO: do we need the seed???
         auto res = RANDO_SYS_FUNCTION(ntdll, RtlRandomEx,
                                       reinterpret_cast<PULONG>(&rand_seed[0]));
         // FIXME: this isn't uniform over 0..max-1
         return res % max;
+#endif // RANDOLIB_RNG_IS_CHACHA
     }
 
     static inline Time time() {
