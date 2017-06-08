@@ -461,6 +461,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         trap_section_header.sh_type = SHT_PROGBITS;
         trap_section_header.sh_flags = SHF_ALLOC;
 #if RANDOLIB_DEBUG_LEVEL > 0
+        trap_section_header.sh_flags |= SHF_INFO_LINK;
         trap_section_header.sh_info = section_ndx; // For debugging
 #endif
         if (builder.in_group())
