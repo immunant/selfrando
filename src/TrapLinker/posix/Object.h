@@ -8,33 +8,25 @@
 
 #pragma once
 
-#include "Trap.h"
-#include "../Support/Debug.h"
+#include <Debug.h>
 
 #include <libelf.h>
 #include <gelf.h>
 
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <list>
 #include <map>
 #include <memory>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-
-#if RANDOLIB_ARCH_SIZE == 32
-typedef Elf32_Rel TargetElf_Rel;
-typedef Elf32_Rela TargetElf_Rela;
-typedef Elf32_Sym TargetElf_Sym;
-typedef Elf32_Addr TargetElf_Addr;
-#else
-typedef Elf64_Rel TargetElf_Rel;
-typedef Elf64_Rela TargetElf_Rela;
-typedef Elf64_Sym TargetElf_Sym;
-typedef Elf64_Addr TargetElf_Addr;
-#endif
-
+typedef int64_t Elf_Offset;
 typedef size_t Elf_SectionIndex;
 
 class ElfObject;
@@ -59,21 +51,76 @@ public:
 
     void initialize (Elf_Scn *section);
 
-    size_t add_string(std::string string);
+    size_t add_string(const std::string &string) {
+        return internal_add_string(string, string.c_str());
+    }
 
-    size_t add_string(const char* string);
+    size_t add_string(const char *string) {
+        return internal_add_string(string, string);
+    }
 
     std::string get_string(size_t index) {
-        assert (index < m_string_table.size());
-        return std::string((char*)m_string_table.data() + index);
+        // FIXME: this used to be constant-time, but is now logarithmic
+        auto idx_it = std::prev(std::upper_bound(m_indices.begin(),
+                                                 m_indices.end(),
+                                                 index));
+        auto idx_pos = std::distance(m_indices.begin(), idx_it);
+        auto idx_ofs = index - m_indices[idx_pos];
+        return std::string(m_string_table[idx_pos]->c_str() + idx_ofs);
     }
 
     void update(ElfObject &object);
 
 private:
+    template<typename String>
+    size_t internal_add_string(const String &string,
+                               const char *c_string) {
+        auto it = m_string_index_map.find(c_string);
+        if (it != m_string_index_map.end())
+            return it->second;
+
+        m_string_table.emplace_back(new const std::string(string));
+        m_indices.push_back(m_next_index);
+        // Advance the index, including the null terminator
+        m_next_index += m_string_table.back()->size() + 1;
+
+        // Add the string and all its suffixes to the hash map
+        hash_last_string();
+        return m_indices.back();
+    }
+
+    void hash_last_string() {
+        // Add all suffixes of the last added string
+        // to the hash map
+        auto last_index = m_indices.back();
+        auto &last_string = *m_string_table.back().get();
+        for (size_t i = 0; i < last_string.size(); i++)
+            if (last_string[i] != '\0')
+                m_string_index_map[&last_string[i]] = last_index + i;
+    }
+
+    // djb2 hash for char*'s for std::unordered_map
+    struct StringHash {
+        size_t operator() (const char *string) const {
+            unsigned long hash = 5381;
+            for (; *string != '\0'; string++)
+                hash = ((hash << 5) + hash) + static_cast<int>(*string);
+            return static_cast<size_t>(hash);
+        }
+    };
+
+    struct StringEqual {
+        bool operator() (const char *sa, const char *sb) const {
+            return strcmp(sa, sb) == 0;
+        }
+    };
+
     Elf_Scn *m_section;
-    std::vector<char> m_string_table;
+    std::vector<std::unique_ptr<const std::string>> m_string_table;
+    std::vector<size_t> m_indices;
     size_t m_initial_size;
+    size_t m_next_index;
+    std::unordered_map<const char*, size_t, StringHash, StringEqual> m_string_index_map;
 };
 
 class ElfSymbolTable {
@@ -92,6 +139,10 @@ public:
         if (m_input_locals.empty() && m_input_globals.empty())
             return true;
         return false;
+    }
+
+    const ElfObject *object() const {
+        return &m_object;
     }
 
 public:
@@ -182,7 +233,7 @@ public:
             }
         }
 
-        TargetElf_Sym *get() {
+        GElf_Sym *get() {
             switch (m_source) {
             case INPUT_LOCAL:
                 return &m_symtab->m_input_locals[m_index];
@@ -238,7 +289,7 @@ public:
                              Elf_SectionIndex section_index,
                              size_t new_size);
 
-    SymbolRef mark_symbol(std::string symbol_name, std::string new_name);
+    void mark_symbol(std::string symbol_name, std::string new_name);
 
     SymbolRef add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
                                std::string name, size_t size = 0);
@@ -246,22 +297,13 @@ public:
     SymbolRef add_section_symbol(Elf_SectionIndex section_index);
 
 private:
-    static TargetElf_Sym target_sym_from_gelf(const GElf_Sym &sym) {
-        TargetElf_Sym new_symbol;
-        new_symbol.st_name  = sym.st_name;
-        new_symbol.st_info  = sym.st_info;
-        new_symbol.st_other = sym.st_other;
-        new_symbol.st_shndx = sym.st_shndx;
-        new_symbol.st_value = sym.st_value;
-        new_symbol.st_size  = sym.st_size;
-        return new_symbol;
-    }
-
     void find_symtab();
     void read_symbols();
 
-    SymbolRef add_symbol(TargetElf_Sym symbol, uint32_t xindex);
+    SymbolRef add_symbol(GElf_Sym symbol, uint32_t xindex);
     void update_symbol_references();
+
+    void add_target_symbol(std::vector<uint8_t> *buf, const GElf_Sym &sym);
 
 private:
     bool m_finalized;
@@ -274,22 +316,22 @@ private:
     std::vector<Elf_Scn*> m_rel_sections;
     std::vector<Elf_Scn*> m_rela_sections;
 
-    std::vector<TargetElf_Sym> m_input_locals;
-    std::vector<TargetElf_Sym> m_input_globals;
-    std::vector<TargetElf_Sym> m_new_locals;
-    std::vector<TargetElf_Sym> m_new_globals;
+    std::vector<GElf_Sym> m_input_locals;
+    std::vector<GElf_Sym> m_input_globals;
+    std::vector<GElf_Sym> m_new_locals;
+    std::vector<GElf_Sym> m_new_globals;
     std::vector<uint32_t> m_new_locals_xindex;
     std::vector<uint32_t> m_new_globals_xindex;
 };
 
 #pragma pack(1)
 struct TrapSymbol {
-    TargetOff offset;
+    Elf_Offset offset;
     ElfSymbolTable::SymbolRef symbol;
-    TargetOff p2align;
+    Elf_Offset p2align;
     size_t size;
 
-    TrapSymbol(TargetOff offset, ElfSymbolTable::SymbolRef symbol, TargetOff p2align,
+    TrapSymbol(Elf_Offset offset, ElfSymbolTable::SymbolRef symbol, Elf_Offset p2align,
                size_t size = 0)
         : offset(offset), symbol(symbol), p2align(p2align), size(size) {}
 
@@ -299,17 +341,17 @@ struct TrapSymbol {
 };
 
 struct ElfReloc {
-    TargetOff offset;
+    Elf_Offset offset;
     uint32_t type;
     // FIXME: figure out a way to not store these in memory
     // when they're not needed
     ElfSymbolTable::SymbolRef symbol;
-    TargetPtrDiff addend;
+    Elf_Offset addend;
 
     ElfReloc() = delete;
-    ElfReloc(TargetOff offset, uint32_t type,
+    ElfReloc(Elf_Offset offset, uint32_t type,
               ElfSymbolTable::SymbolRef symbol = ElfSymbolTable::SymbolRef(),
-              TargetPtrDiff addend = 0)
+              Elf_Offset addend = 0)
         : offset(offset), type(type), symbol(symbol), addend(addend) { }
 
     bool operator <(const ElfReloc &other) const {
@@ -324,7 +366,7 @@ public:
     ElfObject(std::pair<int, std::string> temp_file,
               std::pair<std::string, std::string> entry_points)
         : m_fd(temp_file.first), m_filename(temp_file.second),
-          m_elf(nullptr), m_parsed(false), m_modified(false),
+          m_elf(nullptr), m_parsed(false),
           m_entry_points(entry_points) {
         m_elf = elf_begin(m_fd, ELF_C_RDWR, nullptr);
         get_elf_header();
@@ -341,7 +383,7 @@ public:
         return m_num_sections;
     }
 
-    std::string create_trap_info();
+    std::tuple<std::string, uint16_t> create_trap_info(bool emit_textramp);
 
     void* data();
 
@@ -384,21 +426,22 @@ public:
     ElfStringTable *get_string_table(Elf_SectionIndex section_index);
 
     /// Returns the index of the new section
-    unsigned add_section(std::string name, GElf_Shdr header,
+    unsigned add_section(std::string name,
+                         GElf_Shdr *header,
                          DataBuffer buffer,
                          Elf_Type data_type = ELF_T_BYTE);
 
-    bool add_int32_section_patch(uint32_t shndx, TargetOff offset,
+    bool add_int32_section_patch(uint32_t shndx, Elf_Offset offset,
                                  uint32_t mask, uint32_t value);
 
     // FIXME: we have two versions of this function: one that takes
     // a section index, and one that takes a section pointer.
     // We need both of them. However, elf_ndxscn is potentially slow,
     // so it might be worth optimizing these.
-    TargetOff add_data(uint32_t shndx, void* data, size_t size, unsigned align = 1,
+    Elf_Offset add_data(uint32_t shndx, void* data, size_t size, unsigned align = 1,
                        Elf_Type data_type = ELF_T_BYTE);
 
-    TargetOff add_data(Elf_Scn *section, void* data, size_t size, unsigned align = 1,
+    Elf_Offset add_data(Elf_Scn *section, void* data, size_t size, unsigned align = 1,
                        Elf_Type data_type = ELF_T_BYTE) {
         return add_data(elf_ndxscn(section), data, size, align, data_type);
     }
@@ -476,7 +519,26 @@ public:
         return elf_kind(m_elf) == ELF_K_AR;
     }
 
+    struct TargetInfo {
+        uint32_t none_reloc;
+        uint32_t symbol_reloc;
+        uint32_t copy_reloc;
+        Elf_Offset min_p2align;
+        Elf_Offset padding_p2align;
+        size_t addr_size;
+    };
+
+    const TargetInfo *get_target_info() const {
+        assert(m_target_info != nullptr);
+        return m_target_info;
+    }
+
+public:
+    static bool has_copy_relocs(const char *filename);
+
 private:
+    static const std::unordered_map<uint16_t, TargetInfo> kInfoForTargets;
+
     GElf_Ehdr* get_elf_header() {
         if (elf_kind(m_elf) != ELF_K_ELF)
             return nullptr;
@@ -484,6 +546,7 @@ private:
             std::cerr << "Could not get ELF header: " << elf_errmsg(-1) << '\n';
             return nullptr;
         }
+        m_target_info = &kInfoForTargets.at(m_ehdr.e_machine);
         return &m_ehdr;
     }
 
@@ -497,8 +560,14 @@ private:
         return m_section_header_strings->get_string(section_header.sh_name);
     }
 
-    bool create_trap_info_impl();
-    void add_anchor_reloc(Elf_Scn *section,
+    typedef std::map<uint32_t, TrapRecordBuilder> SectionBuilderMap;
+
+    SectionBuilderMap create_section_builders(ElfSymbolTable *symbol_table);
+    void prune_section_builders(SectionBuilderMap *section_builders);
+
+    bool create_trap_info_impl(bool emit_textramp);
+    void add_anchor_reloc(const GElf_Shdr *header,
+                          Elf_SectionIndex section_ndx,
                           Elf_SectionIndex symtab_section_ndx,
                           ElfSymbolTable::SymbolRef section_symbol,
                           size_t function_count);
@@ -527,9 +596,6 @@ private:
     /// Has parse() been called on this object?
     bool m_parsed;
 
-    /// Have we modified this ELF file?
-    bool m_modified;
-
     /// Current ELF header
     GElf_Ehdr m_ehdr;
 
@@ -547,23 +613,21 @@ private:
     /// New sections to be added when we write this object back
     std::vector<std::pair<GElf_Shdr, DataBuffer> > m_new_sections;
 
-    std::map<size_t, TargetOff> m_section_sizes;
+    std::unordered_map<Elf_SectionIndex, Elf_Offset> m_section_sizes;
 
-    std::map<uint32_t, std::map<TargetOff, std::pair<uint32_t, uint32_t>>> m_section_patches;
+    std::map<Elf_SectionIndex, std::map<Elf_Offset, std::pair<uint32_t, uint32_t>>> m_section_patches;
 
     std::vector<DataBuffer> m_replacement_data;
 
-    std::map<Elf_SectionIndex, ElfStringTable> m_string_tables;
+    std::unordered_map<Elf_SectionIndex, ElfStringTable> m_string_tables;
 
     std::map<Elf_SectionIndex, Elf_RelocBuffer> m_section_relocs;
+
+    const TargetInfo *m_target_info;
 };
 
 namespace Target {
     typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
-
-    ElfSymbolTable::SymbolMapping
-    create_trampolines(ElfObject &object, ElfSymbolTable &symbol_table,
-                       const EntrySymbols &entry_symbols);
 
     // Create an empty .rel.XXX section
     Elf_SectionIndex create_reloc_section(ElfObject &object,
@@ -587,7 +651,7 @@ namespace Target {
     bool check_rel_for_stubs(ElfObject &object, RelType *relocation, ptrdiff_t addend,
                              uint32_t shndx, TrapRecordBuilder &builder);
 
-    TargetPtrDiff read_reloc(char* data, ElfReloc &reloc);
+    Elf_Offset read_reloc(char* data, ElfReloc &reloc);
 };
 
 class TrampolineBuilder {
@@ -595,9 +659,9 @@ public:
     TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
         : m_object(object), m_symbol_table(symbol_table) { }
 
-    // Build the trampoline instructions. Returns a map from old symbol index to
-    // new symbol index for original versions of wrapped functions
-    ElfSymbolTable::SymbolMapping build_trampolines(const Target::EntrySymbols &entry_symbols);
+    // Build the trampoline instructions.
+    std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
+    build_trampolines(const Target::EntrySymbols &entry_symbols);
 
 private:
     ElfObject::DataBuffer create_trampoline_data(const Target::EntrySymbols &entry_symbols);
@@ -631,7 +695,7 @@ public:
         m_new_section_symbol = new_symbol;
     }
 
-    void set_section_p2align(TargetOff section_p2align) {
+    void set_section_p2align(Elf_Offset section_p2align) {
         m_section_p2align = section_p2align;
     }
 
@@ -639,11 +703,19 @@ public:
         m_has_func_symbols = true;
     }
 
+    void add_entry_symbol(ElfSymbolTable::SymbolRef symbol) {
+        m_entry_symbols.push_back(symbol);
+    }
+
+    const Target::EntrySymbols &entry_symbols() const {
+        return m_entry_symbols;
+    }
+
     ElfSymbolTable::SymbolRef section_symbol() const {
         return m_section_symbol;
     }
 
-    TargetOff section_p2align() const {
+    Elf_Offset section_p2align() const {
         return m_section_p2align;
     }
 
@@ -669,20 +741,20 @@ public:
         return m_reloc_section_ndx;
     }
 
-    void mark_symbol(TargetOff offset, ElfSymbolTable::SymbolRef symbol,
-                     TargetOff p2align, size_t size);
+    void mark_symbol(Elf_Offset offset, ElfSymbolTable::SymbolRef symbol,
+                     Elf_Offset p2align, size_t size);
 
-    void mark_relocation(TargetOff offset, uint32_t type,
+    void mark_relocation(Elf_Offset offset, uint32_t type,
                          ElfSymbolTable::SymbolRef symbol);
 
-    void mark_relocation(TargetOff offset, uint32_t type,
+    void mark_relocation(Elf_Offset offset, uint32_t type,
                          ElfSymbolTable::SymbolRef symbol,
-                         TargetPtrDiff addend);
+                         Elf_Offset addend);
 
-    void mark_data_ref(TargetOff offset);
+    void mark_data_ref(Elf_Offset offset);
 
-    void mark_padding_offset(TargetOff offset);
-    void mark_padding_size(TargetOff size);
+    void mark_padding_offset(Elf_Offset offset);
+    void mark_padding_size(Elf_Offset size);
 
     bool can_ignore_section() const {
         return !m_has_func_symbols && m_relocs.empty();
@@ -701,7 +773,7 @@ public:
     void read_reloc_addends(Elf_Scn *section);
 
     void build_trap_data(const ElfSymbolTable &symbol_table);
-    void write_reloc(const ElfReloc &reloc, TargetOff prev_offset,
+    void write_reloc(const ElfReloc &reloc, Elf_Offset prev_offset,
                      const ElfSymbolTable &symbol_table);
 
     std::pair<void*, size_t> get_trap_data() const {
@@ -716,20 +788,21 @@ public:
     friend std::ostream& operator<<(std::ostream &os, const TrapRecordBuilder &builder);
 
 private:
-    void push_back_uleb128(TargetOff x);
-    void push_back_sleb128(TargetPtrDiff x);
+    void push_back_uleb128(Elf_Offset x);
+    void push_back_sleb128(Elf_Offset x);
 
     template<typename IntType>
-    void push_back_int(IntType x) {
-      for (size_t i = 0; i < sizeof(IntType); ++i) {
+    void push_back_int(IntType x, size_t max_bytes) {
+      for (size_t i = 0; i < sizeof(IntType) && i < max_bytes; ++i) {
           m_data.push_back(static_cast<uint8_t>((x >> i*8) & 0xff));
       }
     }
 
     ElfSymbolTable::SymbolRef m_section_symbol;
-    TargetOff m_section_p2align;
+    Elf_Offset m_section_p2align;
     bool m_new_section_symbol;
     bool m_has_func_symbols;
+    Target::EntrySymbols m_entry_symbols;
 
     bool m_in_group;
     Elf_SectionIndex m_group_section_ndx;
@@ -739,10 +812,10 @@ private:
     std::vector<TrapSymbol> m_symbols;
     std::vector<ElfReloc> m_relocs;
     std::vector<size_t> m_addendless_relocs;
-    std::vector<TargetOff> m_data_refs;
+    std::vector<Elf_Offset> m_data_refs;
 
-    TargetOff m_padding_offset;
-    TargetOff m_padding_size;
+    Elf_Offset m_padding_offset;
+    Elf_Offset m_padding_size;
 
     bool m_include_sizes;
 

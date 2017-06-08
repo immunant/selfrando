@@ -7,7 +7,7 @@
  */
 
 .section .txtrp, "a", %progbits
-.align 4096
+.p2align 12
 .globl _TRaP_trap_end_page
 .hidden _TRaP_trap_end_page
 .type _TRaP_trap_end_page, %object

@@ -9,7 +9,7 @@
 #include <OS.h>
 #include <RandoLib.h>
 #include <TrapInfo.h>
-#include "../Support/Utility.h"
+#include <Utility.h>
 
 #include "RelocTypes.h"
 
@@ -116,7 +116,7 @@ inline uint32_t thm_movwt_set(uint32_t ins, uint32_t imm) {
 }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
-    // IMPORTANT: Keep RandoLib/TrapInfoCommon.h in sync whenever a new
+    // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
     auto cur_address = m_src_addr.to_ptr();
@@ -311,7 +311,7 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     *reinterpret_cast<uint32_t*>(entry_point-4) = static_cast<uint32_t>(target);
 }
 
-os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
+os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
       m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {

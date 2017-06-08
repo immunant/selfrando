@@ -10,7 +10,11 @@ set -ue
 
 exec 2> >(tee -a /tmp/tc.log >&2)
 
+TC_PATH="$(dirname "$0")"
 SR_PATH='/home/debian/install/selfrando'
-GOLD="$(which $(gcc -print-prog-name=ld.gold))"
+source $TC_PATH/functions.sh
 
-"$SR_PATH/ld.gold" -rpath "$SR_PATH" --traplinker-original-linker "$GOLD" --traplinker-static-selfrando --traplinker-selfrando-txtrp-pages "$@"
+WRAPPER=`basename $0`
+ORIG_LD=`find_original`
+
+"$SR_PATH/$WRAPPER" -rpath "$SR_PATH" --traplinker-original-linker "$ORIG_LD" --traplinker-static-selfrando --traplinker-selfrando-txtrp-pages "$@"

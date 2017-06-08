@@ -17,6 +17,8 @@ vars.Add('DEBUG_SEED', 'Fixed seed to use for debugging', False) # We need to us
 vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertion) if in-place randomization would fail', 0))
 vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files to /tmp/',
                       'no', allowed_values=('no', 'env', 'always')))
+vars.Add(EnumVariable('DELETE_LAYOUTS', 'Delete the layout file on process exit',
+                      'always', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('RNG', 'Random number generator to use',
                       'urandom', allowed_values=('rand_r', 'urandom')))
 
@@ -35,7 +37,7 @@ env = Environment(variables=vars,
                   #CXX = 'clang++')
 print "Building self-rando for platform '%s' on '%s'" % (env['PLATFORM'], env['TARGET_ARCH'])
 
-SUBDIRS = ['Support', 'RandoLib', 'TrapLinker']
+SUBDIRS = ['Support', 'RandoLib', 'TrapLinker', 'TrapInfo']
 OUTDIR = 'out' # TODO: make this into an option
 INSTALL_PATH = '%s/%s/bin' % (OUTDIR, env['TARGET_ARCH'])
 
@@ -50,7 +52,8 @@ defines = {
     'RANDOLIB_DEBUG_LEVEL': decode_debug_level(env['DEBUG_LEVEL']),
     'RANDOLIB_DEBUG_LEVEL_IS_ENV': 1 if env['DEBUG_LEVEL'] == 'env' else 0,
     'RANDOLIB_FORCE_INPLACE': 1 if env['FORCE_INPLACE'] else 0,
-    'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']]
+    'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']],
+    'RANDOLIB_DELETE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['DELETE_LAYOUTS']],
 }
 defines['RANDOLIB_IS_%s' % env['PLATFORM'].upper()] = 1
 defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1
@@ -62,8 +65,6 @@ defines['RANDOLIB_RNG_IS_%s' % env['RNG'].upper()] = 1
 env.Append(CPPDEFINES = defines)
 
 if env['PLATFORM'] == 'win32':
-    SUBDIRS.extend(['LibWrapper', 'LinkWrapper', 'TrapLib', 'TrapObj', 'WrapperCommon'])
-
     env.Append(CCFLAGS = '/EHsc') # C++ exception handling support
     env.Append(CCFLAGS = '/W3')   # Show lots of warnings
     env.Append(CCFLAGS = '/O2')   # Optimize the code

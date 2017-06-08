@@ -29,6 +29,15 @@ features contained in this TRaP section. The header has the following structure:
 struct TRaPHeader {
   unsigned int Version : 4;
   unsigned int Flags   : 12;
+
+  // List of relocation addresses (absolute, PC-relative, and other kinds)
+  // that point to code, but are outside any executable section.
+  // Only present if flag bit 0x20 is set.
+  OPTIONAL TrapRelocVector NonExecRelocs;
+
+  // Pointer size (in bits) of target architecture for this binary.
+  // Only present if flag bit 0x200 is set.
+  OPTIONAL ULEB128 PointerSize;
 };
 ```
 
@@ -51,6 +60,8 @@ The `Flags` field is a bitwise OR of 0 or more of the following values:
 | 6   | 0x000040  | Records contain padding                                     |
 | 7   | 0x000080  | All addresses (FirstSymAddr and others) are PC-relative (pointer-sized signed offsets from the memory location where they're stored) |
 | 8   | 0x000100  | Symbols also have alignment information (power-of-2 values) |
+| 9   | 0x000200  | Header has pointer size information                         |
+| 10  | 0x000400  |  All addresses are relative to a base address, e.g., the address of .got.plt on Linux |
 
 These flags are described in more detail in other sections when they are
 relevant.

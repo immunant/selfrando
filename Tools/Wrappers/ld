@@ -8,7 +8,22 @@
 
 set -ue
 
-SR_PATH=$(readlink -f "$(dirname "$0")/../../out/x86_64/bin")
-GOLD="$(which $(gcc -print-prog-name=ld.gold))"
+TC_PATH="$(dirname "$0")"
+: ${TRAPLINKER_SR_ARCH:="x86_64"}        # only set if unset
+: ${TRAPLINKER_SR_PATH:=$(readlink -f "$TC_PATH/../../out/$TRAPLINKER_SR_ARCH/bin")}
+source $TC_PATH/functions.sh
+SCRIPTS_PATH=$(readlink -f "$TC_PATH/../../scripts")
 
-"$SR_PATH/ld.gold" -rpath "$SR_PATH" --traplinker-original-linker "$GOLD" "$@"
+WRAPPER=`basename $0`
+: ${TRAPLINKER_ORIG_LD:=`find_original`} # only set if unset
+: ${TRAPLINKER_EXTRA_LDFLAGS:=}          # same as above
+if [ -f /tmp/traplinker-argtrace ]; then
+  "$SCRIPTS_PATH/argtrace.py" -rpath "$TRAPLINKER_SR_PATH" \
+      -rpath "$TRAPLINKER_SR_PATH/$TRAPLINKER_SR_ARCH" \
+      --traplinker-original-linker "$TRAPLINKER_ORIG_LD" \
+      $TRAPLINKER_EXTRA_LDFLAGS "$@"
+fi
+"$TRAPLINKER_SR_PATH/$WRAPPER" -rpath "$TRAPLINKER_SR_PATH" \
+    -rpath "$TRAPLINKER_SR_PATH/$TRAPLINKER_SR_ARCH" \
+    --traplinker-original-linker "$TRAPLINKER_ORIG_LD" \
+    $TRAPLINKER_EXTRA_LDFLAGS "$@"

@@ -22,11 +22,10 @@
 #include <stack>
 #include <vector>
 
-#include "Trap.h"
-#include "Object.h"
-#include "../Support/Debug.h"
-#include "../Support/Filesystem.h"
-#include "../Support/Misc.h"
+#include <Object.h>
+#include <Debug.h>
+#include <Filesystem.h>
+#include <Misc.h>
 
 namespace {
 
@@ -46,11 +45,6 @@ static const char kLinkerPathVariable[] = "SELFRANDO_ORIGINAL_LINKER";
 static char kLinkerIdScript[] = "/linker_id.sh";
 
 // FOR TESTING! TODO: figure out a better way to find this path
-static char kTrapHeader[] = "/trapheader.o";
-static char kTrapHeaderPage[] = "/trapheader_page.o";
-static char kTrapFooter[] = "/trapfooter.o";
-static char kTrapFooterPage[] = "/trapfooter_page.o";
-static char kStaticSelfrando[] = "/libselfrando.a";
 static char kSelfrandoObject[] = "/selfrando_txtrp.o";
 static char kTrapScript[] = "/linker_script.ld";
 static char kTrapGOTOnlyScript[] = "/linker_script_got_only.ld";
@@ -63,11 +57,26 @@ static const char *kExecSections[][2] = {
 };
 #endif
 
+#ifdef EM_AARCH64
+static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
+#endif
+static const std::unordered_map<uint16_t, const char*> kELFMachineNames = {
+    { EM_386,       "x86"    },
+    { EM_X86_64,    "x86_64" },
+    { EM_ARM,       "arm"    },
+    { 183,          "arm64"  }, // EM_AARCH64 == 183
+};
+
+typedef std::tuple<std::vector<char*>, bool, bool> LinkerInvocation;
+
 class ArgParser {
 public:
     ArgParser(int argc, char* argv[]) : m_argc(argc), m_argv(argv),
                                         m_enabled(true), m_static_selfrando(false),
                                         m_selfrando_txtrp_pages(false),
+                                        m_add_selfrando_libs(true),
+                                        m_emit_textramp(true),
+                                        m_pic_warning(true),
                                         m_relocatable(false),
                                         m_shared(false), m_static(false),
                                         m_whole_archive(false) {
@@ -82,13 +91,22 @@ public:
         return m_enabled && !m_static && !m_relocatable;
     }
 
+    bool emit_textramp() const {
+        return m_emit_textramp;
+    }
+
     std::vector<std::pair<std::string, bool>> input_files() const {
         return m_input_files;
     }
 
+    std::string output_file() const {
+        return m_output_file;
+    }
+
     void change_option(std::string option, std::string value, bool single_arg);
 
-    std::vector<char*> create_new_invocation(std::map<std::string, std::string> input_file_mapping);
+    LinkerInvocation create_new_invocation(std::map<std::string, std::string> input_file_mapping,
+                                           uint16_t elf_machine);
 
     std::pair<std::string, std::string> get_entry_point_names();
 
@@ -131,6 +149,9 @@ private:
     int handle_traplinker_enable(int i, const std::string &arg_key);
     int handle_static_selfrando(int i, const std::string &arg_key);
     int handle_selfrando_txtrp_pages(int i, const std::string &arg_key);
+    int handle_traplinker_no_libs(int i, const std::string &arg_key);
+    int handle_traplinker_no_textramp(int i, const std::string &arg_key);
+    int handle_traplinker_no_pic_warning(int i, const std::string &arg_key);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -181,6 +202,9 @@ private:
     bool m_enabled;
     bool m_static_selfrando;
     bool m_selfrando_txtrp_pages;
+    bool m_add_selfrando_libs;
+    bool m_emit_textramp;
+    bool m_pic_warning;
 
     bool m_relocatable;
     bool m_shared;
@@ -285,7 +309,11 @@ private:
 class LinkWrapper {
 public:
     ~LinkWrapper();
-    std::vector<char*> process(int argc, char *argv[]);
+    LinkerInvocation process(int argc, char *argv[]);
+
+    std::string output_file() const {
+        return m_output_file;
+    }
 
 private:
     void rewrite_file(std::string input_filename,
@@ -296,6 +324,8 @@ private:
     std::pair<std::string, std::string> m_entry_points;
     std::map<std::string, std::string> m_rewritten_inputs;
     std::vector<std::string> m_temp_files;
+    uint16_t m_elf_machine = EM_NONE;
+    std::string m_output_file;
 };
 
 } // end namespace
@@ -303,19 +333,33 @@ private:
 int main(int argc, char* argv[]) {
     LinkWrapper wrapper;
 
-    std::vector<char*> invocation = wrapper.process(argc, argv);
+    auto invocation = wrapper.process(argc, argv);
+    auto &linker_args = std::get<0>(invocation);
 
-    int linker_status;
-    if (!Misc::exec_child(invocation.data(), &linker_status))
+    int linker_status = -1;
+    if (!Misc::exec_child(linker_args.data(), &linker_status, false))
         Error::printf("Linker execution failed: %s\n", strerror(errno));
 
-    if(linker_status)
-        Error::printf("Linker execution failed: %s\n", strerror(linker_status));
+    if(linker_status) {
+        Error::printf("Linker execution failed, status: %d\n", linker_status);
+    } else {
+        auto emitted_trap_info = std::get<1>(invocation);
+        auto pic_warning = std::get<2>(invocation);
+        if (emitted_trap_info && pic_warning) {
+            auto output_file = wrapper.output_file();
+            auto has_copy_relocs = ElfObject::has_copy_relocs(output_file.c_str());
+            if (has_copy_relocs) {
+                Error::printf("Output file '%s' has COPY relocations and might not run correctly; "
+                              "to fix, recompile with -fPIC\n", output_file.c_str());
+                linker_status = 1;
+            }
+        }
+    }
 
-    for (auto s : invocation)
+    for (auto s : linker_args)
         free(s);
 
-    return 0;
+    return linker_status;
 }
 
 LinkWrapper::~LinkWrapper() {
@@ -325,7 +369,7 @@ LinkWrapper::~LinkWrapper() {
 #endif
 }
 
-std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
+LinkerInvocation LinkWrapper::process(int argc, char* argv[]) {
     Debug::printf<3>("Temp dir: %s\n", m_temp_dir.c_str());
 
     ArgParser Args(argc, argv);
@@ -339,6 +383,7 @@ std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
     }
 
     m_entry_points = Args.get_entry_point_names();
+    m_output_file = Args.output_file();
 
     // rewrite all input objects
     if (Args.is_trap_enabled()) {
@@ -347,15 +392,16 @@ std::vector<char*> LinkWrapper::process(int argc, char* argv[]) {
         }
     }
 
-    std::vector<char*> linker_invocation = Args.create_new_invocation(m_rewritten_inputs);
+    auto linker_invocation =
+        Args.create_new_invocation(m_rewritten_inputs, m_elf_machine);
 
     Debug::printf<2>("Invoking linker: ");
-    for (char* s : linker_invocation) {
+    for (char* s : std::get<0>(linker_invocation)) {
         Debug::printf<2>("%s ", s);
     }
     Debug::printf<2>("\n");
 
-    linker_invocation.push_back(0);
+    std::get<0>(linker_invocation).push_back(0);
 
     return linker_invocation;
 }
@@ -393,10 +439,20 @@ void LinkWrapper::rewrite_file(std::string input_filename,
         ElfObject obj(temp_file, m_entry_points);
         if (obj.needs_trap_info()) {
             Debug::printf<1>("Creating trap info for temp file: %s\n", temp_file.second.c_str());
-            std::string rewritten_file = obj.create_trap_info();
+            std::string rewritten_file;
+            uint16_t file_machine;
+            std::tie(rewritten_file, file_machine) = obj.create_trap_info(Args.emit_textramp());
             m_rewritten_inputs[input_filename] = rewritten_file;
             if (rewritten_file != temp_file.second)
                 m_temp_files.push_back(rewritten_file);
+
+            // Update the machine type
+            if (m_elf_machine == EM_NONE && file_machine != EM_NONE) {
+                m_elf_machine = file_machine;
+            } else if (file_machine != m_elf_machine) {
+                Error::printf("Incompatible machine types:%hd and %hd\n",
+                              m_elf_machine, file_machine);
+            }
         }
     } else if (type == LINKER_SCRIPT) {
         Debug::printf<2>("Parsing linker script %s\n", temp_file.second.c_str());
@@ -561,7 +617,7 @@ void LinkerScript::parse_sections() {
     chomp_whitespace();
 }
 
-static inline bool is_script_string_char(char ch) {
+static inline bool is_script_string_char(char ch, bool first) {
     switch (ch) {
     // Alphanumerics
     case 'a' ... 'z':
@@ -577,12 +633,16 @@ static inline bool is_script_string_char(char ch) {
     case '\\':
     case '~':
     case '[':
-    case ']':
     case '*':
-    case '?':
     case '-':
-    case ':':
         return true;
+
+    case ']':
+    case '?':
+    case '=':
+    case '+':
+    case ':':
+        return !first;
 
     default:
         return false;
@@ -604,11 +664,13 @@ std::pair<std::string, unsigned> LinkerScript::parse_string() {
             s += c;
         }
     } else {
+        bool first = true;
         file_offset = ftell(m_file);
         while ((c = getc(m_file)) != EOF) {
-            if (!is_script_string_char(c))
+            if (!is_script_string_char(c, first))
                 break;
             s += c;
+            first = false;
         }
         if (c != EOF)
             ungetc(c, m_file);
@@ -800,8 +862,9 @@ static std::string find_install_path() {
     return path;
 }
 
-std::vector<char*> ArgParser::create_new_invocation(
-    std::map<std::string, std::string> input_file_mapping) {
+LinkerInvocation ArgParser::create_new_invocation(
+    std::map<std::string, std::string> input_file_mapping,
+    uint16_t elf_machine) {
 
     if (is_linker_replacement()) {
         char *executable_path;
@@ -824,81 +887,100 @@ std::vector<char*> ArgParser::create_new_invocation(
         m_enabled = false;
 
     // If TRaP mode is enabled, add all the arguments
-    if (is_trap_enabled()) {
+    // If we couldn't determine the ELF machine, do not add TRaP info
+    if (is_trap_enabled() && elf_machine != EM_NONE) {
         // Determine which linker we're running
         std::string randolib_install_path = find_install_path();
         std::string linker_id_script = randolib_install_path + kLinkerIdScript;
         char *linker_id_args[] = { const_cast<char*>(linker_id_script.c_str()),
                                    const_cast<char*>(m_args.begin()->arg.c_str()),
                                    nullptr };
-        int linker_id_status = 0;
-        if (!Misc::exec_child(linker_id_args, &linker_id_status))
+        int linker_type = 0;
+        if (!Misc::exec_child(linker_id_args, &linker_type, true))
             Error::printf("Linker ID script execution failed: %s\n", strerror(errno));
-
-        int linker_type = WEXITSTATUS(linker_id_status);
         Debug::printf<2>("Linker type: %d\n", linker_type);
 
-        // Add both -init and --entry, since we don't know
-        // which and in what order will be called
-        change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
-        change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
-
-        std::string trap_header = randolib_install_path +
-            (m_selfrando_txtrp_pages ? kTrapHeaderPage : kTrapHeader);
-        std::string trap_footer = randolib_install_path + kTrapFooter;
-        std::string trap_footer_page = randolib_install_path + kTrapFooterPage;
-        std::string trap_script = randolib_install_path + kTrapScript;
-        std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
-
-        std::string trap_got_script = randolib_install_path;
-#if RANDOLIB_IS_ARM
-        // On ARM, both linkers always omit .got.plt
-        trap_got_script += kTrapGOTOnlyScript;
-#else
-        // On x86/ARM64, the following things happen:
-        // 1) gold always emits both .got and .got.plt
-        // 2) ld.bfd omits .got.plt for relro+now builds
-        if (linker_type != LD_BFD ||
-            (m_z_keywords.count("relro") == 0 ||
-             m_z_keywords.count("now") == 0)) {
-            trap_got_script += kTrapGOTPLTScript;
-        } else {
-            trap_got_script += kTrapGOTOnlyScript;
-        }
-#endif
-
+        // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
-        m_args.emplace(header_pos, trap_header.c_str(), true);
+        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
+        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
+                                           "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
 
-        m_args.emplace_back(strdup((std::string("-L") + randolib_install_path).c_str()), true);
-        m_args.emplace_back(strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
-        m_args.emplace_back(strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
-        m_args.emplace_back(strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
-        m_args.emplace_back("--whole-archive", true);
-        if (m_shared) {
-            m_args.emplace_back("-lrandoentry_so", true);
+        // Add the files that mark the start of .txtrp
+        m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
+        m_args.emplace(header_pos, "--whole-archive", true);
+        if (m_selfrando_txtrp_pages) {
+            m_args.emplace(header_pos, "-ltrapheader_page", true);
         } else {
-            m_args.emplace_back("-lrandoentry_exec", true);
+            m_args.emplace(header_pos, "-ltrapheader", true);
         }
-        m_args.emplace_back("--no-whole-archive", true);
-        m_args.emplace_back(trap_script.c_str(), true);
-        m_args.emplace_back(trap_got_script.c_str(), true);
-        m_args.emplace_back(trap_footer.c_str(), true);
-        if (m_static_selfrando && m_selfrando_txtrp_pages) {
-            // WARNING: this must go after TrapFooter.o
-            std::string selfrando_object = randolib_install_path + kSelfrandoObject;
-            m_args.emplace_back(selfrando_object.c_str(), true);
-            m_args.emplace_back(trap_footer_page.c_str(), true);
-        } else if (m_static_selfrando) {
-            std::string static_selfrando = randolib_install_path + kStaticSelfrando;
+        m_args.emplace(header_pos, "--no-whole-archive", true);
+
+        // Add other arguments to the end
+        // First, add the selfrando libs (if enabled)
+        if (m_add_selfrando_libs) {
+            // Add both -init and --entry, since we don't know
+            // which and in what order will be called
+            change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
+            change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
+            m_args.emplace(header_pos, strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
+            m_args.emplace(header_pos, strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
+            m_args.emplace(header_pos, strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
+            m_args.emplace(header_pos, "--whole-archive", true);
+            if (m_shared) {
+                m_args.emplace(header_pos, "-lrandoentry_so", true);
+            } else {
+                m_args.emplace(header_pos, "-lrandoentry_exec", true);
+            }
+            m_args.emplace(header_pos, "--no-whole-archive", true);
+
+            std::string trap_script = randolib_install_path + kTrapScript;
+            std::string trap_got_script = randolib_install_path;
+            if (elf_machine == EM_ARM) {
+                // On ARM, both linkers always omit .got.plt
+                trap_got_script += kTrapGOTOnlyScript;
+            } else {
+                // On x86/ARM64, the following things happen:
+                // 1) gold always emits both .got and .got.plt
+                // 2) ld.bfd omits .got.plt for relro+now builds
+                if (linker_type != LD_BFD ||
+                    (m_z_keywords.count("relro") == 0 ||
+                     m_z_keywords.count("now") == 0)) {
+                    trap_got_script += kTrapGOTPLTScript;
+                } else {
+                    trap_got_script += kTrapGOTOnlyScript;
+                }
+            }
             m_args.emplace_back("--whole-archive", true);
-            m_args.emplace_back(static_selfrando.c_str(), true);
+            m_args.emplace_back(trap_script.c_str(), true);
+            m_args.emplace_back(trap_got_script.c_str(), true);
+            m_args.emplace_back("-ltrapfooter", true);
             m_args.emplace_back("--no-whole-archive", true);
-            m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
+            if (m_static_selfrando && m_selfrando_txtrp_pages) {
+                // WARNING: this must go after TrapFooter.o
+                std::string selfrando_object = randolib_install_path + kSelfrandoObject;
+                m_args.emplace_back(selfrando_object.c_str(), true);
+            } else if (m_static_selfrando) {
+                m_args.emplace_back("--whole-archive", true);
+                m_args.emplace_back("-l:libselfrando.a", true);
+                m_args.emplace_back("--no-whole-archive", true);
+            } else {
+                m_args.emplace_back("-l:libselfrando.so", true);
+            }
+            m_args.emplace_back("-ldl", true);
+        }
+
+        // Add the files that mark the end of .txtrp
+        if (m_static_selfrando && m_selfrando_txtrp_pages) {
+            m_args.emplace_back("--whole-archive", true);
+            m_args.emplace_back("-ltrapfooter_page", true);
+            m_args.emplace_back("--no-whole-archive", true);
         } else {
-            m_args.emplace_back("-lselfrando", true);
+            std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
             m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
         }
+    } else {
+        m_enabled = false;
     }
 
     std::vector<char*> new_args;
@@ -926,7 +1008,7 @@ std::vector<char*> ArgParser::create_new_invocation(
             }
         }
     }
-    return new_args;
+    return std::make_tuple(new_args, m_enabled, m_pic_warning);
 }
 
 bool ArgParser::is_linker_replacement() {
@@ -1126,6 +1208,21 @@ int ArgParser::handle_static_selfrando(int i, const std::string &arg_key) {
 
 int ArgParser::handle_selfrando_txtrp_pages(int i, const std::string &arg_key) {
     m_selfrando_txtrp_pages = true;
+    return 0;
+}
+
+int ArgParser::handle_traplinker_no_libs(int i, const std::string &arg_key) {
+    m_add_selfrando_libs = false;
+    return 0;
+}
+
+int ArgParser::handle_traplinker_no_textramp(int i, const std::string &arg_key) {
+    m_emit_textramp = false;
+    return 0;
+}
+
+int ArgParser::handle_traplinker_no_pic_warning(int i, const std::string &arg_key) {
+    m_pic_warning = false;
     return 0;
 }
 

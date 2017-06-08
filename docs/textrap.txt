@@ -15,6 +15,10 @@ struct TrapHeader { // WARNING!!! This is not actual C code
   // that point to code, but are outside any executable section.
   // Only present if flag bit 0x20 is set.
   OPTIONAL TrapRelocVector NonExecRelocs;
+
+  // Pointer size (in bits) of target architecture for this binary.
+  // Only present if flag bit 0x200 is set.
+  OPTIONAL ULEB128 PointerSize;
 };
 
 Currently supported flags are:
@@ -28,6 +32,8 @@ Currently supported flags are:
 0x000080: All addresses (FirstSymAddr&others) are PC-relative (pointer-sized signed
           offsets from the memory location where they're stored)
 0x000100: Symbols also have alignment information (power-of-2 values)
+0x000200: Header has pointer size information
+0x000400: All addresses are relative to a base address, e.g., the address of .got.plt on Linux
 
 Some binaries may contain code references or relocations outside executable
 sections, e.g., function pointers inside .rodata or .data, such as C++

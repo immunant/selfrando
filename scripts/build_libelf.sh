@@ -15,7 +15,7 @@ cd $OUTDIR
 
 LIBELF_VER="0.168"
 LIBELF_FILE="elfutils-$LIBELF_VER.tar.bz2"
-LIBELF_URL="https://fedorahosted.org/releases/e/l/elfutils/$LIBELF_VER/$LIBELF_FILE"
+LIBELF_URL="https://sourceware.org/elfutils/ftp/$LIBELF_VER/$LIBELF_FILE"
 
 wget -O $LIBELF_FILE $LIBELF_URL
 tar xjf $LIBELF_FILE

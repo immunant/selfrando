@@ -11,13 +11,24 @@
 #include <cstdlib>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 
-bool Misc::exec_child(char *args[], int *status) {
+bool Misc::exec_child(char *args[], int *status, bool quiet) {
     int pid = fork();
     if (pid == 0) {
         // Child process
+
+        // If quiet, redirect stdout and stderr to /dev/null
+        if (quiet) {
+            int null_fd = open("/dev/null", O_WRONLY);
+            if (null_fd < 0)
+                exit(-1);
+            dup2(null_fd, 1);
+            dup2(null_fd, 2);
+            close(null_fd);
+        }
 
         execvp(args[0], args);
         // If execvp failed, terminate this child
@@ -31,9 +42,12 @@ bool Misc::exec_child(char *args[], int *status) {
             return false;
 
         // Wait for child to finish
-        if (waitpid(pid, status, 0) == -1)
+        int wait_status = 0;
+        if (waitpid(pid, &wait_status, 0) == -1)
             return false;
 
+        if (status != nullptr)
+            *status = WEXITSTATUS(wait_status);
         return true;
     }
 }

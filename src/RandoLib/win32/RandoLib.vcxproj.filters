@@ -76,10 +76,10 @@
     <ClInclude Include="..\util\fnv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\TrapInfo.h">
+    <ClInclude Include="..\..\TrapInfo\TrapInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\TrapInfoCommon.h">
+    <ClInclude Include="..\..\TrapInfo\TrapInfoRelocs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\OS.h">

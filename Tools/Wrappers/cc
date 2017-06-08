@@ -9,7 +9,6 @@
 set -ue
 
 TC_PATH="$(dirname "$0")"
-CMD="$(basename "$0")"
-export PATH="$(echo $PATH | sed -E 's/^[^:]+://')"
+source $TC_PATH/functions.sh
 
-exec "$CMD" "$@" -B"$TC_PATH" -ffunction-sections -fdata-sections
+run_original -B"$TC_PATH" -ffunction-sections -fdata-sections -fPIC "$@"

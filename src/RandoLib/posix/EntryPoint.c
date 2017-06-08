@@ -84,3 +84,19 @@ void _TRaP_Linux_EntryPointImpl(void) {
     }
 #endif
 }
+
+// Add a declaration for dl_phdr_info
+struct dl_phdr_info;
+
+// Add this as a forced reference to dl_iterate_phdr, so we can link to it
+int
+__attribute__((section(".selfrando.entry"),
+               visibility("hidden")))
+_TRaP_dl_iterate_phdr(int (*callback) (struct dl_phdr_info *info,
+                                       size_t size, void *data),
+                          void *data) {
+    extern int dl_iterate_phdr(int (*callback) (struct dl_phdr_info *info,
+                                                size_t size, void *data),
+                               void *data);
+    return dl_iterate_phdr(callback, data);
+}

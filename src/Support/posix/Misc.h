@@ -10,6 +10,6 @@
 
 namespace Misc {
 
-    bool exec_child(char *args[], int *status);
+    bool exec_child(char *args[], int *status, bool quiet);
 
 };

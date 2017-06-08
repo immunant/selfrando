@@ -1,6 +1,6 @@
 Import('env')
 
-SUBDIRS = ['LibWrapper,
+SUBDIRS = ['LibWrapper',
            'LinkWrapper',
            'PatchEntry',
            'TrapCommon',

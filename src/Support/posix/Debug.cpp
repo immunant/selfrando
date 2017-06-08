@@ -21,6 +21,7 @@ void Debug::PrintfImpl(const char *fmt, ...) {
     // FIXME: find better printing output
     ssize_t retcode = write(STDERR_FILENO, tmp, len);
     assert(retcode != -1 && "Write to stderr failed");
+    (void) retcode;
 }
 
 void Error::printf(const char *fmt, ...) {
@@ -33,4 +34,5 @@ void Error::printf(const char *fmt, ...) {
     ssize_t retcode = write(STDERR_FILENO, tmp, len);
     assert(retcode != -1 && "Write to stderr failed");
     assert(false);
+    (void) retcode;
 }

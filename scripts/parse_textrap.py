@@ -122,6 +122,8 @@ have_nonexec_relo = (flags & 0x20) != 0
 record_padding = (flags & 0x40) != 0
 pcrel_addr = (flags & 0x80) != 0
 have_sym_alignment = (flags & 0x100) != 0
+have_pointer_size = (flags & 0x200) != 0
+baserel_addr = (flags & 0x400) != 0
 trap_data_pos = 4
 
 if trap_address is not None:
@@ -133,7 +135,7 @@ def get_trap_value(format):
     global trap_data, trap_data_pos, word_size
 
     return_pcrel = False
-    if format == '@P' and pcrel_addr:
+    if format == '@P' and (pcrel_addr or baserel_addr):
         return_pcrel = True
         format = '=l' if word_size == 32 else '=q'
     elif format == '@P' and word_size == 32:
@@ -150,7 +152,7 @@ def get_trap_value(format):
     value_raw = trap_data[trap_data_pos:trap_data_pos+size]
     value = struct.unpack(format, value_raw)[0]
     if return_pcrel:
-        if target_arch != 'AArch64':
+        if baserel_addr:
             # We use GOTOFF relocs for most arches
             value += got_plt_address
         else:
@@ -199,6 +201,10 @@ if have_nonexec_relo:
 
         rel_addr += delta
         print "Rel[%d]@%x=%x+%d" % (rel_type, rel_addr, rel_symbol, rel_addend)
+
+if have_pointer_size:
+    word_size = get_trap_uleb128()
+    print 'trap word size: %d' % word_size
 
 addr_list = []
 addr_set = set()

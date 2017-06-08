@@ -89,8 +89,10 @@ public:
     }
 
     void Run() {
+#if 0
         for (auto trap_entry : m_trap_info)
             trap_entry.dump();
+#endif
 
         TIME_FUNCTION_CALL(CountFunctions);
         TIME_FUNCTION_CALL(BuildFunctions);
@@ -171,12 +173,12 @@ template<typename FunctionPredicate>
 RANDO_ALWAYS_INLINE
 void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
     for (auto trap_entry : m_trap_info) {
-        auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
+        auto entry_addr = m_module.address_from_trap(trap_entry.address);
         if (m_exec_section.contains_addr(entry_addr)) {
             for (auto sym : trap_entry.symbols()) {
                 auto start_addr = m_module.address_from_trap(sym.address).to_ptr();
 #if RANDOLIB_IS_ARM
-                if ((uint32_t) start_addr & 1 == 1) {
+                if (((uint32_t) start_addr & 1) == 1) {
                     // This is a thumb function that actually starts one byte earlier
                     start_addr--;
                 }
@@ -197,7 +199,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 }
                 pred(new_func);
             }
-            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size() > 0) {
+            if (m_trap_info.header()->has_record_padding() && trap_entry.padding_size > 0) {
                 Function new_func = {};
                 // Add the padding as skip_copy
                 new_func.skip_copy = true;
@@ -206,7 +208,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     m_module.address_from_trap(trap_entry.padding_address()).to_ptr();
                 new_func.undiv_alignment = 1;
                 new_func.has_size = true;
-                new_func.size = trap_entry.padding_size();
+                new_func.size = trap_entry.padding_size;
                 pred(new_func);
             }
         }
@@ -284,7 +286,7 @@ void ExecSectionProcessor::IterateFunctionGaps(GapPredicate pred) {
     auto last_addr = m_exec_section.start().to_ptr();
     for (size_t i = 0; i < m_functions.num_funcs; i++) {
         if (m_functions[i].is_gap)
-            return; // We're currently adding gaps, and we reached the first one
+            break; // We're currently adding gaps, and we reached the first one
         RANDO_ASSERT(m_functions[i].undiv_start >= last_addr);
         if (m_functions[i].undiv_start > last_addr)
             pred(last_addr, m_functions[i].undiv_start);
@@ -489,7 +491,7 @@ void ExecSectionProcessor::ShuffleCode() {
         }
         if (m_trap_info.header()->has_data_refs()) {
             for (auto trap_entry : m_trap_info) {
-                auto entry_addr = m_module.address_from_trap(trap_entry.base_address());
+                auto entry_addr = m_module.address_from_trap(trap_entry.address);
                 if (m_exec_section.contains_addr(entry_addr)) {
                     for (auto ref : trap_entry.data_refs()) {
                         auto ref_addr = m_module.address_from_trap(ref).to_ptr();
@@ -545,7 +547,7 @@ void ExecSectionProcessor::FixupRelocations() {
 
 void ExecSectionProcessor::ProcessTrapRelocations() {
     if (m_trap_info.header()->has_nonexec_relocs()) {
-        auto nonexec_relocs = m_trap_info.addn_info().nonexec_relocations();
+        auto nonexec_relocs = m_trap_info.nonexec_relocations();
         for (auto trap_reloc : nonexec_relocs) {
             auto reloc = os::Module::Relocation(m_module, trap_reloc);
             AdjustRelocation(reloc, this);

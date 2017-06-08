@@ -6,40 +6,63 @@
  *
  */
 
-#include "Object.h"
-#include "../RandoLib/TrapInfoCommon.h"
-#include "../Support/Debug.h"
-#include "../Support/Filesystem.h"
-#include "../Support/Misc.h"
+#include <Object.h>
+#include <TrapInfoRelocs.h>
+#include <Debug.h>
+#include <Filesystem.h>
+#include <Misc.h>
 #include <algorithm>
+
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <libelf.h>
 #include <gelf.h>
 
-#if RANDOLIB_IS_X86
-#define R_ARCH_NONE             R_386_NONE
-#define R_ARCH_SYMBOL           R_386_GOTOFF
-#define MIN_P2ALIGN             0
-#define PADDING_P2ALIGN         0
-#elif RANDOLIB_IS_X86_64
-#define R_ARCH_NONE             R_X86_64_NONE
-#define R_ARCH_SYMBOL           R_X86_64_GOTOFF64
-#define MIN_P2ALIGN             0
-#define PADDING_P2ALIGN         0
-#elif RANDOLIB_IS_ARM
-#define R_ARCH_NONE             R_ARM_NONE
-#define R_ARCH_SYMBOL           R_ARM_GOTOFF32
-#define MIN_P2ALIGN             0
-#define PADDING_P2ALIGN         1
-#elif RANDOLIB_IS_ARM64
-#define R_ARCH_NONE             R_AARCH64_NONE
-#define R_ARCH_SYMBOL           R_AARCH64_PREL64
-#define MIN_P2ALIGN             0
-#define PADDING_P2ALIGN         2
-#else
-#assert "Invalid target architecture"
+#ifdef EM_AARCH64
+static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
 #endif
+const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTargets = {
+    { EM_386, {
+        .none_reloc      = R_386_NONE,
+        .symbol_reloc    = R_386_GOTOFF,
+        .copy_reloc      = R_386_COPY,
+        .min_p2align     = 0,
+        .padding_p2align = 0,
+        .addr_size       = 32,
+        }
+    },
+    { EM_X86_64, {
+        .none_reloc      = R_X86_64_NONE,
+        .symbol_reloc    = R_X86_64_GOTOFF64,
+        .copy_reloc      = R_X86_64_COPY,
+        .min_p2align     = 0,
+        .padding_p2align = 0,
+        .addr_size       = 64,
+        }
+    },
+    { EM_ARM, {
+        .none_reloc      = R_ARM_NONE,
+        .symbol_reloc    = R_ARM_GOTOFF,
+        .copy_reloc      = R_ARM_COPY,
+        .min_p2align     = 0,
+        .padding_p2align = 1,
+        .addr_size       = 32,
+        }
+    },
+    // AArch4 information
+    // we encode the values numerically here, since
+    // old versions of elf.h don't have the #define's
+    { 183, {                                 // EM_AARCH64
+        .none_reloc      = 0,                // R_AARCH64_NONE
+        .symbol_reloc    = 260,              // R_AARCH64_PREL64
+        .copy_reloc      = 1024,             // R_AARCH64_COPY
+        .min_p2align     = 0,
+        .padding_p2align = 2,
+        .addr_size       = 64,
+        }
+    },
+};
 
 ObjectType parse_object_type(int fd) {
     char magic[7];
@@ -95,10 +118,11 @@ bool ElfObject::parse() {
     return true;
 }
 
-std::string ElfObject::create_trap_info() {
+std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp) {
     if (!parse())
         Error::printf("Could not parse ELF file %s\n", m_filename.c_str());
 
+    uint16_t elf_machine = EM_NONE;
     if (is_archive()) {
         Elf_Cmd cmd = ELF_C_READ;
         Elf *archive_elf = m_elf;
@@ -107,6 +131,15 @@ std::string ElfObject::create_trap_info() {
             get_elf_header(); // Re-read the ELF header since needs_trap_info() uses it
             if (!parse())
                 Error::printf("Could not parse ELF archive %s\n", m_filename.c_str());
+            if (is_object()) {
+                auto new_machine = m_ehdr.e_machine;
+                if (elf_machine == EM_NONE && new_machine != EM_NONE) {
+                    elf_machine = new_machine;
+                } else if (new_machine != elf_machine) {
+                    Error::printf("Incompatible machine types:%hd and %hd\n",
+                                  elf_machine, new_machine);
+                }
+            }
             if (needs_trap_info()) {
                 Elf *cur_elf = m_elf;
                 auto temp_file = Filesystem::create_temp_file("traplink");
@@ -114,7 +147,7 @@ std::string ElfObject::create_trap_info() {
                 m_elf = write_new_file(temp_file.first);
                 if (!parse())
                     Error::printf("Could not parse ELF archive %s\n", m_filename.c_str());
-                if (create_trap_info_impl()) {
+                if (create_trap_info_impl(emit_textramp)) {
                     update_file();
                 }
                 elf_end(m_elf);
@@ -133,46 +166,43 @@ std::string ElfObject::create_trap_info() {
         update_archive(object_files, archive_filename);
         for (auto filename : object_files)
             Filesystem::remove(filename);
-        return archive_filename;
+        return std::make_tuple(archive_filename, elf_machine);
     } else {
-        if (create_trap_info_impl()) {
+        if (create_trap_info_impl(emit_textramp)) {
             update_file();
         }
-        return m_filename;
+        return std::make_tuple(m_filename, m_ehdr.e_machine);
     }
 }
 
 template<size_t len>
 static inline bool is_prefix(const char (&prefix)[len],
-                             std::string &str) {
+                             const std::string &str) {
     // len includes the NULL terminator, so we need to exclude it
     return str.substr(0, len - 1) == prefix;
 }
 
-static inline bool is_text_section(std::string &name) {
+static inline bool is_text_section(const std::string &name) {
     return is_prefix(".text", name) ||
            is_prefix(".stub", name) ||
            is_prefix(".gnu.linkonce.t", name);
 }
 
-bool ElfObject::create_trap_info_impl() {
-    Debug::printf<5>("Creating trap info\n");
-    std::map<uint32_t, TrapRecordBuilder> section_builders;
-    Target::EntrySymbols entry_symbols;
+static inline bool is_ctors_section(const std::string &name) {
+    return is_prefix(".ctors", name) ||
+           is_prefix(".dtors", name);
+}
 
-    ElfSymbolTable symbol_table(m_elf, *this);
-    if (symbol_table.empty()) {
-        Debug::printf<2>("Did not find a symbol table, quitting early\n");
-        return false;
-    }
-
+ElfObject::SectionBuilderMap
+ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
+    SectionBuilderMap section_builders;
     Elf_Scn *cur_section = nullptr;
     while ((cur_section = elf_nextscn(m_elf, cur_section)) != nullptr) {
         GElf_Shdr section_header;
         auto cur_shndx = elf_ndxscn(cur_section);
         if (gelf_getshdr(cur_section, &section_header) == nullptr) {
             Error::printf("Could not parse section header: %s\n", elf_errmsg(-1));
-            return false;
+            return SectionBuilderMap{};
         }
         m_section_sizes[cur_shndx] = section_header.sh_size;
 
@@ -185,7 +215,7 @@ bool ElfObject::create_trap_info_impl() {
                 for (unsigned i = 0; gelf_getrel(data, i, &relocation) != nullptr; ++i) {
                     // FIXME: we need to read the addends from the section
                     // contents
-                    if (GELF_R_TYPE(relocation.r_info) == R_ARCH_NONE)
+                    if (GELF_R_TYPE(relocation.r_info) == m_target_info->none_reloc)
                         continue; // Skip NONE relocs, they may overlap with others
                     auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
@@ -196,7 +226,7 @@ bool ElfObject::create_trap_info_impl() {
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
-                    auto symbol_ref = symbol_table.get_input_symbol_ref(symbol_idx);
+                    auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref);
                 }
@@ -209,7 +239,7 @@ bool ElfObject::create_trap_info_impl() {
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Rela relocation;
                 for (unsigned i = 0; gelf_getrela(data, i, &relocation) != nullptr; ++i) {
-                    if (GELF_R_TYPE(relocation.r_info) == R_ARCH_NONE)
+                    if (GELF_R_TYPE(relocation.r_info) == m_target_info->none_reloc)
                         continue; // Skip NONE relocs, they may overlap with others
                     auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
@@ -220,7 +250,7 @@ bool ElfObject::create_trap_info_impl() {
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
-                    auto symbol_ref = symbol_table.get_input_symbol_ref(symbol_idx);
+                    auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref, relocation.r_addend);
                 }
@@ -233,32 +263,34 @@ bool ElfObject::create_trap_info_impl() {
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Sym symbol;
                 for (unsigned i = 0; gelf_getsym(data, i, &symbol) != nullptr; ++i, ++sym_idx) {
-                    uint32_t sym_shndx = symbol_table.xindex_table().translate_shndx(sym_idx, symbol.st_shndx);
+                    uint32_t sym_shndx = symbol_table->xindex_table().translate_shndx(sym_idx, symbol.st_shndx);
                     if (sym_shndx == 0 || sym_shndx >= m_num_sections)
                         continue;
 
                     // FIXME: if we have multiple Elf_Data structures
                     // per single SHT_SYMTAB section, then
                     // are the 'i' symbol indices correct???
-                    auto sym_ref = symbol_table.get_input_symbol_ref(sym_idx);
+                    auto sym_ref = symbol_table->get_input_symbol_ref(sym_idx);
                     switch (GELF_ST_TYPE(symbol.st_info)) {
                     case STT_FUNC:
-#if RANDOLIB_IS_ARM
                     case STT_ARM_TFUNC: // Marks Thumb functions on ARM
-#endif
+                        // FIXME: we should figure out what happens
+                        // if we get STT_ARM_TFUNC on a non-ARM architecture
+                        //
                         //section_builders[sym_shndx]
                         //    .mark_symbol(symbol.st_value, i, 1, symbol.st_size);
                         section_builders[sym_shndx].set_has_func_symbols();
                         if (needs_trampoline(symbol)) {
                             // needs an entry trampoline
-                            entry_symbols.push_back(sym_ref);
+                            section_builders[sym_shndx].add_entry_symbol(sym_ref);
                         }
                     // Fall-through
                     case STT_NOTYPE:
                     case STT_OBJECT:
                     case STT_SECTION:
                         if (symbol.st_value == 0 &&
-                            GELF_ST_BIND(symbol.st_info) != STB_WEAK) {
+                            GELF_ST_BIND(symbol.st_info) != STB_WEAK &&
+                            symbol.st_other != STV_PROTECTED) {
                             // Symbol marks start of section
                             section_builders[sym_shndx].set_section_symbol(sym_ref);
                         }
@@ -292,31 +324,30 @@ bool ElfObject::create_trap_info_impl() {
         case SHT_PROGBITS:
             if (get_section_name(cur_section).compare(0, 8, ".txtrp") == 0) {
                 // Error::printf("This object already contains trap info in section %s\n", get_section_name(cur_section).c_str());
-                return false;
+                return SectionBuilderMap{};
             }
             section_builders[cur_shndx].set_section_p2align(ffs(section_header.sh_addralign) - 1);
             break;
         }
     }
+    return section_builders;
+}
 
-    if (section_builders.empty()) {
-        Debug::printf<2>("Did not find any interesting sections, quitting early\n");
-        return false;
-    }
-
+void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_builders) {
     // Iterate over the section builders to eliminate the builders
     // that aren't getting trap info.
-    for (auto I = section_builders.begin(), E = section_builders.end(); I != E; ) {
+    for (auto I = section_builders->begin(), E = section_builders->end();
+         I != E; ) {
         auto section_ndx = I->first;
         auto &builder = I->second;
 
         if (builder.can_ignore_section()) {
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
 
         // If this is not a SHF_ALLOC section, ignore it
-        cur_section = elf_getscn(m_elf, section_ndx);
+        auto *cur_section = elf_getscn(m_elf, section_ndx);
         GElf_Shdr header;
         if (!gelf_getshdr(cur_section, &header)) {
             Debug::printf<6>("Section index: %d\n", section_ndx);
@@ -324,7 +355,7 @@ bool ElfObject::create_trap_info_impl() {
         }
         if ((header.sh_flags & SHF_ALLOC) == 0) {
             Debug::printf<10>("Skipping non-ALLOC section %d\n", section_ndx);
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
         auto section_name = m_section_header_strings->get_string(header.sh_name);
@@ -334,70 +365,58 @@ bool ElfObject::create_trap_info_impl() {
             // doesn't like
             // FIXME: we don't actually want to do this
             Debug::printf<10>("Skipping .eh_frame section %d\n", section_ndx);
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
         if (header.sh_type == SHT_ARM_EXIDX) {
             Debug::printf<10>("Skipping .ARM.exidx section %d\n", section_ndx);
-            I = section_builders.erase(I);
+            I = section_builders->erase(I);
             continue;
         }
         ++I;
     }
+}
 
-    // Iterate over the section builders to make sure that we have a start
-    // symbol for each section we're emitting trap info for. Doing this early
-    // so that we can flush new locals once instead of twice.
+bool ElfObject::create_trap_info_impl(bool emit_textramp) {
+    Debug::printf<5>("Creating trap info\n");
+
+    ElfSymbolTable symbol_table(m_elf, *this);
+    if (symbol_table.empty()) {
+        Debug::printf<2>("Did not find a symbol table, quitting early\n");
+        return false;
+    }
+
+    auto section_builders = create_section_builders(&symbol_table);
+    prune_section_builders(&section_builders);
+    if (section_builders.empty()) {
+        Debug::printf<2>("Did not find any interesting sections, quitting early\n");
+        return false;
+    }
+
     for (auto &I : section_builders) {
         auto section_ndx = I.first;
         auto &builder = I.second;
 
-        // If the architecture has a minimum alignment, set it here
-        if (builder.section_p2align() < MIN_P2ALIGN)
-            builder.set_section_p2align(MIN_P2ALIGN);
+        auto cur_section = elf_getscn(m_elf, section_ndx);
+        GElf_Shdr header;
+        if (!gelf_getshdr(cur_section, &header))
+            Error::printf("Error getting new section header: %s\n", elf_errmsg(-1));
 
-        // If we get to here we're actually emitting trap info for this section
+        // If the architecture has a minimum alignment, set it here
+        if (builder.section_p2align() < m_target_info->min_p2align)
+            builder.set_section_p2align(m_target_info->min_p2align);
+
+        // Make sure that each section has at least one TRaP symbol
         if (builder.symbols_empty()) {
-            // We really only want this for sections that contain no functions
-            // but do contain relocations we want to handle
             if (!builder.section_symbol().is_valid()) {
                 auto new_section_symbol = symbol_table.add_section_symbol(section_ndx);
                 Debug::printf<6>("%d is new section symbol for section %d\n",
                                  new_section_symbol, section_ndx);
                 builder.set_section_symbol(new_section_symbol, true);
-                m_modified = true;
             }
-
             builder.mark_symbol(0, builder.section_symbol(),
                                 builder.section_p2align(), 0);
         }
-    }
-
-    // Need to create trampolines before modifying the symbol table while adding
-    // txtrp
-    if (!entry_symbols.empty()) {
-        TrampolineBuilder tramp_builder(*this, symbol_table);
-        ElfSymbolTable::SymbolMapping symbol_mapping =
-            tramp_builder.build_trampolines(entry_symbols);
-        for (auto &I : section_builders)
-            I.second.update_symbol_indices(symbol_mapping);
-        m_modified = true;
-    }
-
-    std::vector<uint32_t> txtrp_sections;
-    for (auto &I : section_builders) {
-        m_modified = true;
-
-        auto section_ndx = I.first;
-        auto &builder = I.second;
-
-        cur_section = elf_getscn(m_elf, section_ndx);
-        GElf_Shdr header;
-        if (!gelf_getshdr(cur_section, &header))
-            Error::printf("Error getting new section header: %s\n", elf_errmsg(-1));
-
-        // Mark this section as needing anchors
-        txtrp_sections.push_back(section_ndx);
 
         // Mark and add padding
         auto name = get_section_name(cur_section);
@@ -408,8 +427,8 @@ bool ElfObject::create_trap_info_impl() {
             if (final_padding_size < 4)
                 final_padding_size = 4;
             // Align final_padding_size to 2^PADDING_P2ALIGN
-            final_padding_size = (final_padding_size + (1 << PADDING_P2ALIGN) - 1) &
-                                 -(1LL << PADDING_P2ALIGN);
+            final_padding_size = (final_padding_size + (1 << m_target_info->padding_p2align) - 1) &
+                                 -(1LL << m_target_info->padding_p2align);
 
             size_t curr_padding_size = 0;
             uint32_t padding = 0;
@@ -421,6 +440,16 @@ bool ElfObject::create_trap_info_impl() {
             if (curr_padding_size < final_padding_size)
                 add_data(cur_section, &padding, final_padding_size - curr_padding_size, 1);
             builder.mark_padding_size(final_padding_size);
+        }
+
+        // Build trampolines for this section
+        Elf_SectionIndex tramp_section_ndx = 0;
+        if (emit_textramp) {
+            TrampolineBuilder tramp_builder(*this, symbol_table);
+            ElfSymbolTable::SymbolMapping symbol_mapping; 
+            std::tie(tramp_section_ndx, symbol_mapping) =
+                tramp_builder.build_trampolines(builder.entry_symbols());
+            builder.update_symbol_indices(symbol_mapping);
         }
 
         // Compute relocation addends
@@ -437,13 +466,36 @@ bool ElfObject::create_trap_info_impl() {
         if (builder.in_group())
             trap_section_header.sh_flags |= SHF_GROUP;
 
-        int trap_section_ndx = add_section(".txtrp", trap_section_header,
+        int trap_section_ndx = add_section(".txtrp", &trap_section_header,
                                            DataBuffer(builder.get_trap_data(), 1));
         auto trap_section_symbol = symbol_table.add_section_symbol(trap_section_ndx);
-        add_anchor_reloc(cur_section,
-                         symbol_table.section_index(),
-                         trap_section_symbol,
-                         builder.symbols_size());
+        if (is_ctors_section(name)) {
+            // We need to implement a small hack to get around a restriction
+            // in ld.bfd: .ctors/.dtors can only have exactly as many
+            // relocations as words inside (one relocation per pointer),
+            // so we can't add our anchor relocation directly there;
+            // instead, we create a corresponding .init section and put the
+            // anchor there, which is fine from a GC point since both .init
+            // and .ctors/.dtors are gc roots
+            GElf_Shdr fake_init_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            fake_init_header.sh_type = SHT_PROGBITS;
+            fake_init_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+            uint8_t nop = 0x90;
+            int fake_init_section_ndx = add_section(".init",
+                                                    &fake_init_header,
+                                                    DataBuffer(&nop, 1, 1));
+            add_anchor_reloc(&fake_init_header,
+                             fake_init_section_ndx,
+                             symbol_table.section_index(),
+                             trap_section_symbol,
+                             builder.symbols_size());
+        } else {
+            add_anchor_reloc(&header,
+                             section_ndx,
+                             symbol_table.section_index(),
+                             trap_section_symbol,
+                             builder.symbols_size());
+        }
 
         // Add a reloc section for the txtrp
         auto &trap_relocs = builder.get_trap_reloc_data();
@@ -458,14 +510,14 @@ bool ElfObject::create_trap_info_impl() {
             auto group_shndx = builder.group_section_ndx();
             Debug::printf<10>("Adding %d to group section %d\n",
                               trap_section_ndx, group_shndx);
-            int32_t group_elems[] = { trap_section_ndx };
+            std::vector<int32_t> group_elems = { trap_section_ndx };
+            if (tramp_section_ndx != 0)
+                group_elems.push_back(tramp_section_ndx);
             // FIXME: what ELF_T_xxx is a SHT_GROUP section???
-            add_data(group_shndx, reinterpret_cast<void*>(group_elems), sizeof(group_elems), 1);
+            add_data(group_shndx, reinterpret_cast<void*>(group_elems.data()),
+                     sizeof(int32_t) * group_elems.size(), 1);
         }
     }
-
-    if (!m_modified)
-        return false;
 
     Debug::printf<10>("Added .txtrp section(s)\n");
     symbol_table.mark_symbol(m_entry_points.first, "_TRaP_orig_init");
@@ -493,17 +545,13 @@ bool ElfObject::create_trap_info_impl() {
     return true;
 }
 
-void ElfObject::add_anchor_reloc(Elf_Scn *section,
+void ElfObject::add_anchor_reloc(const GElf_Shdr *header,
+                                 Elf_SectionIndex section_ndx,
                                  Elf_SectionIndex symtab_section_ndx,
                                  ElfSymbolTable::SymbolRef section_symbol,
                                  size_t function_count) {
-    GElf_Shdr header;
-    if (!gelf_getshdr(section, &header))
-        Error::printf("Error getting section header: %s\n", elf_errmsg(-1));
-
-    auto section_ndx = elf_ndxscn(section);
-    TargetElf_Addr reloc_offset = (header.sh_size == 0) ? 0 : (header.sh_size - 1);
-    ElfReloc reloc(reloc_offset, R_ARCH_NONE, section_symbol, 0);
+    GElf_Addr reloc_offset = (header->sh_size == 0) ? 0 : (header->sh_size - 1);
+    ElfReloc reloc(reloc_offset, m_target_info->none_reloc, section_symbol, 0);
     Target::add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
 }
 
@@ -517,12 +565,13 @@ ElfStringTable *ElfObject::get_string_table(Elf_SectionIndex section_index) {
     return &(m_string_tables[section_index]);
 }
 
-unsigned ElfObject::add_section(std::string name, GElf_Shdr header,
+unsigned ElfObject::add_section(std::string name,
+                                GElf_Shdr *header,
                                 DataBuffer buffer,
                                 Elf_Type data_type) {
     assert(buffer.size > 0 && "Adding empty data buffer");
     // Add a section name
-    header.sh_name = m_section_header_strings->add_string(name);
+    header->sh_name = m_section_header_strings->add_string(name);
 
     Elf_Scn *section = elf_newscn(m_elf);
 
@@ -534,14 +583,14 @@ unsigned ElfObject::add_section(std::string name, GElf_Shdr header,
     elf_data->d_align = buffer.align;
     elf_data->d_type = data_type;
 
-    if (!gelf_update_shdr(section, &header))
+    if (!gelf_update_shdr(section, header))
         Error::printf("Error writing new section header: %s\n", elf_errmsg(-1));
     elf_flagshdr(section, ELF_C_SET, ELF_F_DIRTY);
 
     return m_num_sections++;
 }
 
-bool ElfObject::add_int32_section_patch(uint32_t shndx, TargetOff offset,
+bool ElfObject::add_int32_section_patch(uint32_t shndx, Elf_Offset offset,
                                         uint32_t mask, uint32_t value) {
     auto &pair = m_section_patches[shndx][offset];
     pair.first |= mask;
@@ -550,7 +599,7 @@ bool ElfObject::add_int32_section_patch(uint32_t shndx, TargetOff offset,
     return true;
 }
 
-TargetOff ElfObject::add_data(uint32_t shndx, void* data, size_t size, unsigned align,
+Elf_Offset ElfObject::add_data(uint32_t shndx, void* data, size_t size, unsigned align,
                               Elf_Type data_type) {
     assert(size > 0 && "Adding empty data buffer");
     Debug::printf<10>("Adding new data to section %u\n", shndx);
@@ -567,8 +616,8 @@ TargetOff ElfObject::add_data(uint32_t shndx, void* data, size_t size, unsigned 
     elf_flagdata(new_data, ELF_C_SET, ELF_F_DIRTY);
 
     // Update the section sizes
-    TargetOff &section_size = m_section_sizes[shndx];
-    TargetOff this_off = section_size;
+    Elf_Offset &section_size = m_section_sizes[shndx];
+    Elf_Offset this_off = section_size;
     auto rem = this_off % align;
     if (rem > 0)
         this_off += align - rem;
@@ -618,7 +667,7 @@ bool ElfObject::update_archive(std::vector<std::string> object_files, std::strin
 
     ar_invocation.push_back(nullptr);
 
-    if (!Misc::exec_child(ar_invocation.data(), nullptr))
+    if (!Misc::exec_child(ar_invocation.data(), nullptr, true))
         Error::printf("Could not exec ar\n");
 
     // free dup'ed strings
@@ -758,46 +807,116 @@ ElfObject::~ElfObject() {
         elf_end(m_elf);
 }
 
+bool ElfObject::has_copy_relocs(const char *filename) {
+    bool found_copy_relocs = false;
+    int fd;
+    Elf *elf;
+    Elf_Scn *cur_section = nullptr;
+    GElf_Ehdr ehdr;
+    const TargetInfo *target_info;
+
+    fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        Error::printf("Could not open output file: %s\n", filename);
+        goto ret;
+    }
+
+    elf = elf_begin(fd, ELF_C_READ, nullptr);
+    if (elf == nullptr) {
+        Error::printf("Could not open output file: %s\n", filename);
+        goto close_file;
+    }
+    if (elf_kind(elf) != ELF_K_ELF) {
+        Error::printf("Output file not ELF: %s\n", filename);
+        goto close_elf;
+    }
+    if (gelf_getehdr(elf, &ehdr) == nullptr) {
+        Error::printf("Could not get ELF header: %s\n", elf_errmsg(-1));
+        goto close_elf;
+    }
+    target_info = &kInfoForTargets.at(ehdr.e_machine);
+
+    // Scan all relocation sections looking for R_xxx_COPY relocs
+    while (!found_copy_relocs &&
+           (cur_section = elf_nextscn(elf, cur_section)) != nullptr) {
+        GElf_Shdr shdr;
+        if (gelf_getshdr(cur_section, &shdr) == nullptr) {
+            Error::printf("Could not parse section header: %s\n", elf_errmsg(-1));
+            goto close_elf;
+        }
+        if (shdr.sh_type == SHT_REL || shdr.sh_type == SHT_RELA) {
+            Elf_Data *data = nullptr;
+            while (!found_copy_relocs &&
+                   (data = elf_getdata(cur_section, data)) != nullptr) {
+                if (shdr.sh_type == SHT_REL) {
+                    GElf_Rel rel;
+                    for (unsigned i = 0; gelf_getrel(data, i, &rel) != nullptr; ++i) {
+                        if (GELF_R_TYPE(rel.r_info) == target_info->copy_reloc) {
+                            found_copy_relocs = true;
+                            break;
+                        }
+                    }
+                } else {
+                    GElf_Rela rel;
+                    for (unsigned i = 0; gelf_getrela(data, i, &rel) != nullptr; ++i) {
+                        if (GELF_R_TYPE(rel.r_info) == target_info->copy_reloc) {
+                            found_copy_relocs = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+close_elf:
+    elf_end(elf);
+close_file:
+    close(fd);
+ret:
+    return found_copy_relocs;
+}
+
 void ElfStringTable::initialize(Elf_Scn *section) {
     m_section = section;
     m_string_table.clear();
+    m_indices.clear();
+    m_string_index_map.clear();
+
     Elf_Data *data = nullptr;
+    std::string input_string;
     while ((data = elf_getdata(m_section, data)) != nullptr) {
-        m_string_table.insert(m_string_table.end(), (char*)data->d_buf, (char*)data->d_buf+data->d_size);
+        input_string.append((char*)data->d_buf, data->d_size);
     }
+    m_initial_size = m_next_index = input_string.size();
+    m_string_table.emplace_back(new const std::string(std::move(input_string)));
+    m_indices.push_back(0);
 
-    m_initial_size = m_string_table.size();
-}
-
-size_t ElfStringTable::add_string(std::string string) {
-    size_t index = m_string_table.size();
-    m_string_table.insert(m_string_table.end(), string.begin(), string.end());
-    m_string_table.push_back(0);
-    return index;
-}
-
-size_t ElfStringTable::add_string(const char* string) {
-    size_t index = m_string_table.size();
-    while (*string != 0) {
-        m_string_table.push_back(*string);
-        string++;
-    }
-    m_string_table.push_back(0);
-    return index;
+    // Add the string and all its suffixes to the hash map
+    hash_last_string();
 }
 
 void ElfStringTable::update(ElfObject &object) {
-    if (m_string_table.size() == m_initial_size)
+    if (m_next_index == m_initial_size)
         return;
 
     Debug::printf<10>("Updating string table...\n");
 
-    object.add_data(m_section,
-                    (char*)m_string_table.data()+m_initial_size,
-                    m_string_table.size()-m_initial_size);
+    size_t i = 0;
+    while (i < m_indices.size() && m_indices[i] < m_initial_size)
+        i++;
+    assert(m_indices[i] == m_initial_size &&
+           "Mismatch between indices vector and actual string size");
+    for (; i < m_indices.size(); i++) {
+        auto &str = m_string_table[i];
+        auto zlen = str->size() + 1;
+        object.add_data(m_section, const_cast<char*>(str->c_str()), zlen);
+    }
+    assert(m_indices.size() == m_string_table.size() &&
+           "Mismatch between ElfStringTable vector sizes");
 
     // reset initial size, in case update() is called again
-    m_initial_size = m_string_table.size();
+    m_initial_size = m_next_index;
 }
 
 ElfSymbolTable::ElfSymbolTable(Elf *elf, ElfObject &object)
@@ -833,9 +952,9 @@ void ElfSymbolTable::read_symbols() {
         GElf_Sym symbol;
         for (unsigned i = 0; gelf_getsym(data, i, &symbol) != nullptr; ++i, ++sym_idx) {
             if (GELF_ST_BIND(symbol.st_info) == STB_LOCAL) {
-                m_input_locals.push_back(target_sym_from_gelf(symbol));
+                m_input_locals.push_back(symbol);
             } else {
-                m_input_globals.push_back(target_sym_from_gelf(symbol));
+                m_input_globals.push_back(symbol);
             }
         }
     }
@@ -845,8 +964,8 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
                                                          GElf_Addr new_value,
                                                          Elf_SectionIndex section_index,
                                                          size_t new_size) {
-    TargetElf_Sym *old_symbol = symbol.get();
-    TargetElf_Sym new_symbol = *old_symbol;
+    GElf_Sym *old_symbol = symbol.get();
+    GElf_Sym new_symbol = *old_symbol;
 
     // Add new symbol by appending "$orig" to the original symbol name.
     std::string sym_name = m_string_table->get_string(old_symbol->st_name);
@@ -861,51 +980,65 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     new_symbol.st_name = m_string_table->add_string(sym_name_orig);
     new_symbol.st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
 
-    // Replace original symbol with wrapper
+    // Add new symbol for wrapper
+    uint32_t old_sym_xindex;
     uint32_t new_sym_xindex = m_xindex_table.get(symbol.get_input_index());
     if (section_index >= SHN_LORESERVE) {
         old_symbol->st_shndx = SHN_XINDEX;
-        m_xindex_table.set(symbol.get_input_index(), section_index);
+        old_sym_xindex = section_index;
     } else {
         old_symbol->st_shndx = section_index;
+        old_sym_xindex = 0;
     }
+    m_xindex_table.set(symbol.get_input_index(), old_sym_xindex);
     old_symbol->st_value = new_value;
     old_symbol->st_size  = new_size;
     return add_symbol(new_symbol, new_sym_xindex);
 }
 
-ElfSymbolTable::SymbolRef ElfSymbolTable::mark_symbol(std::string orig_symbol_name, std::string symbol_name) {
-    size_t sym_idx = 0;
-    for (auto &symbol : m_input_locals) {
+void ElfSymbolTable::mark_symbol(std::string orig_symbol_name, std::string symbol_name) {
+    auto check_symbol = [this, &orig_symbol_name, &symbol_name]
+            (const GElf_Sym &symbol, size_t sym_idx){
         if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
             Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
-            TargetElf_Sym new_symbol = symbol;
+            GElf_Sym new_symbol = symbol;
             uint32_t new_sym_xindex = m_xindex_table.get(sym_idx);
             new_symbol.st_name = m_string_table->add_string(symbol_name);
             new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
             new_symbol.st_other = STV_HIDDEN;
-            return add_symbol(new_symbol, new_sym_xindex);
+            add_symbol(new_symbol, new_sym_xindex);
+            return true;
         }
+        return false;
+    };
+
+
+    size_t sym_idx = 0;
+    for (auto &symbol : m_input_locals) {
+        if (check_symbol(symbol, sym_idx))
+            return;
+        sym_idx++;
+    }
+    for (auto &symbol : m_new_locals) {
+        if (check_symbol(symbol, sym_idx))
+            return;
         sym_idx++;
     }
     for (auto &symbol : m_input_globals) {
-        if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
-            Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
-            TargetElf_Sym new_symbol = symbol;
-            uint32_t new_sym_xindex = m_xindex_table.get(sym_idx);
-            new_symbol.st_name = m_string_table->add_string(symbol_name);
-            new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
-            new_symbol.st_other = STV_HIDDEN;
-            return add_symbol(new_symbol, new_sym_xindex);
-        }
+        if (check_symbol(symbol, sym_idx))
+            return;
         sym_idx++;
     }
-    return SymbolRef();
+    for (auto &symbol : m_new_globals) {
+        if (check_symbol(symbol, sym_idx))
+            return;
+        sym_idx++;
+    }
 }
 
 ElfSymbolTable::SymbolRef ElfSymbolTable::add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
                                                            std::string name, size_t size) {
-    TargetElf_Sym symbol;
+    GElf_Sym symbol;
     uint32_t xindex;
     symbol.st_name = m_string_table->add_string(name);
     symbol.st_info = GELF_ST_INFO(STB_LOCAL, STT_OBJECT);
@@ -923,7 +1056,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::add_local_symbol(GElf_Addr address, El
 }
 
 ElfSymbolTable::SymbolRef ElfSymbolTable::add_section_symbol(Elf_SectionIndex section_index) {
-    TargetElf_Sym symbol;
+    GElf_Sym symbol;
     uint32_t xindex;
     symbol.st_name = 0;
     symbol.st_info = GELF_ST_INFO(STB_LOCAL, STT_SECTION);
@@ -940,7 +1073,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::add_section_symbol(Elf_SectionIndex se
     return add_symbol(symbol, xindex);
 }
 
-ElfSymbolTable::SymbolRef ElfSymbolTable::add_symbol(TargetElf_Sym symbol, uint32_t xindex) {
+ElfSymbolTable::SymbolRef ElfSymbolTable::add_symbol(GElf_Sym symbol, uint32_t xindex) {
     assert(!m_finalized && "Attempted to add new symbol to finalized symbol table");
     if (GELF_ST_BIND(symbol.st_info) == STB_LOCAL) {
         m_new_locals.push_back(symbol);
@@ -964,11 +1097,15 @@ void ElfSymbolTable::finalize() {
         m_new_globals.empty())
         return;
 
-    std::vector<TargetElf_Sym> new_data;
-    new_data.insert(new_data.end(), m_input_locals.begin(), m_input_locals.end());
-    new_data.insert(new_data.end(), m_new_locals.begin(), m_new_locals.end());
-    new_data.insert(new_data.end(), m_input_globals.begin(), m_input_globals.end());
-    new_data.insert(new_data.end(), m_new_globals.begin(), m_new_globals.end());
+    std::vector<uint8_t> new_data;
+    for (auto &sym : m_input_locals)
+        add_target_symbol(&new_data, sym);
+    for (auto &sym : m_new_locals)
+        add_target_symbol(&new_data, sym);
+    for (auto &sym : m_input_globals)
+        add_target_symbol(&new_data, sym);
+    for (auto &sym : m_new_globals)
+        add_target_symbol(&new_data, sym);
     m_object.replace_data(m_section, ElfObject::DataBuffer(new_data, 1));
 
     size_t num_new_locals = m_new_locals.size();
@@ -993,8 +1130,7 @@ void ElfSymbolTable::finalize() {
         elf_flagshdr(m_section, ELF_C_SET, ELF_F_DIRTY);
     }
 
-    size_t num_new_globals = m_new_globals.size();
-    assert(m_new_globals_xindex.size() == num_new_globals && "Invalid new xindex size");
+    assert(m_new_globals_xindex.size() == m_new_globals.size() && "Invalid new xindex size");
     m_xindex_table.add_new(m_input_locals.size() + num_new_locals + m_input_globals.size(), m_new_globals_xindex);
     m_xindex_table.update();
 #if 0
@@ -1081,6 +1217,36 @@ void ElfSymbolTable::update_symbol_references() {
     }
 }
 
+void ElfSymbolTable::add_target_symbol(std::vector<uint8_t> *buf,
+                                       const GElf_Sym &sym) {
+    if (m_object.get_target_info()->addr_size == 32) {
+        Elf32_Sym new_sym;
+        new_sym.st_name = sym.st_name;
+        new_sym.st_value = sym.st_value;
+        new_sym.st_size = sym.st_size;
+        new_sym.st_info = sym.st_info;
+        new_sym.st_other = sym.st_other;
+        new_sym.st_shndx = sym.st_shndx;
+        auto new_sym_buf = reinterpret_cast<uint8_t*>(&new_sym);
+        buf->insert(buf->end(),
+                    new_sym_buf,
+                    new_sym_buf + sizeof(new_sym));
+    } else {
+        Elf64_Sym new_sym;
+        new_sym.st_name = sym.st_name;
+        new_sym.st_value = sym.st_value;
+        new_sym.st_size = sym.st_size;
+        new_sym.st_info = sym.st_info;
+        new_sym.st_other = sym.st_other;
+        new_sym.st_shndx = sym.st_shndx;
+        auto new_sym_buf = reinterpret_cast<uint8_t*>(&new_sym);
+        buf->insert(buf->end(),
+                    new_sym_buf,
+                    new_sym_buf + sizeof(new_sym));
+     }
+}
+
+
 ElfSymbolTable::XindexTable::XindexTable(ElfObject &object)
     : m_object(object), m_section(nullptr), m_symtab_index(0) {
     for (auto cur_section : object) {
@@ -1145,7 +1311,7 @@ void ElfSymbolTable::XindexTable::update() {
         xindex_section_header.sh_type = SHT_SYMTAB_SHNDX;
         xindex_section_header.sh_link = m_symtab_index;
         xindex_section_header.sh_entsize = sizeof(uint32_t);
-        m_object.add_section(".symtab_shndx", xindex_section_header,
+        m_object.add_section(".symtab_shndx", &xindex_section_header,
                              ElfObject::DataBuffer(m_xindex_table, 4));
     } else {
         // Replace the section contents (even if all zeroes)
@@ -1153,25 +1319,28 @@ void ElfSymbolTable::XindexTable::update() {
     }
 }
 
-ElfSymbolTable::SymbolMapping TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
+TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+    if (entry_symbols.empty())
+        return std::make_tuple(0, ElfSymbolTable::SymbolMapping{});
+
     GElf_Shdr tramp_section_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     tramp_section_header.sh_type = SHT_PROGBITS;
     tramp_section_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
     tramp_section_header.sh_addralign = 2;
-    unsigned tramp_section_index =
-        m_object.add_section(".textramp", tramp_section_header,
+    Elf_SectionIndex tramp_section_index =
+        m_object.add_section(".textramp", &tramp_section_header,
                              create_trampoline_data(entry_symbols));
 
-    ElfSymbolTable::SymbolMapping symbol_index_mapping;
+    ElfSymbolTable::SymbolMapping symbol_mapping;
     for (auto trampoline : m_trampoline_offsets) {
         auto old_symbol_index = trampoline.first;
         GElf_Addr tramp_offset = trampoline.second;
         auto new_symbol_index =
             m_symbol_table.replace_symbol(old_symbol_index, tramp_offset,
                                           tramp_section_index, trampoline_size());
-        symbol_index_mapping[old_symbol_index] = new_symbol_index;
-
         add_reloc(new_symbol_index, tramp_offset);
+        symbol_mapping[old_symbol_index] = new_symbol_index;
     }
 
     // Allow target to do any special stuff to the new section
@@ -1179,44 +1348,43 @@ ElfSymbolTable::SymbolMapping TrampolineBuilder::build_trampolines(const Target:
 
     if (!m_trampoline_relocs.empty())
         m_object.add_section_relocs(tramp_section_index, m_trampoline_relocs);
-
-    return symbol_index_mapping;
+    return std::make_tuple(tramp_section_index, symbol_mapping);
 }
 
 
-void TrapRecordBuilder::mark_symbol(TargetOff offset, ElfSymbolTable::SymbolRef symbol,
-                                    TargetOff p2align, size_t size) {
+void TrapRecordBuilder::mark_symbol(Elf_Offset offset, ElfSymbolTable::SymbolRef symbol,
+                                    Elf_Offset p2align, size_t size) {
     m_symbols.push_back(TrapSymbol(offset, symbol, p2align, size));
 }
 
-void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
+void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol) {
-    auto extra_info = RelocExtraInfo(type);
-    if (extra_info & RELOC_IGNORE)
+    auto extra_info = trap_reloc_info(type);
+    if (extra_info & TRAP_RELOC_IGNORE)
         return;
-    if (extra_info & EXTRA_ADDEND)
+    if (extra_info & TRAP_RELOC_ADDEND)
         m_addendless_relocs.push_back(m_relocs.size());
     m_relocs.push_back(ElfReloc(offset, type, symbol));
 }
 
-void TrapRecordBuilder::mark_relocation(TargetOff offset, uint32_t type,
+void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol,
-                                        TargetPtrDiff addend) {
-    auto extra_info = RelocExtraInfo(type);
-    if (extra_info & RELOC_IGNORE)
+                                        Elf_Offset addend) {
+    auto extra_info = trap_reloc_info(type);
+    if (extra_info & TRAP_RELOC_IGNORE)
         return;
     m_relocs.push_back(ElfReloc(offset, type, symbol, addend));
 }
 
-void TrapRecordBuilder::mark_data_ref(TargetOff offset) {
+void TrapRecordBuilder::mark_data_ref(Elf_Offset offset) {
     m_data_refs.push_back(offset);
 }
 
-void TrapRecordBuilder::mark_padding_offset(TargetOff offset) {
+void TrapRecordBuilder::mark_padding_offset(Elf_Offset offset) {
     m_padding_offset = offset;
 }
 
-void TrapRecordBuilder::mark_padding_size(TargetOff size) {
+void TrapRecordBuilder::mark_padding_size(Elf_Offset size) {
     m_padding_size = size;
 }
 
@@ -1228,6 +1396,7 @@ void TrapRecordBuilder::update_symbol_indices(ElfSymbolTable::SymbolMapping &sym
         }
     }
 }
+
 
 void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
     if (m_addendless_relocs.empty())
@@ -1269,17 +1438,19 @@ void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
     m_addendless_relocs.clear();
 }
 
-void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, TargetOff prev_offset,
+void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offset,
                                     const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Writing reloc at offset: %u\n", reloc.offset);
     // Offset
     push_back_uleb128(reloc.offset - prev_offset);
     // Type
     push_back_uleb128(reloc.type);
-    TargetPtrDiff trap_addend = reloc.addend;
-    if (RelocExtraInfo(reloc.type) & EXTRA_SYMBOL) {
+    Elf_Offset trap_addend = reloc.addend;
+    if (trap_reloc_info(reloc.type) & TRAP_RELOC_SYMBOL) {
         // Symbol
-        ElfReloc reloc(m_data.size(), R_ARCH_SYMBOL, reloc.symbol, 0);
+        ElfReloc reloc(m_data.size(),
+                       symbol_table.object()->get_target_info()->symbol_reloc,
+                       reloc.symbol, 0);
         if (trap_addend > 0) {
             // Hack for the addend ambiguity: roll positive addends into the symbol
             // address, but put negative ones in TRaP info (gold does something similar)
@@ -1287,9 +1458,9 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, TargetOff prev_offset
             trap_addend = 0;
         }
         Target::add_reloc_to_buffer(m_reloc_data, &reloc);
-        push_back_int(reloc.addend);
+        push_back_int(reloc.addend, symbol_table.object()->get_target_info()->addr_size / 8);
     }
-    if (RelocExtraInfo(reloc.type) & EXTRA_ADDEND) {
+    if (trap_reloc_info(reloc.type) & TRAP_RELOC_ADDEND) {
         // Addend
         push_back_sleb128(trap_addend);
     }
@@ -1307,8 +1478,10 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Adding first trap symbol at %u\n", m_symbols[0].offset);
 
     // FirstSymAddr
-    m_data.insert(m_data.end(), sizeof(TargetPtrDiff), 0);
-    ElfReloc symbol_reloc(0, R_ARCH_SYMBOL, m_symbols[0].symbol, 0);
+    m_data.insert(m_data.end(), symbol_table.object()->get_target_info()->addr_size / 8, 0);
+    ElfReloc symbol_reloc(0,
+                          symbol_table.object()->get_target_info()->symbol_reloc,
+                          m_symbols[0].symbol, 0);
     Target::add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
 
     // FirstSymOffset
@@ -1346,7 +1519,7 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     push_back_uleb128(m_padding_size);
 }
 
-void TrapRecordBuilder::push_back_uleb128(TargetOff x) {
+void TrapRecordBuilder::push_back_uleb128(Elf_Offset x) {
     if (x == 0) {
         m_data.push_back(0);
         return;
@@ -1359,7 +1532,7 @@ void TrapRecordBuilder::push_back_uleb128(TargetOff x) {
     m_data.push_back(static_cast<uint8_t>(x));
 }
 
-void TrapRecordBuilder::push_back_sleb128(TargetPtrDiff x) {
+void TrapRecordBuilder::push_back_sleb128(Elf_Offset x) {
     if (x == 0) {
         m_data.push_back(0);
         return;
@@ -1367,7 +1540,7 @@ void TrapRecordBuilder::push_back_sleb128(TargetPtrDiff x) {
     bool more = true;
     while (more) {
         static_assert((-1 >> 1) == -1, "Compiler with support for arithmetic right shift is required");
-        TargetPtrDiff byte = (x & 0x7F);
+        Elf_Offset byte = (x & 0x7F);
         x >>= 7;
         if (x ==  0 && (byte & 0x40) == 0)
             more = false;

@@ -56,7 +56,7 @@
 
 #ifdef __cplusplus
 class TrapInfo;
-struct TrapReloc;
+struct trap_reloc_t;
 
 struct FunctionList;
 struct Function;
@@ -197,7 +197,7 @@ public:
             : m_module(mod), m_orig_src_addr(addr),
               m_src_addr(addr), m_type(type) { }
 
-        Relocation(const os::Module&, const TrapReloc&);
+        Relocation(const os::Module&, const trap_reloc_t&);
 
         Type get_type() const {
             return m_type;

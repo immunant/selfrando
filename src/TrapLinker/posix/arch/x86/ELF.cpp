@@ -6,8 +6,8 @@
  *
  */
 
-#include "Object.h"
-#include "../Support/Debug.h"
+#include <Object.h>
+#include <Debug.h>
 
 typedef struct {
     uint8_t opcode;
@@ -54,18 +54,18 @@ Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
     GElf_Shdr rel_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     rel_header.sh_type = SHT_REL;
     rel_header.sh_flags = SHF_INFO_LINK;
-    rel_header.sh_entsize = sizeof(TargetElf_Rel);
+    rel_header.sh_entsize = sizeof(Elf32_Rel);
     rel_header.sh_link = symtab_shndx;
     rel_header.sh_info = shndx;
-    rel_header.sh_addralign = sizeof(TargetPtr);
-    return object.add_section(".rel" + section_name, rel_header,
+    rel_header.sh_addralign = sizeof(uint32_t);
+    return object.add_section(".rel" + section_name, &rel_header,
                               ElfObject::DataBuffer::get_empty_buffer(),
                               ELF_T_REL);
 }
 
 void Target::add_reloc_to_buffer(Elf_RelocBuffer &buffer,
-                                 TargetElf_Addr r_offset, TargetElf_Addr r_info, TargetPtrDiff *r_addend) {
-    TargetElf_Rel reloc = {r_offset, r_info};
+                                 GElf_Addr r_offset, GElf_Addr r_info, Elf_Offset *r_addend) {
+    Elf32_Rel reloc = {r_offset, r_info};
     buffer.insert(buffer.end(),
                   reinterpret_cast<char*>(&reloc),
                   reinterpret_cast<char*>(&reloc) + sizeof(reloc));
@@ -75,7 +75,7 @@ void Target::add_reloc_to_buffer(Elf_RelocBuffer &buffer,
 void Target::add_reloc_buffer_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
                                          const Elf_RelocBuffer &relocs) {
     object.add_data(reloc_shndx, const_cast<char*>(relocs.data()),
-                    relocs.size(), sizeof(TargetPtr), ELF_T_REL);
+                    relocs.size(), sizeof(uint32_t), ELF_T_REL);
 }
 
 template<typename RelType>
@@ -93,6 +93,6 @@ bool Target::check_rel_for_stubs<GElf_Rela>(ElfObject &object, GElf_Rela *reloca
                                             uint32_t shndx, TrapRecordBuilder &builder);
 
 // TODO: Implement any weird code relocs
-TargetPtrDiff Target::read_reloc(char* data, TrapReloc &reloc) {
-  return *reinterpret_cast<TargetPtrDiff*>(data);
+Elf_Offset Target::read_reloc(char* data, TrapReloc &reloc) {
+  return *reinterpret_cast<int32_t*>(data);
 }

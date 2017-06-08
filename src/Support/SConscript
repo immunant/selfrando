@@ -1,3 +1,5 @@
 Import('env')
 
-env.Library('randolib_support', ['Debug.cpp', 'Filesystem.cpp', 'Misc.cpp'])
+files = SConscript(dirs=[env['PLATFORM']], exports=['env'], duplicate=0)
+Return('files')
+

@@ -16,7 +16,7 @@ import stat
 import string
 import sys
 import tempfile
-
+import collections
 
 all_arches = [ "arm", "arm64", "x86", "x86_64" ]
 
@@ -147,6 +147,16 @@ x86_64_call = """\
 END(%(func)s)
 """
 
+
+#
+# CMakeLists.txt template
+#
+cmake_lists = "# " + warning + "\n" + """\
+target_sources(selfrando_objects
+    PRIVATE
+    %s
+    )
+"""
 
 def param_uses_64bits(param):
     """Returns True iff a syscall parameter description corresponds
@@ -442,6 +452,7 @@ class State:
         self.new_stubs = []
         self.other_files = []
         self.syscalls = []
+        self.file_lists = collections.defaultdict(list)
 
 
     def process_file(self, input):
@@ -482,6 +493,17 @@ class State:
                     fp.write(syscall["asm-%s" % arch])
                     fp.close()
                     self.new_stubs.append(filename)
+                    self.file_lists[arch].append(filename)
+
+    def gen_cmake_lists(self):
+        for arch in all_arches:
+            filename = "arch-%s/syscalls/CMakeLists.txt" % arch
+            logging.info(">>> generating " + filename)
+            fp = create_file(filename)
+            syscall_files = ['bionic/%s' % f for f in self.file_lists[arch]]
+            fp.write(cmake_lists % "\n    ".join(syscall_files))
+            fp.close()
+            self.other_files.append(filename)
 
 
     def regenerate(self):
@@ -504,6 +526,7 @@ class State:
         logging.info("re-generating stubs and support files...")
 
         self.gen_syscall_stubs()
+        self.gen_cmake_lists()
 
         logging.info("comparing files...")
         adds    = []

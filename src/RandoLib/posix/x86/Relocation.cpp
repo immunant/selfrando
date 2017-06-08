@@ -11,7 +11,7 @@
 
 #include <elf.h>
 
-os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc)
+os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
     : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
       m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
       m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
@@ -19,7 +19,7 @@ os::Module::Relocation::Relocation(const os::Module &mod, const TrapReloc &reloc
 }
 
 os::BytePointer os::Module::Relocation::get_target_ptr() const {
-    // IMPORTANT: Keep RandoLib/TrapInfoCommonh.h in sync whenever a new
+    // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
     auto at_ptr = m_src_addr.to_ptr();
