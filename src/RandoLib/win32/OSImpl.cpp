@@ -186,6 +186,9 @@ RANDO_SECTION void API::finish() {
     _TRaP_chacha_finish();
 #endif // RANDOLIB_RNG_IS_CHACHA
 
+    // Clear the RNG seed from memory
+    API::memset(rand_seed, 0, sizeof(randolib_seed));
+
     Buffer<char>::release_buffer(env_buf);
     env_buf = nullptr;
 
@@ -201,8 +204,6 @@ RANDO_SECTION void API::finish() {
 #endif
     ntdll = nullptr;
     kernel32 = nullptr;
-    for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
-        rand_seed[i] = 0;
 #define SYS_FUNCTION(library, name, API, result_type, ...)  library##_##name = nullptr;
 #include "SysFunctions.inc"
 #undef SYS_FUNCTION
