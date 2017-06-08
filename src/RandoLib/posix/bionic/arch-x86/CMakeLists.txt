@@ -5,5 +5,6 @@ target_sources(selfrando_objects
     bionic/arch-x86/memcmp.S
     bionic/arch-x86/memcpy.S
     bionic/arch-x86/mmap.cpp
+    bionic/arch-x86/sse2-memset-slm.cpp
     )
 include(bionic/arch-${SR_ARCH}/syscalls/CMakeLists.txt)

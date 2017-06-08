@@ -95,6 +95,10 @@ public:
         return RANDO_SYS_FUNCTION(ntdll, memcmp, a, b, size);
     }
 
+    static inline int memset(void *s, int c, size_t n) {
+        return RANDO_SYS_FUNCTION(ntdll, memset, s, c, n);
+    }
+
     static inline ULONG random(ULONG max) {
 #if RANDOLIB_RNG_IS_CHACHA
         extern RANDO_SECTION uint32_t _TRaP_chacha_random(uint32_t);

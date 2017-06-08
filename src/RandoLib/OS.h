@@ -118,6 +118,7 @@ public:
     using APIImpl::qsort;
     using APIImpl::memcpy;
     using APIImpl::memcmp;
+    using APIImpl::memset;
     using APIImpl::random;
     using APIImpl::time;
     using APIImpl::getenv;

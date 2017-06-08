@@ -26,6 +26,7 @@ extern "C" {
 time_t _TRaP_libc_time(time_t*);
 extern void *_TRaP_libc_memcpy(void *__restrict, const void *__restrict, size_t);
 extern int _TRaP_libc_memcmp(const void*, const void*, size_t);
+extern void *_TRaP_libc_memset(void *, int, size_t);
 extern char *_TRaP_libc_getenv(const char*);
 extern long _TRaP_libc_strtol(const char*, char **, int);
 #if RANDOLIB_RNG_IS_RAND_R
@@ -58,6 +59,10 @@ public:
 
     static inline int memcmp(const void *a, const void *b, size_t size) {
         return _TRaP_libc_memcmp(a, b, size);
+    }
+
+    static inline void *memset(void *s, int c, size_t n) {
+        return _TRaP_libc_memset(s, c, n);
     }
 
     static inline size_t random(size_t max) {

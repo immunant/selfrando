@@ -8,6 +8,7 @@ SYS_FUNCTION(ntdll, alldiv, WINAPI, LONGLONG, LONGLONG, LONGLONG)
 // ntdll functions that implement the C runtime are cdecl, not WINAPI
 SYS_FUNCTION(ntdll, memcmp, __cdecl, int, const void*, const void*, size_t)
 SYS_FUNCTION(ntdll, memcpy, __cdecl, int, void*, const void*, size_t)
+SYS_FUNCTION(ntdll, memset, __cdecl, void*, void*, int, size_t)
 SYS_FUNCTION(ntdll, wcscat_s, __cdecl, int, wchar_t*, size_t, const wchar_t*)
 SYS_FUNCTION(ntdll, wcsncat_s, __cdecl, int, wchar_t*, size_t, const wchar_t*, size_t)
 
