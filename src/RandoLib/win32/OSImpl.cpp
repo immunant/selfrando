@@ -187,7 +187,7 @@ RANDO_SECTION void API::finish() {
 #endif // RANDOLIB_RNG_IS_CHACHA
 
     // Clear the RNG seed from memory
-    API::memset(rand_seed, 0, sizeof(randolib_seed));
+    API::memset(rand_seed, 0, sizeof(rand_seed));
 
     Buffer<char>::release_buffer(env_buf);
     env_buf = nullptr;
