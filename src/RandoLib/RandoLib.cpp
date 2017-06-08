@@ -468,7 +468,11 @@ void ExecSectionProcessor::shuffle_code() {
         os::API::debug_printf<3>("Copying code back %p[%u]=>%p\n",
                                  m_exec_copy, m_exec_code_size, orig_code);
         os::API::memcpy(orig_code, m_exec_copy, m_exec_code_size);
-        // TODO: zero out the space left over
+        if (m_exec_code_size < m_exec_section.size()) {
+            // We have space left over, clear it out
+            size_t left_over = m_exec_section.size() - m_exec_code_size;
+            os::API::memset(orig_code + m_exec_code_size, 0xCC, left_over);
+        }
         // Revert the div_start addresses to the original section
         for (size_t i = 0; i < m_functions.num_elems; i++)
             m_functions[i].div_start -= copy_delta;
