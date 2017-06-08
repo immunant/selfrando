@@ -482,10 +482,7 @@ void ExecSectionProcessor::shuffle_code() {
             }
             // FIXME: this could create a race condition
             // FIXME: probably better to do this as the final step
-            size_t ofs = 0;
-            // TODO: optimize this to use memset()
-            for (size_t ofs = 0; ofs < func.size; ofs++)
-                func.undiv_start[ofs] = 0xCC; // INT 3 (trap)
+            os::API::memset(func.undiv_start, 0xCC, func.size);
             // We skip this for functions whose addresses aren't taken
             if (!m_trap_info.header()->has_data_refs())
                 patch_trampoline(func.undiv_start, func.div_start);
