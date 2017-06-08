@@ -95,7 +95,7 @@ public:
         return RANDO_SYS_FUNCTION(ntdll, memcmp, a, b, size);
     }
 
-    static inline int memset(void *s, int c, size_t n) {
+    static inline void *memset(void *s, int c, size_t n) {
         return RANDO_SYS_FUNCTION(ntdll, memset, s, c, n);
     }
 
