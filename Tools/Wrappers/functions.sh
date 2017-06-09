@@ -21,3 +21,14 @@ run_original() {
     local orig_binary=`find_original`
     exec "$orig_binary" "$@"
 }
+
+exec_traplinker() {
+    local traplinker=$1
+    shift
+
+    if [[ ! -x "$traplinker" ]]; then
+        echo "TrapLinker not found at: '$traplinker'; please build selfrando." 1>&2
+        exit 1
+    fi
+    exec "$traplinker" "$@"
+}

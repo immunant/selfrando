@@ -31,6 +31,7 @@
 #define _CRT_NO_VA_START_VALIDATION // Disable this since it puts __vcrt_va_start_verify_argument_type() in .text
 
 #include <OS.h>
+#include <RandoLib.h>
 #include <TrapInfo.h>
 
 #include <Windows.h>
@@ -70,10 +71,10 @@ namespace os {
 // Other Windows globals
 HMODULE APIImpl::ntdll, APIImpl::kernel32;
 LARGE_INTEGER APIImpl::timer_freq;
-ULONG APIImpl::rand_seed;
+uint32_t APIImpl::rand_seed[RANDOLIB_SEED_WORDS] = {};
 
 // Buffer that holds the return values for environment variables
-// We need to hold it in a global variable, since GetEnv callers may hold
+// We need to hold it in a global variable, since getenv callers may hold
 // it indefinitely (WARNING: although they can't hold it past the next call)
 // We can't just store a Buffer<char> object here, since that makes
 // the compiler emit a dynamic initializer for it in a ".text$di" section
@@ -92,7 +93,7 @@ int API::debug_level = 0;
 #endif
 #endif
 
-RANDO_SECTION void APIImpl::DebugPrintfImpl(const char *fmt, ...) {
+RANDO_SECTION void APIImpl::debug_printf_impl(const char *fmt, ...) {
     char tmp[256];
     va_list args;
     va_start(args, fmt);
@@ -113,7 +114,13 @@ RANDO_SECTION void APIImpl::SystemMessage(const char *fmt, ...) {
     RANDO_SYS_FUNCTION(user32, MessageBoxA, NULL, tmp, "RandoLib", 0);
 }
 
-RANDO_SECTION void API::Init() {
+static RANDO_SECTION inline bool cpu_has_rdseed() {
+    int cpu_info[4];
+    __cpuid(cpu_info, 7);
+    return (cpu_info[1] & 0x40000) != 0;
+}
+
+RANDO_SECTION void API::init() {
     ntdll = LoadLibrary(TEXT("ntdll"));
     kernel32 = LoadLibrary(TEXT("kernel32"));
     HMODULE user32 = kEnableAsserts ? LoadLibrary(TEXT("user32")) : nullptr;
@@ -133,7 +140,7 @@ RANDO_SECTION void API::Init() {
         FreeLibrary(user32);
 
 #if RANDOLIB_DEBUG_LEVEL_IS_ENV
-    const char *debug_level_var = GetEnv("SELFRANDO_debug_level");
+    const char *debug_level_var = API::getenv("SELFRANDO_debug_level");
     if (debug_level_var != nullptr)
         debug_level = _TRaP_libc_strtol(debug_level_var, nullptr, 0);
 #endif
@@ -145,14 +152,43 @@ RANDO_SECTION void API::Init() {
     // Initialize the seed as a hash of the current TSC (should be random enough)
     // FIXME: find a better way of computing the seed
 #ifdef RANDOLIB_DEBUG_SEED
-    rand_seed = RANDOLIB_DEBUG_SEED;
+    rand_seed[0] = RANDOLIB_DEBUG_SEED;
 #else
-    uint64_t tsc = __rdtsc();
-    rand_seed = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
+    bool seeded[RANDOLIB_SEED_WORDS] = {};
+    // If we have the RDSEED instruction (which we check for using CPUID), use it
+    if (cpu_has_rdseed()) {
+        unsigned int tmp_seed;
+        for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
+            if (_rdseed32_step(&tmp_seed)) {
+                rand_seed[i] = tmp_seed;
+                seeded[i] = true;
+            }
+    }
+    for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
+        if (!seeded[i]) {
+            uint64_t tsc = __rdtsc();
+            rand_seed[i] = fnv_32a_buf(&tsc, sizeof(tsc), FNV1_32A_INIT);
+        }
 #endif
+
+#if RANDOLIB_RNG_IS_CHACHA
+    // Initialize the ChaCha RNG if we're using it
+    extern RANDO_SECTION void _TRaP_chacha_init(uint32_t[8], uint32_t[2]);
+    uint32_t chacha_iv[2] = { getpid(), 0x12345678 }; // FIXME: 2nd value for the IV???
+    _TRaP_chacha_init(rand_seed, chacha_iv);
+#endif // RANDOLIB_RNG_IS_CHACHA
 }
 
-RANDO_SECTION void API::Finish() {
+RANDO_SECTION void API::finish() {
+#if RANDOLIB_RNG_IS_CHACHA
+    // Shut down the RNG
+    extern RANDO_SECTION void _TRaP_chacha_finish();
+    _TRaP_chacha_finish();
+#endif // RANDOLIB_RNG_IS_CHACHA
+
+    // Clear the RNG seed from memory
+    API::memset(rand_seed, 0, sizeof(rand_seed));
+
     Buffer<char>::release_buffer(env_buf);
     env_buf = nullptr;
 
@@ -168,20 +204,28 @@ RANDO_SECTION void API::Finish() {
 #endif
     ntdll = nullptr;
     kernel32 = nullptr;
-    rand_seed = 0;
 #define SYS_FUNCTION(library, name, API, result_type, ...)  library##_##name = nullptr;
 #include "SysFunctions.inc"
 #undef SYS_FUNCTION
 }
 
 
-RANDO_SECTION void *API::MemAlloc(size_t size, bool zeroed) {
+RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
     return RANDO_SYS_FUNCTION(ntdll, RtlAllocateHeap, global_heap, flags, size);
 }
 
-RANDO_SECTION void API::MemFree(void *ptr) {
+RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed) {
+    if (old_ptr == nullptr)
+        return mem_alloc(new_size, zeroed);
+
+    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
+    DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
+    return RANDO_SYS_FUNCTION(ntdll, RtlReAllocateHeap, global_heap, flags, old_ptr, new_size);
+}
+
+RANDO_SECTION void API::mem_free(void *ptr) {
     auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     RANDO_SYS_FUNCTION(ntdll, RtlFreeHeap, global_heap, 0, ptr);
 }
@@ -202,7 +246,7 @@ static inline RANDO_SECTION HANDLE GetCurrentProcess() {
     return reinterpret_cast<HANDLE>(-1);
 }
 
-RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, bool commit) {
+RANDO_SECTION void *API::mmap(void *addr, size_t size, PagePermissions perms, bool commit) {
     SIZE_T wsize = size;
     DWORD alloc_type = commit ? (MEM_RESERVE | MEM_COMMIT) : MEM_RESERVE;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
@@ -211,7 +255,7 @@ RANDO_SECTION void *API::MemMap(void *addr, size_t size, PagePermissions perms, 
     return addr;
 }
 
-RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
+RANDO_SECTION void API::munmap(void *addr, size_t size, bool commit) {
     SIZE_T wsize = size;
     if (commit) {
         RANDO_SYS_FUNCTION(ntdll, NtFreeVirtualMemory,
@@ -222,7 +266,7 @@ RANDO_SECTION void API::MemUnmap(void *addr, size_t size, bool commit) {
     }
 }
 
-RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermissions perms) {
+RANDO_SECTION PagePermissions API::mprotect(void *addr, size_t size, PagePermissions perms) {
     SIZE_T wsize = size;
     ULONG old_win_perms = 0;
     auto win_perms = PermissionsTable[static_cast<uint8_t>(perms)];
@@ -249,7 +293,7 @@ RANDO_SECTION PagePermissions API::MemProtect(void *addr, size_t size, PagePermi
     }
 }
 
-RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
+RANDO_SECTION char *APIImpl::getenv(const char *var) {
     int buf_needed = RANDO_SYS_FUNCTION(kernel32, MultiByteToWideChar,
                                         CP_UTF8, 0, var, -1, nullptr, 0);
     Buffer<wchar_t> var_buf(buf_needed);
@@ -281,7 +325,7 @@ RANDO_SECTION char *APIImpl::GetEnv(const char *var) {
     return env_buf->data();
 }
 
-RANDO_SECTION Pid APIImpl::GetPid() {
+RANDO_SECTION Pid APIImpl::getpid() {
     PROCESS_BASIC_INFORMATION pbi;
     auto res = RANDO_SYS_FUNCTION(ntdll, NtQueryInformationProcess,
                                   os::GetCurrentProcess(),
@@ -290,7 +334,7 @@ RANDO_SECTION Pid APIImpl::GetPid() {
     return res == 0 ? pbi.UniqueProcessId : 0;
 }
 
-RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
+RANDO_SECTION File API::open_file(const char *name, bool write, bool create) {
     DWORD access = GENERIC_READ;
     DWORD sharing = FILE_SHARE_READ; // Consistent with Linux
     DWORD creation = create ? OPEN_ALWAYS : OPEN_EXISTING;
@@ -318,7 +362,7 @@ RANDO_SECTION File API::OpenFile(const char *name, bool write, bool create) {
     return res;
 }
 
-RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
+RANDO_SECTION ssize_t API::write_file(File file, const void *buf, size_t len) {
     RANDO_ASSERT(file != kInvalidFile);
     DWORD res = 0;
     // TODO: lock file while writing to it???
@@ -326,7 +370,7 @@ RANDO_SECTION ssize_t API::WriteFile(File file, const void *buf, size_t len) {
     return res;
 }
 
-RANDO_SECTION void API::CloseFile(File file) {
+RANDO_SECTION void API::close_file(File file) {
     RANDO_ASSERT(file != kInvalidFile);
     RANDO_SYS_FUNCTION(kernel32, CloseHandle, file);
 }
@@ -342,16 +386,16 @@ int build_pid_filename(char *filename, size_t len, const char *fmt, ...) {
     return res;
 }
 
-RANDO_SECTION File API::OpenLayoutFile(bool write) {
+RANDO_SECTION File API::open_layout_file(bool write) {
     // FIXME: does this work for paths that contain Unicode???
     // TODO: on Windows, should we use the registry to store our settings???
-    const char *path = API::GetEnv("TEMP");
+    const char *path = API::getenv("TEMP");
     if (path == nullptr)
-        path = API::GetEnv("TMP");
+        path = API::getenv("TMP");
     if (path == nullptr)
-        path = API::GetEnv("SELFRANDO_layout_files_path");
+        path = API::getenv("SELFRANDO_layout_files_path");
     if (path == nullptr) {
-        API::DebugPrintf<1>("Unknown path to layout files (perhaps set SELFRANDO_layout_files_path)!\n");
+        API::debug_printf<1>("Unknown path to layout files (perhaps set SELFRANDO_layout_files_path)!\n");
         return kInvalidFile;
     }
 
@@ -359,11 +403,11 @@ RANDO_SECTION File API::OpenLayoutFile(bool write) {
     auto pathlen = strlen(path);
     const int kExtraFileChars = 16; // Warning: needs to include NULL terminator
     auto filename_len = pathlen + kExtraFileChars;
-    char *filename = reinterpret_cast<char*>(API::MemAlloc(filename_len, false));
-    os::Pid pid = API::GetPid();
+    char *filename = reinterpret_cast<char*>(API::mem_alloc(filename_len, false));
+    os::Pid pid = API::getpid();
     build_pid_filename(filename, filename_len, "%s\\\\%d.mlf", path, pid);
-    auto res = API::OpenFile(filename, write, true);
-    API::MemFree(filename);
+    auto res = API::open_file(filename, write, true);
+    API::mem_free(filename);
     return res;
 }
 #endif
@@ -371,7 +415,7 @@ RANDO_SECTION File API::OpenLayoutFile(bool write) {
 template<typename T>
 RANDO_SECTION void Buffer<T>::clear() {
     if (m_capacity > 0) {
-        API::MemFree(m_ptr);
+        API::mem_free(m_ptr);
         m_ptr = nullptr;
         m_capacity = 0;
     }
@@ -383,11 +427,11 @@ RANDO_SECTION void Buffer<T>::ensure(size_t capacity) {
         return;
 
     if (m_ptr != nullptr)
-        API::MemFree(m_ptr);
+        API::mem_free(m_ptr);
 
     m_capacity = capacity;
     if (capacity > 0) {
-        m_ptr = reinterpret_cast<T*>(API::MemAlloc(m_capacity * sizeof(T)));
+        m_ptr = reinterpret_cast<T*>(API::mem_alloc(m_capacity * sizeof(T)));
     } else {
         m_ptr = nullptr;
     }
@@ -399,7 +443,7 @@ RANDO_SECTION Buffer<T> *Buffer<T>::new_buffer() {
     // we really don't want to depend on placement new here
     // WARNING: this will seriously break if Buffer<T> ever gets
     // a vtable (because of virtual functions)
-    auto buffer_bytes = API::MemAlloc(sizeof(Buffer<T>), true);
+    auto buffer_bytes = API::mem_alloc(sizeof(Buffer<T>), true);
     return reinterpret_cast<Buffer<T>*>(buffer_bytes);
 }
 
@@ -408,19 +452,13 @@ RANDO_SECTION void Buffer<T>::release_buffer(Buffer<T> *buf) {
     if (buf == nullptr)
         return;
     buf->~Buffer<T>();
-    API::MemFree(buf);
+    API::mem_free(buf);
 }
 
-RANDO_SECTION void Module::Address::Reset(const Module &mod, uintptr_t addr, AddressSpace space) {
-    RANDO_ASSERT(&mod == &m_module); // We can only reset addresses to the same module
-    m_address = addr;
-    m_space = space;
-}
-
-RANDO_SECTION PagePermissions Module::Section::MemProtect(PagePermissions perms) const {
+RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermissions perms) const {
     if (empty())
         return PagePermissions::NONE;
-    return API::MemProtect(m_start.to_ptr(), m_size, perms);
+    return API::mprotect(m_start.to_ptr(), m_size, perms);
 }
 
 RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), m_file_name(nullptr), m_name(name) {
@@ -437,21 +475,21 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
     m_nt_hdr = RVA2Address(m_dos_hdr->e_lfanew).to_ptr<IMAGE_NT_HEADERS*>();
     m_sections = IMAGE_FIRST_SECTION(m_nt_hdr);
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++) {
-        if (API::MemCmp(m_sections[i].Name, kTrapSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+        if (API::memcmp(m_sections[i].Name, kTrapSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
             m_textrap_section = &m_sections[i];
-        if (API::MemCmp(m_sections[i].Name, kRelocSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+        if (API::memcmp(m_sections[i].Name, kRelocSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
             m_reloc_section = &m_sections[i];
-        if (API::MemCmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+        if (API::memcmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
             m_export_section = &m_sections[i];
     }
     arch_init();
-    API::DebugPrintf<1>("Module@%p sections .txtrp@%p .reloc@%p .xptramp@%p\n",
-                        m_handle, m_textrap_section, m_reloc_section, m_export_section);
+    API::debug_printf<1>("Module@%p sections .txtrp@%p .reloc@%p .xptramp@%p\n",
+                         m_handle, m_textrap_section, m_reloc_section, m_export_section);
 }
 
 RANDO_SECTION Module::~Module() {
     if (m_file_name != nullptr)
-        API::MemFree(m_file_name);
+        API::mem_free(m_file_name);
 }
 
 RANDO_SECTION void Module::get_file_name() const {
@@ -473,20 +511,20 @@ RANDO_SECTION void Module::get_file_name() const {
     auto buf_needed = RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
                                          CP_UTF8, 0, name_buf.data(), -1,
                                          nullptr, 0, nullptr, nullptr);
-    m_file_name = reinterpret_cast<char*>(API::MemAlloc(buf_needed));
+    m_file_name = reinterpret_cast<char*>(API::mem_alloc(buf_needed));
     RANDO_SYS_FUNCTION(kernel32, WideCharToMultiByte,
                        CP_UTF8, 0, name_buf.data(), -1,
                        m_file_name, buf_needed,
                        nullptr, nullptr);
-    API::DebugPrintf<1>("Module@%p:'%s'\n", m_handle, m_file_name);
+    API::debug_printf<1>("Module@%p:'%s'\n", m_handle, m_file_name);
 }
 
-RANDO_SECTION void Module::MarkRandomized(Module::RandoState state) {
-    auto old_perms = API::MemProtect(m_nt_hdr, sizeof(*m_nt_hdr), PagePermissions::RW);
+RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {
+    auto old_perms = API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), PagePermissions::RW);
     // FIXME: it would be nice if we had somewhere else to put this, to avoid the copy-on-write
     // LoaderFlags works for now, because it's an obsolete flag (always set to zero)
     m_nt_hdr->OptionalHeader.LoaderFlags = static_cast<DWORD>(state);
-    API::MemProtect(m_nt_hdr, sizeof(*m_nt_hdr), old_perms);
+    API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), old_perms);
 }
 
 static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
@@ -506,12 +544,12 @@ static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
     auto textrap_file = CreateFileW(textrap_file_name, GENERIC_READ, FILE_SHARE_READ,
         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (textrap_file == INVALID_HANDLE_VALUE) {
-        API::DebugPrintf<1>("Error opening textrap file:%d\n", GetLastError());
+        API::debug_printf<1>("Error opening textrap file:%d\n", GetLastError());
         return false;
     }
 
     *textrap_size = GetFileSize(textrap_file, NULL); // FIXME: what if textrap file > 4GB???
-    *textrap_data = reinterpret_cast<BytePointer>(API::MemAlloc(*textrap_size));
+    *textrap_data = reinterpret_cast<BytePointer>(API::mem_alloc(*textrap_size));
     if (*textrap_data) {
         DWORD read_bytes = 0;
         auto read_ok = ReadFile(textrap_file, *textrap_data, *textrap_size, &read_bytes, NULL);
@@ -527,15 +565,15 @@ static RANDO_SECTION bool ReadTrapFile(UNICODE_STRING *module_name,
 }
 
 // FIXME: self_rando should be passed as part of callback_arg, not separately
-RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
+RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
     auto rando_state = m_nt_hdr->OptionalHeader.LoaderFlags;
     bool force_self_rando = (self_rando && rando_state == RandoState::SELF_RANDOMIZE);
     if (rando_state != RandoState::NOT_RANDOMIZED && !force_self_rando)
         return;
 
     if (m_reloc_section == nullptr) {
-        API::DebugPrintf<1>("Error: module not randomized due to missing relocation information.\n");
-        MarkRandomized(RandoState::CANT_RANDOMIZE);
+        API::debug_printf<1>("Error: module not randomized due to missing relocation information.\n");
+        mark_randomized(RandoState::CANT_RANDOMIZE);
         return;
     }
 
@@ -547,15 +585,15 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
         // If we have the textrap info stored in an external file, load it from there
         auto read_ok = ReadTrapFile(m_name, &textrap_data, &textrap_size);
         if (!read_ok) {
-            API::DebugPrintf<1>("Error: module not randomized due to missing Trap information.\n");
-            MarkRandomized(RandoState::CANT_RANDOMIZE);
+            API::debug_printf<1>("Error: module not randomized due to missing Trap information.\n");
+            mark_randomized(RandoState::CANT_RANDOMIZE);
             return;
         }
-        API::DebugPrintf<1>("Read %d external Trap bytes\n", textrap_size);
+        API::debug_printf<1>("Read %d external Trap bytes\n", textrap_size);
         release_textrap = true;
     } else if (!self_rando) {
         // Modules that have a .txtrp section must randomize themselves
-        MarkRandomized(RandoState::SELF_RANDOMIZE);
+        mark_randomized(RandoState::SELF_RANDOMIZE);
         return;
     } else {
         textrap_data = RVA2Address(m_textrap_section->VirtualAddress).to_ptr();
@@ -569,20 +607,20 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++)
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_WRITE) == 0) {
             Module::Section section(*this, &m_sections[i]);
-            old_sec_perms[i] = section.MemProtect(PagePermissions::RWX);
+            old_sec_perms[i] = section.change_permissions(PagePermissions::RWX);
         }
 
     // Go through all executable sections and match them against .txtrp
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++) {
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0) {
-            if (API::MemCmp(m_sections[i].Name, kRandoEntrySection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+            if (API::memcmp(m_sections[i].Name, kRandoEntrySection, IMAGE_SIZEOF_SHORT_NAME) == 0)
                 continue; // Skip ".rndentr"
-            if (API::MemCmp(m_sections[i].Name, kRandoTextSection, IMAGE_SIZEOF_SHORT_NAME) == 0) {
+            if (API::memcmp(m_sections[i].Name, kRandoTextSection, IMAGE_SIZEOF_SHORT_NAME) == 0) {
                 __TRaP_rndtext_address = RVA2Address(m_sections[i].VirtualAddress).to_ptr<void*>();
                 __TRaP_rndtext_size = m_sections[i].Misc.VirtualSize;
                 continue; // Skip ".rndtext"
             }
-            if (API::MemCmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
+            if (API::memcmp(m_sections[i].Name, kExportSection, IMAGE_SIZEOF_SHORT_NAME) == 0)
                 continue; // Skip ".xptramp"
             // Found executable section (maybe .text)
             Module::Section exec_section(*this, &m_sections[i]);
@@ -598,18 +636,18 @@ RANDO_SECTION void Module::ForAllExecSections(bool self_rando, ExecSectionCallba
     for (size_t i = 0; i < m_nt_hdr->FileHeader.NumberOfSections; i++)
         if ((m_sections[i].Characteristics & IMAGE_SCN_MEM_WRITE) == 0) {
             Module::Section section(*this, &m_sections[i]);
-            section.MemProtect(old_sec_perms[i]);
+            section.change_permissions(old_sec_perms[i]);
         }
     // Un-map .txtrp from memory to prevent leaks
     if (textrap_data != nullptr)
-        API::MemProtect(textrap_data, textrap_size, PagePermissions::NONE);
+        API::mprotect(textrap_data, textrap_size, PagePermissions::NONE);
         
-    MarkRandomized(RandoState::RANDOMIZED);
+    mark_randomized(RandoState::RANDOMIZED);
     if (release_textrap)
-        API::MemFree(textrap_data);
+        API::mem_free(textrap_data);
 }
 
-RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback_arg) {
+RANDO_SECTION void Module::for_all_modules(ModuleCallback callback, void *callback_arg) {
 #if 0
     PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
     // Reserved3[1] == ImageBaseAddress
@@ -617,7 +655,7 @@ RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback
         LDR_DATA_TABLE_ENTRY *mod_entry = CONTAINING_RECORD(mod_ptr, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
         auto mod_base_name = reinterpret_cast<UNICODE_STRING*>(mod_entry->Reserved4);
         auto mod_full_name = mod_entry->FullDllName;
-        API::DebugPrintf<1>("Module:%p\n", mod_entry->DllBase);
+        API::debug_printf<1>("Module:%p\n", mod_entry->DllBase);
         // TODO: pass in mod_base_name to use in the external .txtrp search
         ModuleInfo mod_info = { NULL, nullptr, mod_entry->DllBase };
         Module mod(&mod_info, mod_base_name);
@@ -629,19 +667,17 @@ RANDO_SECTION void Module::ForAllModules(ModuleCallback callback, void *callback
 #endif
 }
 
-RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
-                                             Relocation::Callback callback,
-                                             void *callback_arg) const {
+RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     // Fix up the entry point
     RANDO_ASSERT(m_info->entry_loop != nullptr);
     RANDO_ASSERT(m_info->entry_loop[0] == 0xE9);
 
     // Patch the entry loop jump
     // FIXME: this is x86-specific
-    relocate_rva(&m_info->original_entry_rva, callback, callback_arg, false);
+    relocate_rva(&m_info->original_entry_rva, functions, false);
     BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
     *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
-    API::DebugPrintf<1>("New program entry:%p\n", new_entry);
+    API::debug_printf<1>("New program entry:%p\n", new_entry);
 
     // Fix up relocations
     RANDO_ASSERT(m_reloc_section != nullptr);
@@ -663,11 +699,11 @@ RANDO_SECTION void Module::ForAllRelocations(FunctionList *functions,
             if (reloc_arch_type == 0)
                 continue;
             auto reloc_rva = fixup_block->VirtualAddress + reloc_offset;
-            Relocation reloc(*this, RVA2Address(reloc_rva), reloc_arch_type);
-            (*callback)(reloc, callback_arg);
+            Relocation reloc(*this, RVA2Address(reloc_rva).to_ptr(), reloc_arch_type);
+            functions->adjust_relocation(&reloc);
         }
     }
-    fixup_target_relocations(functions, callback, callback_arg);
+    fixup_target_relocations(functions);
 }
 
 }

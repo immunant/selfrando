@@ -10,11 +10,11 @@ set -ue
 
 exec 2> >(tee -a /tmp/tc.log >&2)
 
-TC_PATH="$(dirname "$0")"
+TC_PATH="$(readlink -e $(dirname "$0"))"
 SR_PATH='/home/debian/install/selfrando'
 source $TC_PATH/functions.sh
 
 WRAPPER=`basename $0`
 ORIG_LD=`find_original`
 
-"$SR_PATH/$WRAPPER" -rpath "$SR_PATH" --traplinker-original-linker "$ORIG_LD" --traplinker-static-selfrando --traplinker-selfrando-txtrp-pages "$@"
+exec_traplinker "$SR_PATH/$WRAPPER" -rpath "$SR_PATH" --traplinker-original-linker "$ORIG_LD" --traplinker-static-selfrando --traplinker-selfrando-txtrp-pages "$@"

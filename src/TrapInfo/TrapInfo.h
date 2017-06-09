@@ -327,7 +327,7 @@ int trap_read_reloc(const struct trap_header_t *header,
 #pragma pack(push, 1)
 struct RANDO_SECTION trap_symbol_t {
     trap_address_t address;
-    uint64_t alignment;
+    uint64_t p2align;
     uint64_t size;
 };
 #pragma pack(pop)
@@ -350,9 +350,9 @@ int trap_read_symbol(const struct trap_header_t *header,
         curr_p2align = trap_read_uleb128(trap_ptr);
 
     *address += curr_delta;
-    SET_FIELD(symbol, address,   *address);
-    SET_FIELD(symbol, alignment, __TRaP_shl_uint64(1, curr_p2align));
-    SET_FIELD(symbol, size,      curr_size);
+    SET_FIELD(symbol, address, *address);
+    SET_FIELD(symbol, p2align, curr_p2align);
+    SET_FIELD(symbol, size,    curr_size);
     return !(curr_delta == 0 && curr_size == 0 && curr_p2align == 0);
 }
 
@@ -642,6 +642,34 @@ public:
         // (so they don't start from zero)
         return TrapRelocVector(m_header.reloc_start, m_header.reloc_end, 0,
                                &m_header);
+    }
+
+    template<typename Func>
+    void for_all_relocations(Func func) const {
+        if (m_header.has_nonexec_relocs()) {
+            trap_reloc_t trap_reloc;
+            trap_pointer_t reloc_trap_ptr = m_header.reloc_start;
+            trap_address_t reloc_address = 0;
+            while (reloc_trap_ptr < m_header.reloc_end &&
+                   trap_read_reloc(&m_header, &reloc_trap_ptr,
+                                   &reloc_address, &trap_reloc))
+                func(trap_reloc);
+        }
+
+        trap_record_t record;
+        trap_pointer_t trap_ptr = m_header.record_start;
+        trap_address_t address = 0;
+        while (trap_ptr < m_trap_data + m_trap_size &&
+               trap_read_record(&m_header, &trap_ptr,
+                                &address, &record)) {
+            trap_reloc_t trap_reloc;
+            trap_pointer_t reloc_trap_ptr = record.reloc_start;
+            trap_address_t reloc_address = record.address;
+            while (reloc_trap_ptr < record.reloc_end &&
+                   trap_read_reloc(&m_header, &reloc_trap_ptr,
+                                   &reloc_address, &trap_reloc))
+                func(trap_reloc);
+        }
     }
 
 private:

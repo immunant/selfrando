@@ -147,46 +147,55 @@ static bool ReadEntireFile(const _TCHAR *file, std::shared_ptr<BYTE> *file_conte
 }
 
 // Returns true upon success and false otherwise.
-bool TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file) {
+TRaPStatus TRaPCOFFObject(const _TCHAR *input_file, const _TCHAR *output_file) {
     COFFObject coff_file;
     auto read_ok = coff_file.readFromFile(input_file);
 	if (!read_ok) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Failed to parse file '%s'\n", input_file);
-		return false; 
+		return TRaPStatus::TRAP_ERROR;
 	}
-    auto trap_ok = coff_file.createTRaPInfo();
-	if (!trap_ok) {
+    auto trap_added = coff_file.createTRaPInfo();
+	if (!trap_added) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Didn't add TRaP info to '%s'\n", input_file);
-		return true; // If TRaPCOFF returned false, the file already had TRaP info
+		return TRaPStatus::TRAP_FOUND; // If TRaPCOFF returned false, the file already had TRaP info
 	}
-    return coff_file.writeToFile(output_file);
+    if (!coff_file.writeToFile(output_file))
+        return TRaPStatus::TRAP_ERROR;
+    return TRaPStatus::TRAP_ADDED;
 }
 
-bool TRaPCOFFLibrary(COFFLibrary *lib) {
+TRaPStatus TRaPCOFFLibrary(COFFLibrary *lib) {
+    TRaPStatus res = TRaPStatus::TRAP_FOUND;
     for (auto &obj_ptr : lib->objects()) {
-        if (obj_ptr)
-            obj_ptr->createTRaPInfo();
+        if (obj_ptr) {
+            auto added_trap = obj_ptr->createTRaPInfo();
+            if (added_trap)
+                res = TRaPStatus::TRAP_ADDED;
+        }
     }
-    return true;
+    // If any object file receives a .txtrp section, return true
+    return res;
 }
 
-bool TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file) {
+TRaPStatus TRaPCOFFLibrary(const _TCHAR *input_file, const _TCHAR *output_file) {
 	COFFLibrary coff_lib;
 	auto read_ok = coff_lib.readFromFile(input_file);
 	if (!read_ok) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Failed to parse library '%s'\n", input_file);
-		return true; // Return false here???
+        return TRaPStatus::TRAP_ERROR;
 	}
-	auto trap_ok = TRaPCOFFLibrary(&coff_lib);
-	if (!trap_ok) {
+	auto trap_status = TRaPCOFFLibrary(&coff_lib);
+	if (trap_status != TRaPStatus::TRAP_ADDED) {
 		if (VERBOSE)
 			fwprintf_s(stderr, L"Didn't add TRaP info to '%s'\n", input_file);
-		return true; // FIXME: should be false if TRaPCOFF returns an actual error
+        return trap_status;
     }
-    return coff_lib.writeToFile(output_file);
+    if (!coff_lib.writeToFile(output_file))
+        return TRaPStatus::TRAP_ERROR;
+    return TRaPStatus::TRAP_ADDED;
 }
 
 bool ConvertExports(COFFObject *exp, COFFObject *tramp) {

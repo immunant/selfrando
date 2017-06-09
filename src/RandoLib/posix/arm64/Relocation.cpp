@@ -12,12 +12,7 @@
 
 #include <elf.h>
 
-os::Module::Relocation::Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-    : m_module(mod), m_orig_src_addr(mod.address_from_trap(reloc.address)),
-      m_src_addr(mod.address_from_trap(reloc.address)), m_type(reloc.type),
-	      m_symbol_addr(mod.address_from_trap(reloc.symbol)), m_addend(reloc.addend) {
-    m_has_symbol_addr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
-}
+namespace os {
 
 template<typename Value>
 static inline RANDO_SECTION
@@ -37,7 +32,7 @@ enum class Instruction : uint32_t {
 };
 
 static inline RANDO_SECTION
-uint32_t read_insn_operand(os::BytePointer at_ptr, Instruction insn) {
+uint32_t read_insn_operand(BytePointer at_ptr, Instruction insn) {
     auto insn_value = *reinterpret_cast<uint32_t*>(at_ptr);
     switch (insn) {
     case Instruction::MOVW:
@@ -86,23 +81,23 @@ bool insn_is_ldst_uimm(uint32_t insn) {
 }
 
 static inline RANDO_SECTION
-void force_adrp(os::BytePointer ptr) {
+void force_adrp(BytePointer ptr) {
     uint32_t* insn_ptr = reinterpret_cast<uint32_t*>(ptr);
     *insn_ptr &= 0x60ffffff;
     *insn_ptr |= 0x90000000;
 }
 
-os::BytePointer os::Module::Relocation::get_target_ptr() const {
+BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
-    auto at_ptr = m_src_addr.to_ptr();
-    auto orig_ptr = m_orig_src_addr.to_ptr();
+    auto at_ptr = m_src_ptr;
+    auto orig_ptr = m_orig_src_ptr;
     switch(m_type) {
     case R_AARCH64_ABS32:
-        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(at_ptr));
     case R_AARCH64_ABS64:
-        return reinterpret_cast<os::BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
+        return reinterpret_cast<BytePointer>(*reinterpret_cast<uint64_t*>(at_ptr));
     case R_AARCH64_PREL32:
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_AARCH64_PREL64:
@@ -115,8 +110,8 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     case R_AARCH64_LDST32_ABS_LO12_NC:
     case R_AARCH64_LDST64_ABS_LO12_NC:
     case R_AARCH64_LDST128_ABS_LO12_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
-        return m_symbol_addr.to_ptr();
+        RANDO_ASSERT(m_has_symbol_ptr);
+        return m_symbol_ptr.to_ptr();
     case R_AARCH64_LD_PREL_LO19:
     case R_AARCH64_GOT_LD_PREL19:
     case R_AARCH64_TLSLD_LD_PREL19:
@@ -156,7 +151,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
                 base = page_address(base);
                 delta <<= 12;
             }
-            return reinterpret_cast<os::BytePointer>(base + delta);
+            return reinterpret_cast<BytePointer>(base + delta);
         }
     default:
         RANDO_ASSERT(false);
@@ -173,7 +168,7 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
     } while (0)
 
 static inline RANDO_SECTION
-void write_insn_operand(os::BytePointer at_ptr, Instruction insn,
+void write_insn_operand(BytePointer at_ptr, Instruction insn,
                         ptrdiff_t new_value, size_t shift) {
     auto insn_ptr = reinterpret_cast<uint32_t*>(at_ptr);
     new_value >>= shift;
@@ -226,15 +221,15 @@ void write_insn_operand(os::BytePointer at_ptr, Instruction insn,
         insn_is_adrp(insn_ptr[0]) && insn_is_ldst(insn_ptr[1]) &&
         (insn_is_ldst_uimm(insn_ptr[2]) || insn_is_ldst_uimm(insn_ptr[3]))) {
         // We may have an 843419 erratum
-        os::API::DebugPrintf<1>("Warning: violating erratum 843419 at %p\n", at_ptr);
+        API::debug_printf<1>("Warning: violating erratum 843419 at %p\n", at_ptr);
 #if 0
         RANDO_ASSERT(false);
 #endif
     }
 }
 
-void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
-    auto at_ptr = m_src_addr.to_ptr();
+void Module::Relocation::set_target_ptr(BytePointer new_target) {
+    auto at_ptr = m_src_ptr;
     ptrdiff_t        pcrel_delta = new_target - at_ptr;
     ptrdiff_t addend_pcrel_delta = pcrel_delta + m_addend;
     ptrdiff_t        pcrel_page_delta = (page_address(new_target)            - page_address(at_ptr));
@@ -270,7 +265,7 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         break;
     case R_AARCH64_ADR_PREL_PG_HI21:
     case R_AARCH64_ADR_PREL_PG_HI21_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
+        RANDO_ASSERT(m_has_symbol_ptr);
         write_insn_operand(at_ptr, Instruction::ADR, addend_pcrel_page_delta, 12);
         RANDO_ASSERT(addend_pcrel_page_delta == (sign_extend<21>(read_insn_operand(at_ptr, Instruction::ADR)) << 12));
         break;
@@ -280,31 +275,31 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
                      read_insn_operand(at_ptr, Instruction::ADD));
         break;
     case R_AARCH64_LDST8_ABS_LO12_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
+        RANDO_ASSERT(m_has_symbol_ptr);
         write_insn_operand(at_ptr, Instruction::LDST, reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff, 0);
         RANDO_ASSERT((reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff) ==
                      (read_insn_operand(at_ptr, Instruction::LDST) << 0));
         break;
     case R_AARCH64_LDST16_ABS_LO12_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
+        RANDO_ASSERT(m_has_symbol_ptr);
         write_insn_operand(at_ptr, Instruction::LDST, reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff, 1);
         RANDO_ASSERT((reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff) ==
                      (read_insn_operand(at_ptr, Instruction::LDST) << 1));
         break;
     case R_AARCH64_LDST32_ABS_LO12_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
+        RANDO_ASSERT(m_has_symbol_ptr);
         write_insn_operand(at_ptr, Instruction::LDST, reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff, 2);
         RANDO_ASSERT((reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff) ==
                      (read_insn_operand(at_ptr, Instruction::LDST) << 2));
         break;
     case R_AARCH64_LDST64_ABS_LO12_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
+        RANDO_ASSERT(m_has_symbol_ptr);
         write_insn_operand(at_ptr, Instruction::LDST, reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff, 3);
         RANDO_ASSERT((reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff) ==
                      (read_insn_operand(at_ptr, Instruction::LDST) << 3));
         break;
     case R_AARCH64_LDST128_ABS_LO12_NC:
-        RANDO_ASSERT(m_has_symbol_addr);
+        RANDO_ASSERT(m_has_symbol_ptr);
         write_insn_operand(at_ptr, Instruction::LDST, reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff, 4);
         RANDO_ASSERT((reinterpret_cast<uint64_t>(new_target + m_addend) & 0xfff) ==
                      (read_insn_operand(at_ptr, Instruction::LDST) << 4));
@@ -350,14 +345,22 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     }
 }
 
-os::Module::Relocation::Type os::Module::Relocation::get_pointer_reloc_type() {
+BytePointer Module::Relocation::get_got_entry() const {
+    auto at_ptr = m_src_ptr;
+    switch(m_type) {
+    // TODO: handle arch GOT relocations
+    default:
+        return nullptr;
+    }
+}
+
+Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {
     return R_AARCH64_ABS64;
 }
 
-void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
-                                                     const Module &module,
-                                                     os::Module::Relocation::Callback callback,
-                                                     void *callback_arg) {
+void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
+                                                 const Module &module,
+                                                 FunctionList *functions) {
     //RANDO_ASSERT(**export_ptr == 0xE9);
     // According to the AArch64 encoding document I found,
     // unconditional branches are encoded as:
@@ -365,21 +368,17 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     //RANDO_ASSERT((**export_ptr >> 26) == 0x5);
     //RANDO_ASSERT(**export_ptr == 0xff ||**export_ptr == 0xfe ||**export_ptr == 0x94 || **export_ptr == 0x97 ||
     //             **export_ptr == 0x14 || **export_ptr == 0x17);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(*export_ptr),
-                                 R_AARCH64_JUMP26);
-    (*callback)(reloc, callback_arg);
+    Module::Relocation reloc(module, *export_ptr, R_AARCH64_JUMP26);
+    functions->adjust_relocation(&reloc);
     *export_ptr += 4;
 }
 
-void os::Module::Relocation::fixup_entry_point(const Module &module,
-                                               uintptr_t entry_point,
-                                               uintptr_t target) {
+void Module::Relocation::fixup_entry_point(const Module &module,
+                                           uintptr_t entry_point,
+                                           uintptr_t target) {
     RANDO_ASSERT(*reinterpret_cast<uint32_t*>(entry_point) == 0x14000001);
-    os::Module::Relocation reloc(module,
-                                 module.address_from_ptr(entry_point),
-                                 R_AARCH64_JUMP26);
-    reloc.set_target_ptr(reinterpret_cast<os::BytePointer>(target));
+    Module::Relocation reloc(module, entry_point, R_AARCH64_JUMP26);
+    reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 
     // Flush the icache line containing this entry point
     // FIXME: this might be slow to do twice (once per entry point),
@@ -390,11 +389,23 @@ void os::Module::Relocation::fixup_entry_point(const Module &module,
     reloc_section.flush_icache();
 }
 
-void os::Module::preprocess_linker_stubs() {
-    m_linker_stubs = 0;
+template<>
+size_t Module::arch_reloc_type<Elf64_Rela>(const Elf64_Rela *rel) {
+    auto rel_type = ELF64_R_TYPE(rel->r_info);
+    if (rel_type == R_AARCH64_RELATIVE ||
+        rel_type == R_AARCH64_GLOB_DAT ||
+        rel_type == R_AARCH64_ABS64) {
+        return R_AARCH64_ABS64;
+    }
+    return 0;
 }
 
-void os::Module::relocate_linker_stubs(FunctionList *functions,
-                                       os::Module::Relocation::Callback callback,
-                                       void *callback_arg) const {
+void Module::preprocess_arch() {
+    m_arch_relocs = 0;
+    build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
+
+void Module::relocate_arch(FunctionList *functions) const {
+}
+
+} // namespace os

@@ -42,8 +42,8 @@ struct TrapProgramInfoTable {
     size_t xptramp_size;
 
     // Location of GOT
-    uintptr_t *got_start, *got_end;
-    uintptr_t *got_plt_start, *got_plt_end;
+    uintptr_t *got_start;
+    uintptr_t *got_plt_start;
 
     // Location of linker stubs
     uintptr_t linker_stubs;

@@ -52,8 +52,6 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         )
     install(FILES
         linker_script.ld
-        linker_script_got_only.ld
-        linker_script_got_plt.ld
         provide_TRaP_end_page.ld
         DESTINATION bin
         )

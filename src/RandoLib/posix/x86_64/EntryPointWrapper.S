@@ -18,11 +18,14 @@ _TRaP_Linux_EntryPoint_init:
         .long 0x00000000
 
         push %rdx
-        sub $8, %rsp // need to align stack to 16 bytes
+        push %rbp
+        mov %rsp, %rbp
+        and $-0x10, %rsp // need to align stack to 16 bytes
 
         call _TRaP_Linux_EntryPointImpl
 
-        add $8, %rsp
+        mov %rbp, %rsp
+        pop %rbp
         pop %rdx
 
         // Try again
@@ -36,11 +39,14 @@ _TRaP_Linux_EntryPoint_entry:
         .long 0x00000000
 
         push %rdx
-        sub $8, %rsp // need to align stack to 16 bytes
+        push %rbp
+        mov %rsp, %rbp
+        and $-0x10, %rsp // need to align stack to 16 bytes
 
         call _TRaP_Linux_EntryPointImpl
 
-        add $8, %rsp
+        mov %rbp, %rsp
+        pop %rbp
         pop %rdx
 
         // Try again

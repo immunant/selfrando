@@ -95,7 +95,7 @@ elif platform.system() == 'Linux':
         reloc_has_extra_symbol = lambda reloc_type : reloc_type in [
                 43, 44, 45, 46, 47, 48, 49, 50]
         reloc_has_extra_addend = lambda reloc_type : reloc_type in [
-                3, 24, 25, 41, 42, 96,
+                3, 24, 25, 26, 41, 42, 96,
                 43, 44, 45, 46, 47, 48, 49, 50]
     elif target_arch == 'AArch64':
         reloc_has_extra_symbol = lambda reloc_type : reloc_type in [
@@ -106,7 +106,7 @@ elif platform.system() == 'Linux':
     else:
         reloc_has_extra_symbol = lambda reloc_type : False
         reloc_has_extra_addend = lambda reloc_type : reloc_type in [
-                2, 4, 9, 19, 20, 24, 26, 28, 29, 34, 35, 41, 42] # FIXME
+                2, 3, 4, 9, 19, 20, 24, 26, 27, 28, 29, 30, 34, 35, 41, 42] # FIXME
 
     #Un-comment this to write out the section to a file
     #text_file = open(sys.argv[1] + '.sec', "w")

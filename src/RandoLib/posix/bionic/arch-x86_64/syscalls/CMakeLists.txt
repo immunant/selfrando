@@ -8,6 +8,7 @@ target_sources(selfrando_objects
     bionic/arch-x86_64/syscalls/___close.S
     bionic/arch-x86_64/syscalls/unlinkat.S
     bionic/arch-x86_64/syscalls/mmap.S
+    bionic/arch-x86_64/syscalls/mremap.S
     bionic/arch-x86_64/syscalls/mprotect.S
     bionic/arch-x86_64/syscalls/munmap.S
     bionic/arch-x86_64/syscalls/__getpid.S

@@ -8,6 +8,7 @@ SYS_FUNCTION(ntdll, alldiv, WINAPI, LONGLONG, LONGLONG, LONGLONG)
 // ntdll functions that implement the C runtime are cdecl, not WINAPI
 SYS_FUNCTION(ntdll, memcmp, __cdecl, int, const void*, const void*, size_t)
 SYS_FUNCTION(ntdll, memcpy, __cdecl, int, void*, const void*, size_t)
+SYS_FUNCTION(ntdll, memset, __cdecl, void*, void*, int, size_t)
 SYS_FUNCTION(ntdll, wcscat_s, __cdecl, int, wchar_t*, size_t, const wchar_t*)
 SYS_FUNCTION(ntdll, wcsncat_s, __cdecl, int, wchar_t*, size_t, const wchar_t*, size_t)
 
@@ -16,6 +17,7 @@ SYS_FUNCTION(ntdll, NtAllocateVirtualMemory, WINAPI, NTSTATUS, HANDLE, PVOID*, U
 SYS_FUNCTION(ntdll, NtFreeVirtualMemory, WINAPI, NTSTATUS, HANDLE, PVOID*, SIZE_T*, ULONG)
 SYS_FUNCTION(ntdll, NtProtectVirtualMemory, WINAPI, NTSTATUS, HANDLE, PVOID*, SIZE_T*, ULONG, PULONG)
 SYS_FUNCTION(ntdll, RtlAllocateHeap, WINAPI, LPVOID, HANDLE, DWORD, SIZE_T)
+SYS_FUNCTION(ntdll, RtlReAllocateHeap, WINAPI, LPVOID, HANDLE, DWORD, LPVOID, SIZE_T)
 SYS_FUNCTION(ntdll, RtlFreeHeap, WINAPI, BOOL, HANDLE, DWORD, LPVOID)
 
 SYS_FUNCTION(ntdll, NtQueryInformationProcess, WINAPI, NTSTATUS, HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG)

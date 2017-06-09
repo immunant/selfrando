@@ -35,12 +35,13 @@
 
 #include <OS.h>
 
-#pragma pack(1) // TODO: MSVC-only; use gcc equivalent on Linux
+#pragma pack(push, 1) // TODO: MSVC-only; use gcc equivalent on Linux
 struct RANDO_SECTION Function {
     os::BytePointer undiv_start, div_start;
     size_t size;
-    size_t undiv_alignment;
-    size_t alignment_padding;
+
+    // Base-2 logarithm of alignment
+    unsigned undiv_p2align : 6;
 
     // Boolean flags
     bool skip_copy  : 1;
@@ -74,58 +75,109 @@ struct RANDO_SECTION Function {
         return (addr + div_delta());
     }
 
-    // Tiebreaker rank for functions with the same undiv_addr
+    // Tiebreaker rank for elems with the same undiv_addr
     int sort_rank() const {
-        // TRaP functions should come before their padding and gaps
-        if (from_trap)
-            return 1;
-        if (is_padding)
-            return 2;
-        if (is_gap)
+        // If we have multiple functions at the same address, then:
+        // 1) All the non-sized ones must come first, so we can set their sizes to 0
+        // 2) Non-sized gaps should precede non-sized TRaP functions, so the latter have priority when computing sizes
+        // 3) The sized function with non-zero size must come last (if it exists)
+        if (!has_size)
+            return is_gap ? 1 : 2;
+        if (size == 0)
             return 3;
         return 4;
     }
 };
+#pragma pack(pop)
 
-struct RANDO_SECTION FunctionList {
-    Function *functions;
-    size_t num_funcs;
+template<typename T>
+struct RANDO_SECTION Vector {
+    T *elems;
+    size_t num_elems;
+    size_t capacity;
 
-    FunctionList() : functions(nullptr), num_funcs(0) { }
-
-    void allocate() {
-        if (functions != nullptr)
-            os::API::MemFree(functions);
-        functions = reinterpret_cast<Function*>(os::API::MemAlloc(num_funcs * sizeof(Function), true));
-    }
+    Vector() : elems(nullptr), num_elems(0), capacity(0) { }
+    Vector(const Vector&) = delete;
+    Vector(const Vector&&) = delete;
+    Vector &operator=(const Vector&) = delete;
+    Vector &operator=(const Vector&&) = delete;
 
     void free() {
-        if (functions != nullptr)
-            os::API::MemFree(functions);
-        functions = nullptr;
+        if (elems != nullptr)
+            os::API::mem_free(elems);
+        elems = nullptr;
+        num_elems = 0;
+        capacity = 0;
     }
 
-    void extend(size_t num_extra) {
-        if (num_extra == 0)
+    void reserve(size_t new_capacity) {
+        if (new_capacity < capacity)
             return;
-        if (functions == nullptr) {
-            num_funcs = num_extra;
-            allocate();
-            return;
+
+        auto old_capacity = capacity;
+        capacity = new_capacity;
+        if (old_capacity == 0) {
+            elems = reinterpret_cast<T*>(os::API::mem_alloc(capacity * sizeof(T), true));
+        } else {
+            elems = reinterpret_cast<T*>(os::API::mem_realloc(elems, capacity * sizeof(T), true));
         }
-
-        Function *old_funcs = functions;
-        num_funcs += num_extra;
-        functions = reinterpret_cast<Function*>(os::API::MemAlloc(num_funcs * sizeof(Function), true));
-        os::API::MemCpy(functions, old_funcs, (num_funcs - num_extra) * sizeof(Function));
-        os::API::MemFree(old_funcs);
     }
 
-    Function &operator[](size_t idx) {
-        return functions[idx];
+    void append(const T &val) {
+        if (num_elems == capacity)
+            grow();
+        elems[num_elems++] = val;
     }
 
-    Function *FindFunction(os::BytePointer);
+    T &operator[](size_t idx) {
+        return elems[idx];
+    }
+
+    const T &operator[](size_t idx) const {
+        return elems[idx];
+    }
+
+    template<typename Func>
+    void sort(Func compare) {
+        os::API::qsort(elems, num_elems, sizeof(T), compare);
+    }
+
+    template<typename Func>
+    void remove_if(Func remove_index) {
+        size_t out = 0;
+        for (size_t in = 0; in < num_elems; in++) {
+            if (remove_index(in))
+                continue;
+            if (out < in)
+                elems[out] = elems[in];
+            out++;
+        }
+        num_elems = out;
+        // TODO: shrink the memory region to save space???
+    }
+
+private:
+    static constexpr size_t DEFAULT_CAPACITY = 16;
+
+    void grow() {
+        if (capacity < DEFAULT_CAPACITY) {
+            static_assert(DEFAULT_CAPACITY > 1, "Default vector capacity too small");
+            capacity = DEFAULT_CAPACITY;
+        } else {
+            // Growth factor of 1.5
+            capacity += capacity >> 1;
+        }
+        reserve(capacity);
+    }
+};
+
+struct RANDO_SECTION FunctionList : public Vector<Function> {
+    Function *find_function(os::BytePointer) const;
+
+    // It's unfortunate that we have to use a template here,
+    // but it seems we cannot forward-declare os::Module::Relocation
+    template<class Reloc>
+    void adjust_relocation(Reloc*) const;
 };
 
 #endif // __RANDOLIB_H

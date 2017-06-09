@@ -39,8 +39,6 @@
    - Add the directory with the TRaP-friendly libraries to the beginning of the `LIB` and `LIBPATH` variables. Example: `export LIB="c:\Users\JohnDoe\self-rando-windows\TrappedMSVCLibs;"$LIB`. Note the semicolon inside the double quotes.
  - copy `mozconfig.self-rando` to `mozilla-central/mozconfig`, then edit it before building (may need to change the `PATH` variable inside).
  - Build using `./mach build` in the `mozilla-central` directory.
- - Run `PatchEntry` on each diversified binary (including `firefox.exe` and all Firefox DLLs), to update its entry point to the diversification code. Example: `PatchEntry obj-i686-pc-mingw32/dist/bin/firefox.exe`.
- - `freebl3.dll` contains assembly implementations of some crypto functions, which aren't compatible with our function reordering. There are 2 current workarounds: either don't diversify that library, or run Firefox with the environment variable `NSS_DISABLE_HW_AES` set to 1 to disable those functions and revert to the C implementations.
 
 ### Testing 32-bit Firefox
 - To check that a library contains TRaP information, run `dumpbin --all <filename>` and check it has a `.textrap` section.

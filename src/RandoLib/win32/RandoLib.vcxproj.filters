@@ -71,6 +71,9 @@
     <ClCompile Include="..\util\strtol.c">
       <Filter>Source Files\Util</Filter>
     </ClCompile>
+    <ClCompile Include="..\util\rand_chacha.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\util\fnv.h">
@@ -88,7 +91,16 @@
     <ClInclude Include="..\RandoLib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OSDefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="OSImpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OSModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util\chacha_private.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -9,11 +9,11 @@
 
 #include <OS.h>
 
-bool os::APIImpl::Is1ByteNOP(os::BytePointer at) {
+bool os::APIImpl::is_one_byte_nop(os::BytePointer at) {
     return false;
 }
 
-void os::APIImpl::InsertNOPs(os::BytePointer at, size_t count) {
+void os::APIImpl::insert_nops(os::BytePointer at, size_t count) {
     for (size_t i = 0; i < count; ++i)
         at[i] = 0x0;
 }
