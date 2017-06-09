@@ -146,6 +146,7 @@ static TString EmitExports(const std::vector<TString> &escaped_args) {
     export_args.push_back(linker_exe_esc.data());
     export_args.push_back(TEXT("-lib"));
     export_args.push_back(TEXT("-def")); // If the original includes "/DEF" or "-DEF", it should override this one
+    // FIXME: this passes many link.exe args to lib.exe which generates warnings
     for (auto &escaped_arg : escaped_args)
         export_args.push_back(escaped_arg.data());
     TString out_arg(TEXT("-out:"));
