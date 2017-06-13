@@ -24,13 +24,14 @@ BytePointer Module::Relocation::get_target_ptr() const {
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_386_GOT32:
     case R_386_GOTOFF:
+    case R_386_GOT32X:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
     case R_386_PC32:
     case R_386_PLT32:
     case R_386_GOTPC:
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
-        return m_orig_src_ptr + sizeof(int32_t) + *reinterpret_cast<int32_t*>(m_src_ptr);
+        return m_orig_src_ptr - m_addend + *reinterpret_cast<int32_t*>(m_src_ptr);
     default:
         return nullptr;
     }
@@ -46,13 +47,14 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         break;
     case R_386_GOT32:
     case R_386_GOTOFF:
+    case R_386_GOT32X:
         *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
         break;
     case R_386_PC32:
     case R_386_PLT32:
     case R_386_GOTPC:
         // FIXME: check for overflow here???
-        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t)));
+        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target + m_addend - m_src_ptr);
         break;
     default:
         RANDO_ASSERT(false);
