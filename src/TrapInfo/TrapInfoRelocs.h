@@ -23,6 +23,16 @@ static inline RANDO_SECTION
 uint64_t trap_reloc_info(uint64_t type) {
 #if RANDOLIB_IS_POSIX
 #if RANDOLIB_IS_X86
+    switch (type) {
+    case  2:    // R_386_PC32
+    case  4:    // R_386_PLT32
+    case 10:    // R_386_GOTPC
+        return TRAP_RELOC_ADDEND;
+
+    case 36:    // R_386_DTPOFF32
+    case 37:    // R_386_TPOFF32
+        return TRAP_RELOC_IGNORE;
+    };
 #elif RANDOLIB_IS_X86_64
     switch (type) {
     case  2:    // R_X86_64_PC32
