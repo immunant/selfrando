@@ -182,10 +182,12 @@ static inline bool is_prefix(const char (&prefix)[len],
     return str.substr(0, len - 1) == prefix;
 }
 
-static inline bool is_text_section(const std::string &name) {
+static inline bool is_text_section(const std::string &name,
+                                   bool include_linkonce) {
+    if (include_linkonce && is_prefix(".gnu.linkonce.t", name))
+        return true;
     return is_prefix(".text", name) ||
-           is_prefix(".stub", name) ||
-           is_prefix(".gnu.linkonce.t", name);
+           is_prefix(".stub", name);
 }
 
 static inline bool is_ctors_section(const std::string &name) {
@@ -421,7 +423,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         // Mark and add padding
         auto name = get_section_name(cur_section);
         builder.mark_padding_offset(m_section_sizes[section_ndx]);
-        if ((header.sh_flags & SHF_EXECINSTR) != 0 && is_text_section(name)) {
+        if ((header.sh_flags & SHF_EXECINSTR) != 0 && is_text_section(name, false)) {
             // Add padding to .text
             size_t final_padding_size = (1 << builder.section_p2align()) - 1;
             if (final_padding_size < 4)
