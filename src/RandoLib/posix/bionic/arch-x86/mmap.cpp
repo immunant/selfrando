@@ -46,9 +46,9 @@ void* _TRaP_libc_mmap64(void* addr, size_t size, int prot, int flags, int fd, of
     return MAP_FAILED;
   }
 
+#if 0
   bool is_private_anonymous = (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) != 0;
   void* result = _TRaP_libc___mmap2(addr, size, prot, flags, fd, offset >> MMAP2_SHIFT);
-#if 0
   if (result != MAP_FAILED && kernel_has_MADV_MERGEABLE && is_private_anonymous) {
     ErrnoRestorer errno_restorer;
     int rc = madvise(result, size, MADV_MERGEABLE);
@@ -56,6 +56,8 @@ void* _TRaP_libc_mmap64(void* addr, size_t size, int prot, int flags, int fd, of
       kernel_has_MADV_MERGEABLE = false;
     }
   }
+#else
+  void* result = _TRaP_libc___mmap2(addr, size, prot, flags, fd, offset >> MMAP2_SHIFT);
 #endif
   return result;
 }
