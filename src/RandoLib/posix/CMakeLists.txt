@@ -31,6 +31,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     if("${SR_ARCH}" STREQUAL "x86")
         add_compile_options(-m32)
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -m32")
     endif()
 
     # Create the entry libraries
