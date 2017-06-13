@@ -13,6 +13,15 @@
 
 namespace os {
 
+// bfd converts some R_386_GOT32[X] relocations to either
+// R_386_GOTOFF (which is fine for us) or to R_386_32 relocations
+// (which we need to detect and handle)
+static inline bool is_patched_got32(BytePointer at_ptr) {
+    return at_ptr[-2] == 0xc7 ||    // mov   foo@GOT, ...   => mov $foo, ...
+           at_ptr[-2] == 0xf7 ||    // test  ..., %foo@GOT  => test ..., $foo
+           at_ptr[-2] == 0x81;      // binop foo@GOT, ...   => binop $foo, ...
+}
+
 BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
@@ -21,10 +30,14 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
+    abs32_reloc:
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_386_GOT32:
-    case R_386_GOTOFF:
     case R_386_GOT32X:
+        if (is_patched_got32(m_src_ptr))
+            goto abs32_reloc;
+        // Fall-through
+    case R_386_GOTOFF:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
     case R_386_PC32:
     case R_386_PLT32:
@@ -43,11 +56,15 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     case R_386_TLS_LDO_32:
     case R_386_TLS_LDM:
     case R_386_TLS_GD:
+    abs32_reloc:
         *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case R_386_GOT32:
-    case R_386_GOTOFF:
     case R_386_GOT32X:
+        if (is_patched_got32(m_src_ptr))
+            goto abs32_reloc;
+        // Fall-through
+    case R_386_GOTOFF:
         *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
         break;
     case R_386_PC32:
