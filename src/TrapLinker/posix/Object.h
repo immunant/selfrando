@@ -626,6 +626,8 @@ private:
     const TargetInfo *m_target_info;
 };
 
+class TrampolineBuilder;
+
 namespace Target {
     typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
 
@@ -652,25 +654,34 @@ namespace Target {
                              uint32_t shndx, TrapRecordBuilder &builder);
 
     Elf_Offset read_reloc(char* data, ElfReloc &reloc);
+
+    std::unique_ptr<TrampolineBuilder>
+    get_trampoline_builder(ElfObject &object,
+                           ElfSymbolTable &symbol_table);
 };
 
 class TrampolineBuilder {
 public:
     TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
         : m_object(object), m_symbol_table(symbol_table) { }
+    virtual ~TrampolineBuilder() { }
 
     // Build the trampoline instructions.
     std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
     build_trampolines(const Target::EntrySymbols &entry_symbols);
 
-private:
-    ElfObject::DataBuffer create_trampoline_data(const Target::EntrySymbols &entry_symbols);
+protected:
+    virtual ElfObject::DataBuffer
+    create_trampoline_data(const Target::EntrySymbols &entry_symbols) = 0;
 
-    void add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
+    virtual void
+    add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset) = 0;
 
-    void target_postprocessing(unsigned tramp_section_index);
+    virtual void
+    target_postprocessing(unsigned tramp_section_index) = 0;
 
-    size_t trampoline_size() const;
+    virtual size_t
+    trampoline_size() const = 0;
 
     std::map<ElfSymbolTable::SymbolRef, GElf_Addr> m_trampoline_offsets;
     Elf_RelocBuffer m_trampoline_relocs;

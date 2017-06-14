@@ -9,6 +9,28 @@
 #include <Object.h>
 #include <Utility.h>
 
+class ARMTrampolineBuilder : public TrampolineBuilder {
+public:
+    ARMTrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
+        : TrampolineBuilder(object, symbol_table) {
+    }
+
+    virtual ~ARMTrampolineBuilder() { }
+
+protected:
+    virtual ElfObject::DataBuffer
+    create_trampoline_data(const Target::EntrySymbols &entry_symbols);
+
+    virtual void
+    add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
+
+    virtual void
+    target_postprocessing(unsigned tramp_section_index);
+
+    virtual size_t
+    trampoline_size() const;
+};
+
 typedef struct {
     uint32_t insn;
 } TrampolineInstruction;
@@ -16,7 +38,7 @@ typedef struct {
 static TrampolineInstruction kThumbJumpInstruction = {0xbffef7ff};
 static TrampolineInstruction kARMJumpInstruction = {0xeafffffe};
 
-ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
+ElfObject::DataBuffer ARMTrampolineBuilder::create_trampoline_data(
     const Target::EntrySymbols &entry_symbols) {
     std::vector<TrampolineInstruction> tramp_data;
     for (auto &sym_pair : entry_symbols) {
@@ -41,7 +63,7 @@ ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
     return ElfObject::DataBuffer(tramp_data, 4);
 }
 
-void TrampolineBuilder::add_reloc(uint32_t symbol_index, GElf_Addr trampoline_offset) {
+void ARMTrampolineBuilder::add_reloc(uint32_t symbol_index, GElf_Addr trampoline_offset) {
     GElf_Addr r_info;
     if (trampoline_offset & 1)
         r_info = ELF32_R_INFO(symbol_index, R_ARM_THM_JUMP24);
@@ -52,7 +74,7 @@ void TrampolineBuilder::add_reloc(uint32_t symbol_index, GElf_Addr trampoline_of
                                 r_info, nullptr);
 }
 
-void TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+void ARMTrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
     // Add $t and $a symbols to the trampolines
     for (auto trampoline : m_trampoline_offsets) {
         std::string symbol_name = (trampoline.second & 1) ? "$t" : "$a";
@@ -62,8 +84,14 @@ void TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
     }
 }
 
-size_t TrampolineBuilder::trampoline_size() const {
+size_t ARMTrampolineBuilder::trampoline_size() const {
     return sizeof(TrampolineInstruction);
+}
+
+std::unique_ptr<TrampolineBuilder>
+Target::get_trampoline_builder(ElfObject &object,
+                               ElfSymbolTable &symbol_table) {
+    return std::unique_ptr<TrampolineBuilder>{new ARMTrampolineBuilder(object, symbol_table)};
 }
 
 Elf_SectionIndex Target::create_reloc_section(ElfObject &object,

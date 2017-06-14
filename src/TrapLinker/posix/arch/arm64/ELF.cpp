@@ -8,13 +8,35 @@
 
 #include <Object.h>
 
+class ARM64TrampolineBuilder : public TrampolineBuilder {
+public:
+    ARM64TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
+        : TrampolineBuilder(object, symbol_table) {
+    }
+
+    virtual ~ARM64TrampolineBuilder() { }
+
+protected:
+    virtual ElfObject::DataBuffer
+    create_trampoline_data(const Target::EntrySymbols &entry_symbols);
+
+    virtual void
+    add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
+
+    virtual void
+    target_postprocessing(unsigned tramp_section_index);
+
+    virtual size_t
+    trampoline_size() const;
+};
+
 typedef struct {
     uint32_t insn;
 } TrampolineInstruction;
 
 static TrampolineInstruction kJumpInstruction = {0x14000000};
 
-ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
+ElfObject::DataBuffer ARM64TrampolineBuilder::create_trampoline_data(
     const Target::EntrySymbols &entry_symbols) {
     std::vector<TrampolineInstruction> tramp_data;
     for (auto &sym_pair : entry_symbols) {
@@ -26,17 +48,23 @@ ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
     return ElfObject::DataBuffer(tramp_data, 4);
 }
 
-void TrampolineBuilder::add_reloc(uint32_t symbol_index, GElf_Addr trampoline_offset) {
+void ARM64TrampolineBuilder::add_reloc(uint32_t symbol_index, GElf_Addr trampoline_offset) {
     Target::add_reloc_to_buffer(m_trampoline_relocs,
                                 trampoline_offset,
                                 ELF64_R_INFO(symbol_index, R_AARCH64_JUMP26), nullptr);
 }
 
-size_t TrampolineBuilder::trampoline_size() const {
+size_t ARM64TrampolineBuilder::trampoline_size() const {
     return sizeof(TrampolineInstruction);
 }
 
-void TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+void ARM64TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+}
+
+std::unique_ptr<TrampolineBuilder>
+Target::get_trampoline_builder(ElfObject &object,
+                               ElfSymbolTable &symbol_table) {
+    return std::unique_ptr<TrampolineBuilder>{new ARM64TrampolineBuilder(object, symbol_table)};
 }
 
 Elf_SectionIndex Target::create_reloc_section(ElfObject &object,

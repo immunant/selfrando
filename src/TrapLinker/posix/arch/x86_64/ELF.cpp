@@ -6,8 +6,32 @@
  *
  */
 
+#include <memory>
+
 #include <Object.h>
 #include <Debug.h>
+
+class X8664TrampolineBuilder : public TrampolineBuilder {
+public:
+    X8664TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
+        : TrampolineBuilder(object, symbol_table) {
+    }
+
+    virtual ~X8664TrampolineBuilder() { }
+
+protected:
+    virtual ElfObject::DataBuffer
+    create_trampoline_data(const Target::EntrySymbols &entry_symbols);
+
+    virtual void
+    add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
+
+    virtual void
+    target_postprocessing(unsigned tramp_section_index);
+
+    virtual size_t
+    trampoline_size() const;
+};
 
 #pragma pack(push, 1)
 typedef struct {
@@ -22,7 +46,7 @@ typedef struct {
 
 static TrampolineInstruction kJumpInstruction = {0xe9, 0, {0x90}};
 
-ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
+ElfObject::DataBuffer X8664TrampolineBuilder::create_trampoline_data(
     const Target::EntrySymbols &entry_symbols) {
     std::vector<TrampolineInstruction> tramp_data;
     for (auto &sym : entry_symbols) {
@@ -33,18 +57,24 @@ ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
     return ElfObject::DataBuffer(tramp_data, 1);
 }
 
-void TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
-                                  GElf_Addr trampoline_offset) {
+void X8664TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
+                                       GElf_Addr trampoline_offset) {
     ElfReloc reloc(trampoline_offset+1, R_X86_64_PC32, symbol_index, -4);
     Target::add_reloc_to_buffer(m_trampoline_relocs, &reloc);
     assert(reloc.addend == 0 && "Invalid trampoline addend");
 }
 
-size_t TrampolineBuilder::trampoline_size() const {
+size_t X8664TrampolineBuilder::trampoline_size() const {
     return sizeof(TrampolineInstruction);
 }
 
-void TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+void X8664TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+}
+
+std::unique_ptr<TrampolineBuilder>
+Target::get_trampoline_builder(ElfObject &object,
+                               ElfSymbolTable &symbol_table) {
+    return std::unique_ptr<TrampolineBuilder>{new X8664TrampolineBuilder(object, symbol_table)};
 }
 
 static std::vector<Elf64_Rela> build_relas(const Elf_RelocBuffer &relocs) {

@@ -447,10 +447,10 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         // Build trampolines for this section
         Elf_SectionIndex tramp_section_ndx = 0;
         if (emit_textramp) {
-            TrampolineBuilder tramp_builder(*this, symbol_table);
+            auto tramp_builder = Target::get_trampoline_builder(*this, symbol_table);
             ElfSymbolTable::SymbolMapping symbol_mapping; 
             std::tie(tramp_section_ndx, symbol_mapping) =
-                tramp_builder.build_trampolines(builder.entry_symbols());
+                tramp_builder->build_trampolines(builder.entry_symbols());
             builder.update_symbol_indices(symbol_mapping);
         }
 
