@@ -9,6 +9,7 @@
 #include <Object.h>
 #include <Debug.h>
 
+#pragma pack(push, 1)
 typedef struct {
     uint8_t opcode;
     int32_t dest;
@@ -17,6 +18,7 @@ typedef struct {
     // class member pointers)
     uint8_t padding[1];
 } TrampolineInstruction;
+#pragma pack(pop)
 
 static TrampolineInstruction kJumpInstruction = {0xe9, 0, {0x90}};
 
