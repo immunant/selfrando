@@ -19,6 +19,17 @@
 #include <libelf.h>
 #include <gelf.h>
 
+extern TargetOps *x86_ops;
+extern TargetOps *x86_64_ops;
+#if 0
+// FIXME: disabled for now, do not compile successfully
+extern TargetOps *arm_ops;
+extern TargetOps *arm64_ops;
+#else
+static TargetOps *arm_ops = nullptr;
+static TargetOps *arm64_ops = nullptr;
+#endif
+
 #ifdef EM_AARCH64
 static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
 #endif
@@ -30,6 +41,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 32,
+        .ops             = x86_ops,
         }
     },
     { EM_X86_64, {
@@ -39,6 +51,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 64,
+        .ops             = x86_64_ops,
         }
     },
     { EM_ARM, {
@@ -48,6 +61,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 1,
         .addr_size       = 32,
+        .ops             = arm_ops,
         }
     },
     // AArch4 information
@@ -60,6 +74,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 2,
         .addr_size       = 64,
+        .ops             = arm64_ops,
         }
     },
 };
@@ -221,8 +236,8 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                         continue; // Skip NONE relocs, they may overlap with others
                     auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
-                        Target::check_rel_for_stubs(*this, &relocation, 0,
-                                                    section_header.sh_info, builder);
+                        m_target_info->ops->check_rel_for_stubs(*this, &relocation, 0,
+                                                                section_header.sh_info, builder);
                     if (rel_changed) {
                         gelf_update_rel(data, i, &relocation);
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
@@ -245,8 +260,8 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                         continue; // Skip NONE relocs, they may overlap with others
                     auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
-                        Target::check_rel_for_stubs(*this, &relocation, relocation.r_addend,
-                                                    section_header.sh_info, builder);
+                        m_target_info->ops->check_rela_for_stubs(*this, &relocation, relocation.r_addend,
+                                                                 section_header.sh_info, builder);
                     if (rel_changed) {
                         gelf_update_rela(data, i, &relocation);
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
@@ -447,7 +462,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         // Build trampolines for this section
         Elf_SectionIndex tramp_section_ndx = 0;
         if (emit_textramp) {
-            auto tramp_builder = Target::get_trampoline_builder(*this, symbol_table);
+            auto tramp_builder = m_target_info->ops->get_trampoline_builder(*this, symbol_table);
             ElfSymbolTable::SymbolMapping symbol_mapping; 
             std::tie(tramp_section_ndx, symbol_mapping) =
                 tramp_builder->build_trampolines(builder.entry_symbols());
@@ -455,7 +470,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         }
 
         // Compute relocation addends
-        builder.read_reloc_addends(cur_section);
+        builder.read_reloc_addends(*this, cur_section);
         builder.build_trap_data(symbol_table);
 
         // Add a txtrp section
@@ -534,14 +549,14 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         auto it = section_builders.find(section_index);
         if (it != section_builders.end() &&
             it->second.reloc_section_ndx() != 0) {
-            Target::add_relocs_to_section(*this, it->second.reloc_section_ndx(), rel_buf);
+            m_target_info->ops->add_relocs_to_section(*this, it->second.reloc_section_ndx(), rel_buf);
         } else {
             Elf_Scn *section = elf_getscn(m_elf, section_index);
-            Target::create_reloc_section(*this,
-                                         get_section_name(section),
-                                         section_index,
-                                         symbol_table.section_index(),
-                                         rel_buf);
+            m_target_info->ops->create_reloc_section(*this,
+                                                     get_section_name(section),
+                                                     section_index,
+                                                     symbol_table.section_index(),
+                                                      rel_buf);
         }
     }
 
@@ -555,7 +570,7 @@ void ElfObject::add_anchor_reloc(const GElf_Shdr *header,
                                  size_t function_count) {
     GElf_Addr reloc_offset = (header->sh_size == 0) ? 0 : (header->sh_size - 1);
     ElfReloc reloc(reloc_offset, m_target_info->none_reloc, section_symbol, 0);
-    Target::add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
+    m_target_info->ops->add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
 }
 
 ElfStringTable *ElfObject::get_string_table(Elf_SectionIndex section_index) {
@@ -1401,7 +1416,8 @@ void TrapRecordBuilder::update_symbol_indices(ElfSymbolTable::SymbolMapping &sym
 }
 
 
-void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
+void TrapRecordBuilder::read_reloc_addends(ElfObject &object,
+                                           Elf_Scn *section) {
     if (m_addendless_relocs.empty())
         return;
 
@@ -1431,7 +1447,7 @@ void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
             // FIXME: size of the read should depend on the relocation
             // for now, only 32-bit x86 and ARM use these, and only for
             // full 32-bit relocations, so we're fine (for now)
-            auto addend = Target::read_reloc(
+            auto addend = object.get_target_info()->ops->read_reloc(
                 reinterpret_cast<char*>(data->d_buf) + rel_data_ofs, reloc);
             reloc.addend = addend;
             Debug::printf<10>("Found reloc addend %d at offset %d type %d\n",
@@ -1460,7 +1476,7 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
             reloc.addend = trap_addend;
             trap_addend = 0;
         }
-        Target::add_reloc_to_buffer(m_reloc_data, &reloc);
+        symbol_table.object()->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &reloc);
         push_back_int(reloc.addend, symbol_table.object()->get_target_info()->addr_size / 8);
     }
     if (trap_reloc_info(reloc.type) & TRAP_RELOC_ADDEND) {
@@ -1485,7 +1501,7 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     ElfReloc symbol_reloc(0,
                           symbol_table.object()->get_target_info()->symbol_reloc,
                           m_symbols[0].symbol, 0);
-    Target::add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
+    symbol_table.object()->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
 
     // FirstSymOffset
     push_back_uleb128(m_symbols[0].offset);
