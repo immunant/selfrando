@@ -628,9 +628,9 @@ private:
 
 class TrampolineBuilder;
 
-namespace Target {
-    typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
+typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
 
+namespace Target {
     // Create an empty .rel.XXX section
     Elf_SectionIndex create_reloc_section(ElfObject &object,
                                           const std::string &section_name,
@@ -668,11 +668,11 @@ public:
 
     // Build the trampoline instructions.
     std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
-    build_trampolines(const Target::EntrySymbols &entry_symbols);
+    build_trampolines(const EntrySymbols &entry_symbols);
 
 protected:
     virtual ElfObject::DataBuffer
-    create_trampoline_data(const Target::EntrySymbols &entry_symbols) = 0;
+    create_trampoline_data(const EntrySymbols &entry_symbols) = 0;
 
     virtual void
     add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset) = 0;
@@ -718,7 +718,7 @@ public:
         m_entry_symbols.push_back(symbol);
     }
 
-    const Target::EntrySymbols &entry_symbols() const {
+    const EntrySymbols &entry_symbols() const {
         return m_entry_symbols;
     }
 
@@ -813,7 +813,7 @@ private:
     Elf_Offset m_section_p2align;
     bool m_new_section_symbol;
     bool m_has_func_symbols;
-    Target::EntrySymbols m_entry_symbols;
+    EntrySymbols m_entry_symbols;
 
     bool m_in_group;
     Elf_SectionIndex m_group_section_ndx;

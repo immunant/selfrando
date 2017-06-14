@@ -1323,7 +1323,7 @@ void ElfSymbolTable::XindexTable::update() {
 }
 
 std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
-TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+TrampolineBuilder::build_trampolines(const EntrySymbols &entry_symbols) {
     if (entry_symbols.empty())
         return std::make_tuple(0, ElfSymbolTable::SymbolMapping{});
 

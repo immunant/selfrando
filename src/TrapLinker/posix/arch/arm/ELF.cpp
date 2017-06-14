@@ -19,7 +19,7 @@ public:
 
 protected:
     virtual ElfObject::DataBuffer
-    create_trampoline_data(const Target::EntrySymbols &entry_symbols);
+    create_trampoline_data(const EntrySymbols &entry_symbols);
 
     virtual void
     add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
@@ -39,7 +39,7 @@ static TrampolineInstruction kThumbJumpInstruction = {0xbffef7ff};
 static TrampolineInstruction kARMJumpInstruction = {0xeafffffe};
 
 ElfObject::DataBuffer ARMTrampolineBuilder::create_trampoline_data(
-    const Target::EntrySymbols &entry_symbols) {
+    const EntrySymbols &entry_symbols) {
     std::vector<TrampolineInstruction> tramp_data;
     for (auto &sym_pair : entry_symbols) {
         auto sym_index = sym_pair.first;
