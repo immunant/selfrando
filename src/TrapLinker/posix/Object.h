@@ -26,6 +26,8 @@
 #include <utility>
 #include <vector>
 
+#include <TrapInfo.h>
+
 typedef int64_t Elf_Offset;
 typedef size_t Elf_SectionIndex;
 
@@ -568,6 +570,7 @@ public:
         Elf_Offset min_p2align;
         Elf_Offset padding_p2align;
         size_t addr_size;
+        trap_platform_t trap_platform;
         TargetOps *ops;
     };
 
@@ -703,13 +706,20 @@ protected:
 class TrapRecordBuilder {
 public:
     TrapRecordBuilder(bool include_sizes = false)
-        : m_section_symbol(), m_section_p2align(0),
+        : m_object(nullptr),
+          m_section_symbol(), m_section_p2align(0),
           m_new_section_symbol(false),
           m_has_func_symbols(false),
           m_in_group(false),
           m_reloc_section_ndx(0),
           m_padding_offset(0), m_padding_size(0),
           m_include_sizes(include_sizes) { }
+
+    void set_object(const ElfObject *object) {
+        assert((m_object == nullptr || m_object == object) &&
+               "Attempting to set TrapLinker object pointer to different value");
+        m_object = object;
+    }
 
     void set_section_symbol(ElfSymbolTable::SymbolRef section_symbol,
                             bool new_symbol = false) {
@@ -819,6 +829,8 @@ private:
           m_data.push_back(static_cast<uint8_t>((x >> i*8) & 0xff));
       }
     }
+
+    const ElfObject *m_object;
 
     ElfSymbolTable::SymbolRef m_section_symbol;
     Elf_Offset m_section_p2align;

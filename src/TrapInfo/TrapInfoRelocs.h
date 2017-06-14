@@ -15,97 +15,134 @@ typedef enum {
     TRAP_RELOC_IGNORE = 0x4, // Ignore this relocation
 } trap_reloc_info_t;
 
+typedef enum {
+    TRAP_PLATFORM_UNKNOWN = 0,
+    TRAP_PLATFORM_POSIX_X86,
+    TRAP_PLATFORM_POSIX_X86_64,
+    TRAP_PLATFORM_POSIX_ARM,
+    TRAP_PLATFORM_POSIX_ARM64,
+    TRAP_PLATFORM_WIN32,
+    TRAP_PLATFORM_WIN64,
+} trap_platform_t;
+
+// Define TRAP_RANDOLIB_PLATFORM for RandoLib
+// FIXME: we should get rid of this
+#if RANDOLIB_IS_POSIX
+#if RANDOLIB_IS_X86
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_POSIX_X86
+#elif RANDOLIB_IS_X86_64
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_POSIX_X86_64
+#elif RANDOLIB_IS_ARM
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_POSIX_ARM
+#elif RANDOLIB_IS_ARM64
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_POSIX_ARM64
+#else
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_UNKNOWN
+#endif
+#elif RANDOLIB_IS_WIN32
+#if RANDOLIB_IS_X86
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_WIN32
+#elif RANDOLIB_IS_X86_64
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_WIN64
+#else
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_UNKNOWN
+#endif
+#else
+#define TRAP_RANDOLIB_PLATFORM  TRAP_PLATFORM_UNKNOWN
+#endif
+
 #ifndef RANDO_SECTION
 #define RANDO_SECTION
 #endif
 
 static inline RANDO_SECTION
-uint64_t trap_reloc_info(uint64_t type) {
-#if RANDOLIB_IS_POSIX
-#if RANDOLIB_IS_X86
-    switch (type) {
-    case  2:    // R_386_PC32
-    case  4:    // R_386_PLT32
-    case 10:    // R_386_GOTPC
-        return TRAP_RELOC_ADDEND;
+uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
+    switch (platform) {
+    case TRAP_PLATFORM_POSIX_X86:
+        switch (type) {
+        case  2:    // R_386_PC32
+        case  4:    // R_386_PLT32
+        case 10:    // R_386_GOTPC
+            return TRAP_RELOC_ADDEND;
 
-    case 36:    // R_386_DTPOFF32
-    case 37:    // R_386_TPOFF32
-        return TRAP_RELOC_IGNORE;
-    };
-#elif RANDOLIB_IS_X86_64
-    switch (type) {
-    case  2:    // R_X86_64_PC32
-    case  3:    // R_X86_64_GOT32
-    case  4:    // R_X86_64_PLT32
-    case  9:    // R_X86_64_GOTPCREL
-    case 19:    // R_X86_64_TLSGD
-    case 20:    // R_X86_64_TLSLD
-    case 22:    // R_X86_64_GOTTPOFF
-    case 24:    // R_X86_64_PC64
-    case 26:    // R_X86_64_GOTPC32
-    case 27:    // R_X86_64_GOT64
-    case 28:    // R_X86_64_GOTPCREL64
-    case 29:    // R_X86_64_GOTPC64
-    case 30:    // R_X86_64_GOTPLT64
-    case 34:    // R_X86_64_GOTPC32_TLSDESC
-    // 32 bit signed PC relative offset to GOT
-    // without REX prefix, relaxable.
-    case 41:    // R_X86_64_GOTPCRELX
-    // 32 bit signed PC relative offset to GOT
-    case 42:    // R_X86_64_REX_GOTPCRELX
-        return TRAP_RELOC_ADDEND;
+        case 36:    // R_386_DTPOFF32
+        case 37:    // R_386_TPOFF32
+            return TRAP_RELOC_IGNORE;
+        }
+        return TRAP_RELOC_NONE;
 
-    case 17:    // R_X86_64_DTPOFF64
-    case 18:    // R_X86_64_TPOFF64
-    case 21:    // R_X86_64_DTPOFF32
-    case 23:    // R_X86_64_TPOFF32
-        return TRAP_RELOC_IGNORE;
-    };
-#elif RANDOLIB_IS_ARM
-    switch (type) {
-    case 3:     // R_ARM_REL32
-    case 24:    // R_ARM_GOTOFF32
-    case 25:    // R_ARM_BASE_PREL
-    case 26:    // R_ARM_GOT32 == R_ARM_GOT_BREL
-    case 41:    // R_ARM_TARGET2
-    case 42:    // R_ARM_PREL31
-    case 96:    // R_ARM_GOT_PREL
-        return TRAP_RELOC_ADDEND;
+    case TRAP_PLATFORM_POSIX_X86_64:
+        switch (type) {
+        case  2:    // R_X86_64_PC32
+        case  3:    // R_X86_64_GOT32
+        case  4:    // R_X86_64_PLT32
+        case  9:    // R_X86_64_GOTPCREL
+        case 19:    // R_X86_64_TLSGD
+        case 20:    // R_X86_64_TLSLD
+        case 22:    // R_X86_64_GOTTPOFF
+        case 24:    // R_X86_64_PC64
+        case 26:    // R_X86_64_GOTPC32
+        case 27:    // R_X86_64_GOT64
+        case 28:    // R_X86_64_GOTPCREL64
+        case 29:    // R_X86_64_GOTPC64
+        case 30:    // R_X86_64_GOTPLT64
+        case 34:    // R_X86_64_GOTPC32_TLSDESC
+        // 32 bit signed PC relative offset to GOT
+        // without REX prefix, relaxable.
+        case 41:    // R_X86_64_GOTPCRELX
+        // 32 bit signed PC relative offset to GOT
+        case 42:    // R_X86_64_REX_GOTPCRELX
+            return TRAP_RELOC_ADDEND;
 
-    case 43:    // R_ARM_MOVW_ABS_NC
-    case 44:    // R_ARM_MOVT_ABS
-    case 47:    // R_ARM_THM_MOVW_ABS_NC
-    case 48:    // R_ARM_THM_MOVT_ABS
-        return TRAP_RELOC_SYMBOL | TRAP_RELOC_ADDEND;
-    };
-#elif RANDOLIB_IS_ARM64
-    switch(type) {
-    case R_AARCH64_PREL32:
-    case R_AARCH64_PREL64:
-        return TRAP_RELOC_ADDEND;
+        case 17:    // R_X86_64_DTPOFF64
+        case 18:    // R_X86_64_TPOFF64
+        case 21:    // R_X86_64_DTPOFF32
+        case 23:    // R_X86_64_TPOFF32
+            return TRAP_RELOC_IGNORE;
+        }
+        return TRAP_RELOC_NONE;
 
-    case R_AARCH64_ADR_PREL_PG_HI21:
-    case R_AARCH64_ADR_PREL_PG_HI21_NC:
-    case R_AARCH64_ADD_ABS_LO12_NC:
-    case R_AARCH64_LDST8_ABS_LO12_NC:
-    case R_AARCH64_LDST16_ABS_LO12_NC:
-    case R_AARCH64_LDST32_ABS_LO12_NC:
-    case R_AARCH64_LDST64_ABS_LO12_NC:
-    case R_AARCH64_LDST128_ABS_LO12_NC:
-        return TRAP_RELOC_SYMBOL | TRAP_RELOC_ADDEND;
+    case TRAP_PLATFORM_POSIX_ARM:
+        switch (type) {
+        case 3:     // R_ARM_REL32
+        case 24:    // R_ARM_GOTOFF32
+        case 25:    // R_ARM_BASE_PREL
+        case 26:    // R_ARM_GOT32 == R_ARM_GOT_BREL
+        case 41:    // R_ARM_TARGET2
+        case 42:    // R_ARM_PREL31
+        case 96:    // R_ARM_GOT_PREL
+            return TRAP_RELOC_ADDEND;
 
-    case 312: // FIXME: R_AARCH64_LD64_GOT_LO12_NC
-        return TRAP_RELOC_IGNORE;
-    };
-#else
-#assert "Invalid target architecture"
-#endif
-#elif RANDOLIB_IS_WIN32
-#else
-#assert "Invalid operating system"
-#endif
+        case 43:    // R_ARM_MOVW_ABS_NC
+        case 44:    // R_ARM_MOVT_ABS
+        case 47:    // R_ARM_THM_MOVW_ABS_NC
+        case 48:    // R_ARM_THM_MOVT_ABS
+            return TRAP_RELOC_SYMBOL | TRAP_RELOC_ADDEND;
+        }
+        return TRAP_RELOC_NONE;
 
-    return TRAP_RELOC_NONE;
+    case TRAP_PLATFORM_POSIX_ARM64:
+        switch(type) {
+        case 260: // R_AARCH64_PREL64
+        case 261: // R_AARCH64_PREL32
+            return TRAP_RELOC_ADDEND;
+
+        case 275: // R_AARCH64_ADR_PREL_PG_HI21
+        case 276: // R_AARCH64_ADR_PREL_PG_HI21_NC
+        case 277: // R_AARCH64_ADD_ABS_LO12_NC
+        case 278: // R_AARCH64_LDST8_ABS_LO12_NC
+        case 284: // R_AARCH64_LDST16_ABS_LO12_NC
+        case 285: // R_AARCH64_LDST32_ABS_LO12_NC
+        case 286: // R_AARCH64_LDST64_ABS_LO12_NC
+        case 299: // R_AARCH64_LDST128_ABS_LO12_NC
+            return TRAP_RELOC_SYMBOL | TRAP_RELOC_ADDEND;
+
+        case 312: // R_AARCH64_LD64_GOT_LO12_NC
+            return TRAP_RELOC_IGNORE;
+        };
+        return TRAP_RELOC_NONE;
+
+    default:
+        return TRAP_RELOC_NONE;
+    }
 }
-

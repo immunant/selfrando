@@ -41,6 +41,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 32,
+        .trap_platform   = TRAP_PLATFORM_POSIX_X86,
         .ops             = x86_ops,
         }
     },
@@ -51,6 +52,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 64,
+        .trap_platform   = TRAP_PLATFORM_POSIX_X86_64,
         .ops             = x86_64_ops,
         }
     },
@@ -61,6 +63,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 1,
         .addr_size       = 32,
+        .trap_platform   = TRAP_PLATFORM_POSIX_ARM,
         .ops             = arm_ops,
         }
     },
@@ -74,6 +77,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 2,
         .addr_size       = 64,
+        .trap_platform   = TRAP_PLATFORM_POSIX_ARM64,
         .ops             = arm64_ops,
         }
     },
@@ -245,6 +249,7 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
                     auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
+                    builder.set_object(this);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref);
                 }
@@ -261,7 +266,6 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                 for (unsigned i = 0; gelf_getrela(data, i, &relocation) != nullptr; ++i) {
                     if (GELF_R_TYPE(relocation.r_info) == m_target_info->none_reloc)
                         continue; // Skip NONE relocs, they may overlap with others
-                    auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
                         m_target_info->ops->check_rela_for_stubs(*this, &relocation, relocation.r_addend,
                                                                  section_header.sh_info, builder);
@@ -271,6 +275,7 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
                     auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
+                    builder.set_object(this);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref, relocation.r_addend);
                 }
@@ -416,6 +421,9 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     for (auto &I : section_builders) {
         auto section_ndx = I.first;
         auto &builder = I.second;
+
+        // Set m_object if we haven't already
+        builder.set_object(this);
 
         auto cur_section = elf_getscn(m_elf, section_ndx);
         GElf_Shdr header;
@@ -1380,7 +1388,8 @@ void TrapRecordBuilder::mark_symbol(Elf_Offset offset, ElfSymbolTable::SymbolRef
 
 void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol) {
-    auto extra_info = trap_reloc_info(type);
+    auto trap_platform = m_object->get_target_info()->trap_platform;
+    auto extra_info = trap_reloc_info(type, trap_platform);
     if (extra_info & TRAP_RELOC_IGNORE)
         return;
     if (extra_info & TRAP_RELOC_ADDEND)
@@ -1391,7 +1400,8 @@ void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
 void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol,
                                         Elf_Offset addend) {
-    auto extra_info = trap_reloc_info(type);
+    auto trap_platform = m_object->get_target_info()->trap_platform;
+    auto extra_info = trap_reloc_info(type, trap_platform);
     if (extra_info & TRAP_RELOC_IGNORE)
         return;
     m_relocs.push_back(ElfReloc(offset, type, symbol, addend));
@@ -1468,10 +1478,12 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
     // Type
     push_back_uleb128(reloc.type);
     Elf_Offset trap_addend = reloc.addend;
-    if (trap_reloc_info(reloc.type) & TRAP_RELOC_SYMBOL) {
+    auto trap_platform = m_object->get_target_info()->trap_platform;
+    auto extra_info = trap_reloc_info(reloc.type, trap_platform);
+    if (extra_info & TRAP_RELOC_SYMBOL) {
         // Symbol
         ElfReloc reloc(m_data.size(),
-                       symbol_table.object()->get_target_info()->symbol_reloc,
+                       m_object->get_target_info()->symbol_reloc,
                        reloc.symbol, 0);
         if (trap_addend > 0) {
             // Hack for the addend ambiguity: roll positive addends into the symbol
@@ -1479,10 +1491,10 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
             reloc.addend = trap_addend;
             trap_addend = 0;
         }
-        symbol_table.object()->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &reloc);
-        push_back_int(reloc.addend, symbol_table.object()->get_target_info()->addr_size / 8);
+        m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &reloc);
+        push_back_int(reloc.addend, m_object->get_target_info()->addr_size / 8);
     }
-    if (trap_reloc_info(reloc.type) & TRAP_RELOC_ADDEND) {
+    if (extra_info & TRAP_RELOC_ADDEND) {
         // Addend
         push_back_sleb128(trap_addend);
     }
@@ -1500,11 +1512,11 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Adding first trap symbol at %u\n", m_symbols[0].offset);
 
     // FirstSymAddr
-    m_data.insert(m_data.end(), symbol_table.object()->get_target_info()->addr_size / 8, 0);
+    m_data.insert(m_data.end(), m_object->get_target_info()->addr_size / 8, 0);
     ElfReloc symbol_reloc(0,
-                          symbol_table.object()->get_target_info()->symbol_reloc,
+                          m_object->get_target_info()->symbol_reloc,
                           m_symbols[0].symbol, 0);
-    symbol_table.object()->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
+    m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
 
     // FirstSymOffset
     push_back_uleb128(m_symbols[0].offset);
