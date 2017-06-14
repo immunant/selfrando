@@ -225,7 +225,9 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
 
         switch (section_header.sh_type) {
         case SHT_REL: {
-            section_builders[section_header.sh_info].set_reloc_section(cur_shndx);
+            auto &builder = section_builders[section_header.sh_info];
+            builder.set_reloc_section(cur_shndx);
+
             Elf_Data *data = nullptr;
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Rel relocation;
@@ -234,7 +236,6 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                     // contents
                     if (GELF_R_TYPE(relocation.r_info) == m_target_info->none_reloc)
                         continue; // Skip NONE relocs, they may overlap with others
-                    auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
                         m_target_info->ops->check_rel_for_stubs(*this, &relocation, 0,
                                                                 section_header.sh_info, builder);
@@ -251,7 +252,9 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
             break;
         }
         case SHT_RELA: {
-            section_builders[section_header.sh_info].set_reloc_section(cur_shndx);
+            auto &builder = section_builders[section_header.sh_info];
+            builder.set_reloc_section(cur_shndx);
+
             Elf_Data *data = nullptr;
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Rela relocation;
