@@ -103,7 +103,7 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
     // is the opcode for the breakpoint instruction that gdb uses (INT 3)
     RANDO_ASSERT(**export_ptr == 0xE9 || **export_ptr == 0xCC);
     RANDO_ASSERT((reinterpret_cast<uintptr_t>(*export_ptr) & 1) == 0);
-    Module::Relocation reloc(module, *export_ptr + 1, R_386_PC32);
+    Module::Relocation reloc(module, *export_ptr + 1, R_386_PC32, -4);
     functions->adjust_relocation(&reloc);
     *export_ptr += 6;
 }
