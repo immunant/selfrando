@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <TrapInfoPlatform.h>
+#include <TrapPlatform.h>
 
 struct trap_file_t;
 

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <TrapInfoPlatform.h>
+#include <TrapPlatform.h>
 
 typedef enum {
     TRAP_RELOC_NONE   = 0,

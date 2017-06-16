@@ -33,7 +33,7 @@
 #define __RANDOLIB_TRAPINFO_H
 #pragma once
 
-#include <TrapInfoPlatform.h>
+#include <TrapPlatform.h>
 #include <TrapInfoRelocs.h>
 
 #ifndef RANDO_SECTION
