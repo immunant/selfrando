@@ -30,9 +30,10 @@ int main(int argc, const char *argv[]) {
         errx(EXIT_FAILURE, "File does not contain any TRaP data: %s", argv[1]);
     printf("Read TRaP data bytes: %zd\n", data.size);
 
-    struct trap_header_t header;
+    struct trap_header_t header = {};
     uint8_t *trap_ptr = data.data;
-    trap_read_header(&header, &trap_ptr, &data.base_address, &header);
+    trap_read_header(&header, &trap_ptr,
+                     data.trap_platform, data.base_address);
     printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%lu\n",
            header.flags, header.version, header.flags >> 8,
            header.pointer_size);

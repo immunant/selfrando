@@ -413,6 +413,7 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
                              sec_trap_start, sec_info.trap_size);
         Section section(*this, sec_start, sec_info.size);
         TrapInfo sec_trap_info(sec_trap_start, sec_info.trap_size,
+                               TRAP_CURRENT_PLATFORM,
                                reinterpret_cast<trap_address_t>(m_got));
         read_got_relocations(&sec_trap_info);
         (*callback)(*this, section, sec_trap_info, self_rando, callback_arg);

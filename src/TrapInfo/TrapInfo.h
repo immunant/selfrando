@@ -33,6 +33,7 @@
 #define __RANDOLIB_TRAPINFO_H
 #pragma once
 
+#include <TrapInfoPlatform.h>
 #include <TrapInfoRelocs.h>
 
 #ifndef RANDO_SECTION
@@ -175,6 +176,9 @@ struct RANDO_SECTION trap_header_t {
     trap_pointer_t reloc_start, reloc_end;
     trap_pointer_t record_start;
 
+    // Host platform
+    trap_platform_t platform;
+
     // Base address to add to all addresses encoded in TRaP info.
     trap_address_t base_address;
 
@@ -306,7 +310,7 @@ int trap_read_reloc(const struct trap_header_t *header,
     uint64_t curr_type = trap_read_uleb128(trap_ptr);
     int end = (curr_delta == 0 && curr_type == 0);
 
-    uint64_t extra_info = trap_reloc_info(curr_type, TRAP_RANDOLIB_PLATFORM);
+    uint64_t extra_info = trap_reloc_info(curr_type, header->platform);
     trap_address_t curr_symbol = 0;
     int64_t curr_addend = 0;
     if (!end) {
@@ -357,38 +361,34 @@ int trap_read_symbol(const struct trap_header_t *header,
 }
 
 static inline RANDO_SECTION
-int trap_read_header(const struct trap_header_t *header,
+int trap_read_header(struct trap_header_t *header,
                      trap_pointer_t *trap_ptr,
-                     trap_address_t *address,
-                     void *data) {
-    // FIXME: assert that data == header
-    struct trap_header_t *headerw = RCAST(struct trap_header_t*, data);
+                     trap_platform_t platform,
+                     trap_address_t base_address) {
     uint32_t flags = *RCAST(uint32_t*, *trap_ptr);
-    SET_FIELD(headerw, flags, flags);
+    SET_FIELD(header, flags, flags);
     *trap_ptr += sizeof(uint32_t);
 
-    if (address) {
-        SET_FIELD(headerw, base_address, *address);
-    } else {
-        SET_FIELD(headerw, base_address, 0);
-    }
+    SET_FIELD(header, platform, platform);
+    SET_FIELD(header, base_address, base_address);
 
-    SET_FIELD(headerw, reloc_start, *trap_ptr);
+    SET_FIELD(header, reloc_start, *trap_ptr);
     if (flags & TRAP_HAS_NONEXEC_RELOCS) {
         trap_skip_vector(header, trap_ptr, trap_read_reloc);
-        SET_FIELD(headerw, reloc_end, (*trap_ptr - 2));
+        SET_FIELD(header, reloc_end, (*trap_ptr - 2));
     } else {
-        SET_FIELD(headerw, reloc_end, *trap_ptr);
+        SET_FIELD(header, reloc_end, *trap_ptr);
     }
     if (flags & TRAP_HAS_POINTER_SIZE) {
         uint64_t pointer_size = trap_read_uleb128(trap_ptr);
-        SET_FIELD(headerw, pointer_size, pointer_size);
+        SET_FIELD(header, pointer_size, pointer_size);
     } else {
         // If we don't have the pointer size in TRaP info,
-        // assume it's for the native architecture
-        SET_FIELD(headerw, pointer_size, 8 * sizeof(void*));
+        // get it from the platform info
+        SET_FIELD(header, pointer_size,
+                  trap_platform_pointer_size(platform));
     }
-    SET_FIELD(headerw, record_start, *trap_ptr);
+    SET_FIELD(header, record_start, *trap_ptr);
     return 1;
 }
 
@@ -615,11 +615,12 @@ int trap_read_record(const struct trap_header_t *header,
 class RANDO_SECTION TrapInfo {
 public:
     explicit TrapInfo(trap_pointer_t trap_data, size_t trap_size,
+                      trap_platform_t platform,
                       trap_address_t base_address = 0) {
         m_trap_data = trap_data;
         m_trap_size = trap_size;
         auto tmp_trap_ptr = m_trap_data;
-        trap_read_header(&m_header, &tmp_trap_ptr, &base_address, &m_header);
+        trap_read_header(&m_header, &tmp_trap_ptr, platform, base_address);
     }
 
     TrapIterator<trap_record_t> begin() const {

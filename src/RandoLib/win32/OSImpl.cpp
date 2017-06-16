@@ -624,7 +624,8 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
                 continue; // Skip ".xptramp"
             // Found executable section (maybe .text)
             Module::Section exec_section(*this, &m_sections[i]);
-            ::TrapInfo trap_info(textrap_data, textrap_size);
+            ::TrapInfo trap_info(textrap_data, textrap_size,
+                                 TRAP_CURRENT_PLATFORM);
             auto xptramp_section = export_section();
             // FIXME: moved the page mapping from ExecSectionProcessor here
             // Still haven't decided if here is better

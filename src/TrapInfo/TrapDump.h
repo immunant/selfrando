@@ -11,9 +11,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <TrapInfoPlatform.h>
+
 struct trap_file_t;
 
 struct trap_data_t {
+    trap_platform_t trap_platform;
     uintptr_t base_address;
     uint8_t *data;
     size_t size;

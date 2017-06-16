@@ -68,10 +68,36 @@ static Elf_Scn *find_section(Elf *elf, const char *needle) {
 }
 
 struct trap_data_t read_trap_data(struct trap_file_t *file) {
-    struct trap_data_t res = { 0, NULL, 0 };
+    struct trap_data_t res = { TRAP_PLATFORM_UNKNOWN, 0, NULL, 0 };
     Elf_Scn *txtrp_scn = find_section(file->elf, ".txtrp");
     if (txtrp_scn == NULL)
         return res;
+
+    // Get the platform
+    GElf_Ehdr ehdr;
+    if (gelf_getehdr(file->elf, &ehdr) == NULL)
+        errx(EXIT_FAILURE, "Cannot get ELF header");
+    switch (ehdr.e_machine) {
+    case EM_386:
+        res.trap_platform = TRAP_PLATFORM_POSIX_X86;
+        break;
+
+    case EM_X86_64:
+        res.trap_platform = TRAP_PLATFORM_POSIX_X86_64;
+        break;
+
+    case EM_ARM:
+        res.trap_platform = TRAP_PLATFORM_POSIX_ARM;
+        break;
+
+    case EM_AARCH64:
+        res.trap_platform = TRAP_PLATFORM_POSIX_ARM64;
+        break;
+
+    default:
+        errx(EXIT_FAILURE, "Unknown ELF machine");
+        break;
+    }
 
     // FIXME: we should actually be reading .dynamic
     // and getting the pointer from DT_PLTGOT
