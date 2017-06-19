@@ -30,7 +30,7 @@ std::string Filesystem::get_temp_filename(std::string filename_tag) {
     std::string temp_path = get_temp_dir() + "/" + filename_tag + "-";
 
     static std::random_device r{};
-    std::default_random_engine rng(r());
+    std::mt19937 rng(r());
     std::uniform_int_distribution<char> uniform_dist(0, 61);
     for (unsigned i = 0; i < 16; ++i) {
         char rand_char = uniform_dist(rng);
