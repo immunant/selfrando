@@ -776,18 +776,18 @@ bool ElfObject::update_file() {
 Elf* ElfObject::write_new_file(int fd) {
     Elf *new_elf = elf_begin(fd, ELF_C_WRITE, nullptr);
     if (!new_elf)
-        Error::printf("Could not create ELF handle: %s", elf_errmsg(-1));
+        Error::printf("Could not create ELF handle: %s\n", elf_errmsg(-1));
 
     int elf_class = gelf_getclass(m_elf);
     if (!elf_class)
-        Error::printf("Could not get ELF class: %s", elf_errmsg(-1));
+        Error::printf("Could not get ELF class: %s\n", elf_errmsg(-1));
 
     if (!gelf_newehdr(new_elf, elf_class))
-        Error::printf("Could not create new ELF header for archive member copy: %s", elf_errmsg(-1));
+        Error::printf("Could not create new ELF header for archive member copy: %s\n", elf_errmsg(-1));
 
     GElf_Ehdr ehdr;
     if (!gelf_update_ehdr(new_elf, gelf_getehdr(m_elf, &ehdr)))
-        Error::printf("Could not copy ELF header for archive member copy: %s", elf_errmsg(-1));
+        Error::printf("Could not copy ELF header for archive member copy: %s\n", elf_errmsg(-1));
 
     if (ehdr.e_phnum > 0) {
         size_t num_phdr;
@@ -800,7 +800,7 @@ Elf* ElfObject::write_new_file(int fd) {
         for (size_t i = 0; i < num_phdr; ++i) {
             GElf_Phdr phdr;
             if (!gelf_update_phdr(new_elf, i, gelf_getphdr(m_elf, i, &phdr)))
-                Error::printf("Could not copy ELF header for archive member copy: %s", elf_errmsg(-1));
+                Error::printf("Could not copy ELF header for archive member copy: %s\n", elf_errmsg(-1));
         }
     }
 
@@ -808,11 +808,11 @@ Elf* ElfObject::write_new_file(int fd) {
     while ((old_section = elf_nextscn(m_elf, old_section)) != nullptr) {
         Elf_Scn *new_section = elf_newscn(new_elf);
         if (!new_section)
-            Error::printf("Could not create new section for archive member copy: %s", elf_errmsg(-1));
+            Error::printf("Could not create new section for archive member copy: %s\n", elf_errmsg(-1));
 
         GElf_Shdr shdr;
         if (!gelf_update_shdr(new_section, gelf_getshdr(old_section, &shdr)))
-            Error::printf("Could not copy section header for archive member copy: %s", elf_errmsg(-1));
+            Error::printf("Could not copy section header for archive member copy: %s\n", elf_errmsg(-1));
         Debug::printf<10>("Copied entity size: %u\n", shdr.sh_entsize);
         Debug::printf<10>("Copied section size: %u\n", shdr.sh_size);
 
@@ -820,7 +820,7 @@ Elf* ElfObject::write_new_file(int fd) {
         while ((old_data = elf_getdata(old_section, old_data)) != nullptr) {
             Elf_Data *new_data = elf_newdata(new_section);
             if (!new_data)
-                Error::printf("Could not copy section data for archive member copy: %s", elf_errmsg(-1));
+                Error::printf("Could not copy section data for archive member copy: %s\n", elf_errmsg(-1));
             *new_data = *old_data;
         }
     }
