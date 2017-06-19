@@ -29,8 +29,7 @@ std::string Filesystem::get_temp_dir() {
 std::string Filesystem::get_temp_filename(std::string filename_tag) {
     std::string temp_path = get_temp_dir() + "/" + filename_tag + "-";
 
-    // FIXME: is it OK to reinitialize the RNG on each call???
-    std::random_device r;
+    static std::random_device r{};
     std::default_random_engine rng(r());
     std::uniform_int_distribution<char> uniform_dist(0, 61);
     for (unsigned i = 0; i < 10; ++i) {
