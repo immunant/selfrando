@@ -32,7 +32,7 @@ std::string Filesystem::get_temp_filename(std::string filename_tag) {
     static std::random_device r{};
     std::mt19937 rng(r());
     std::uniform_int_distribution<char> uniform_dist(0, 61);
-    for (unsigned i = 0; i < 16; ++i) {
+    for (unsigned i = 0; i < 10; ++i) {
         char rand_char = uniform_dist(rng);
         if (rand_char >= 52) {
             rand_char = '0' + (rand_char - 52);
