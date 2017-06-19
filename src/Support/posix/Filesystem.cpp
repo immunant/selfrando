@@ -51,7 +51,8 @@ std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_ta
     std::string temp_filename = get_temp_filename(filename_tag);
     int fd = open(temp_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1)
-        Error::printf("Could not create temporary file: %s\n", temp_filename.data());
+        Error::printf("Could not create temporary file '%s' error:%d\n",
+                      temp_filename.data(), errno);
 
     return std::make_pair(fd, temp_filename.data());
 }
