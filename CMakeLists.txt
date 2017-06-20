@@ -59,12 +59,16 @@ elseif(UNIX)
             set(NUM_PROCS 1)
         endif()
 
+        # Update these when upgrading libelf
+        set(LIBELF_VERSION "0.169")
+        set(LIBELF_MD5 "1ce77c5315d6bba7d883c3c4f0c2697e")
+
         set(LIBELF_PATH ${CMAKE_BINARY_DIR}/libelf)
         include(ExternalProject)
         ExternalProject_Add(sr_libelf_build
             PREFIX ${LIBELF_PATH}
-            URL https://sourceware.org/elfutils/ftp/0.168/elfutils-0.168.tar.bz2
-            URL_HASH MD5=52adfa40758d0d39e5d5c57689bf38d6
+            URL https://sourceware.org/elfutils/ftp/${LIBELF_VERSION}/elfutils-${LIBELF_VERSION}.tar.bz2
+            URL_HASH MD5=${LIBELF_MD5}
             DOWNLOAD_NO_PROGRESS 1
             CONFIGURE_COMMAND ${LIBELF_PATH}/src/sr_libelf_build/configure --quiet --prefix=${LIBELF_PATH}
             BUILD_COMMAND make --quiet -j${NUM_PROCS}
