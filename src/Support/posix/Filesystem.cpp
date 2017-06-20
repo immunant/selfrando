@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include <random>
 
+#include <memory>
+
 std::string Filesystem::get_temp_dir() {
     const char *tempdir_env_vars[] = {
         "TMPDIR",
@@ -29,11 +31,16 @@ std::string Filesystem::get_temp_dir() {
 std::string Filesystem::get_temp_filename(std::string filename_tag) {
     std::string temp_path = get_temp_dir() + "/" + filename_tag + "-";
 
-    static std::random_device r{};
-    std::mt19937 rng(r());
+    static std::unique_ptr<std::mt19937> rng;
+    if (!rng) {
+        // Construct and seed the RNG
+        std::random_device r{};
+        rng.reset(new std::mt19937(r()));
+    }
+
     std::uniform_int_distribution<char> uniform_dist(0, 61);
     for (unsigned i = 0; i < 10; ++i) {
-        char rand_char = uniform_dist(rng);
+        char rand_char = uniform_dist(*rng);
         if (rand_char >= 52) {
             rand_char = '0' + (rand_char - 52);
         } else if (rand_char >= 26) {
