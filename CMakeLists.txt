@@ -63,7 +63,7 @@ elseif(UNIX)
         set(LIBELF_VERSION "0.169")
         set(LIBELF_MD5 "1ce77c5315d6bba7d883c3c4f0c2697e")
 
-        set(LIBELF_PATH ${CMAKE_BINARY_DIR}/libelf)
+        get_filename_component(LIBELF_PATH ${CMAKE_BINARY_DIR}/libelf ABSOLUTE)
         include(ExternalProject)
         ExternalProject_Add(sr_libelf_build
             PREFIX ${LIBELF_PATH}
