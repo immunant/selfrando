@@ -44,7 +44,7 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         COMMENT "Creating ld symlinks"
         )
 
-    add_dependencies(traplinker randolib_support)
+    add_dependencies(traplinker randolib_support ${SR_LIBELF_TARGET})
 
     install(TARGETS traplinker DESTINATION bin)
     install(PROGRAMS
