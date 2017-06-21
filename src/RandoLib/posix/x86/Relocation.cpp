@@ -33,7 +33,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     abs32_reloc:
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_386_GOT32:
-    case R_386_GOT32X:
+    case 43: // R_386_GOT32X
         if (is_patched_got32(m_src_ptr))
             goto abs32_reloc;
         // Fall-through
@@ -60,7 +60,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case R_386_GOT32:
-    case R_386_GOT32X:
+    case 43: // R_386_GOT32X
         if (is_patched_got32(m_src_ptr))
             goto abs32_reloc;
         // Fall-through
