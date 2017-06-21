@@ -67,7 +67,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
         )
 
     # Add dependency on libelf since we import ELF headers
-    add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
+    if (SR_LIBELF_TARGET)
+        add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
+    endif()
 
     if("${SR_ARCH}" STREQUAL "arm")
         target_sources(selfrando_objects PRIVATE arm/UnwindStubs.c)
