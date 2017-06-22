@@ -1,9 +1,9 @@
 
-# Prerequisites
+# Preparing to build selfrando
 
 It is assumed that your system already has a working C++ compiler installed. Either of `g++` or `clang++` should work; `gcc` is required to build libelf.
 
-## Debian
+## ... on Debian-based distributions
 Install the required dependencies with this command:
   - `# apt-get install -y cmake git make m4 pkg-config zlib1g-dev`
 
@@ -12,7 +12,7 @@ Note, the version of `cmake` included on some Ubuntu releases such as 14.04 and 
 **Note**: Selfrando can also be built with `scons`; to do so, install the eponymous package instead of `cmake`:
   - `# apt-get install -y scons  git make m4 pkg-config zlib1g-dev`
 
-## Centos
+## ... on RPM-based distributions
 
 Install the required dependencies with this command:
 - `yum -y install cmake git make m4 zlib-devel`
@@ -26,7 +26,7 @@ $ yum check-update
 # yum -y install cmake3
 ```
 
-## Vagrant  
+## ... in a virtual machine
 Use one of the Ubuntu virtual machines under `Tools/Vagrant`.
 
 # Building Selfrando
@@ -49,7 +49,7 @@ $ make install
 **Note 2** use `-G Ninja` to generate `ninja` build files instead of Makefiles.
 
 ### Notable cmake variables
-- `BUILD_SHARED_LIBS` builds `libselfrando` as a dynamically shared library (`.so`) if set to 1, and as a static library (`.a`) if set to zero.
+- `BUILD_SHARED_LIBS` builds `libselfrando` as a shared library (`.so`) if set to 1, and as a static library (`.a`) if set to zero.
 - `SR_DEBUG_LEVEL` must be a number from 0-10 or the string `env`. Zero means no debug output, 10 enables full debug output. If `env` is given, selfrando reads the debugging level from the `SELFRANDO_debug_level` environment variable.
 - `SR_ARCH` must be either `x86` (32-bit builds) or `x86_64` (64-bit builds).
 - `SR_LOG` can be any of {`default`, `none`, `console`, `file`}. By default log output is written to `/tmp/selfrando.log`; a custom log filename can be specified using the `SR_LOG_FILENAME` variable.
@@ -69,7 +69,7 @@ $ scons -Q arch=$SR_ARCH LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
 
 # Building programs with selfrando
 
-## Option 1: use the `srenv` wrapper script
+## ... using the `srenv` wrapper script
 
 Write `/path/to/Tools/Wrappers/srenv` before your build commands. E.g.:
 ```bash
@@ -77,7 +77,7 @@ Write `/path/to/Tools/Wrappers/srenv` before your build commands. E.g.:
 /path/to/Tools/Wrappers/srenv make
 ```
 
-## Option 2: modify compiler flags directly
+## ... by setting the build flags explicitly
 
 To build with selfrando and link with `ld` (a.k.a. `ld.bfd`), define these flags and use them to pass a custom set of `{C,CXX,LD}FLAGS` to the build system.
 ```bash
@@ -87,12 +87,20 @@ $ SR_BIN=/Path/to/selfrando/install/prefix
 $ export SR_LDFLAGS="-B$SR_BIN -Wl,-rpath,$SR_BIN -Wl,--gc-sections  -fuse-ld=bfd"
 ```
 
-**NOTE 1**: It is best to add `$SR_{C,CXX,LD}FLAGS` flags to the existing `{C,CXX,LD}FLAGS` variables rather than overriding the latter. If this is difficult, consider trying option 1. The `Tests` folder contains examples of how to build `thttpd`, `nginx`, and `lua` by modifying the build flags.
+**Note 1**: It is best to add `$SR_{C,CXX,LD}FLAGS` flags to the existing `{C,CXX,LD}FLAGS` variables rather than overriding the latter. If this is difficult, consider using the `srenv` wrapper script. The `Tests` folder contains examples of how to build `thttpd`, `nginx`, and `lua` by modifying the build flags.
 
-**NOTE 2**: To build with selfrando and link with `gold`, substitute `-fuse-ld=bfd` with `-fuse-ld=gold` everywhere.
+**Note 2**: To build with selfrando and link with `gold`, substitute `-fuse-ld=bfd` with `-fuse-ld=gold` everywhere.
+
+**Note 3**: If `libselfrando` was built as a static library (`BUILD_SHARED_LIBS=0`), add `-Wl,--traplinker-static-selfrando` to `$SR_LDFLAGS`.
 
 ## Checking that a binary was built with selfrando
 
+## ... with trapdump
+```bash
+$ $SR_BIN/trapdump /Path/to/binary
+```
+
+## ... with readelf
 ```bash
 $ readelf -x .txtrp /Path/to/binary
 ```
