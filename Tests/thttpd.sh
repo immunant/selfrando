@@ -35,6 +35,8 @@ CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" ./configure --quiet --host="i686-pc-linux-gn
 
 make --quiet -j$NUM_PROCS STATICFLAG= CC_ADDN_OPT="$CFLAGS" || { echo >&2 "Errors during compilation. Aborting."; exit 1; }
 
+$SELFRANDO_BIN/trapdump $PWD/thttpd > /dev/null || { echo  >&2 "Trapdump reported an error. Aborting."; exit 1; }
+
 start-stop-daemon --start --name thttpd --quiet --exec $PWD/thttpd -- -p 8080 -l /dev/null
 ab -d -q -n 10000 -c 10 http://localhost:8080/
 start-stop-daemon --stop --name thttpd
