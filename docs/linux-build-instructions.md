@@ -34,7 +34,7 @@ Use one of the Ubuntu virtual machines under `Tools/Vagrant`.
 ## ... with cmake and make
 ```bash
 $ cd $PATH_TO_SELFRANDO_SRC
-$ export SR_ARCH=`uname -m`
+$ export SR_ARCH=`uname -m | sed s/i686/x86/`
 $ cmake . -DBUILD_SHARED_LIBS=1 \
   -DSR_DEBUG_LEVEL=env -DCMAKE_BUILD_TYPE=Release -DSR_BUILD_LIBELF=1 \
   -DSR_ARCH=$SR_ARCH -DSR_LOG=console -DSR_RNG=rand_r \
@@ -61,7 +61,7 @@ $ make install
 ## ... with `scons`
 ```bash
 $ cd $PATH_TO_SELFRANDO_SRC
-$ export SR_ARCH=`uname -m`
+$ export SR_ARCH=`uname -m | sed s/i686/x86/`
 $ scons -Q arch=$SR_ARCH LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
 ```
 
