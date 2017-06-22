@@ -81,7 +81,11 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 
 BytePointer Module::Relocation::get_got_entry() const {
     switch(m_type) {
-    // TODO: handle arch GOT relocations
+    case R_386_GOT32:
+    case 43: // R_386_GOT32X
+        if (is_patched_got32(m_src_ptr))
+            return nullptr;
+        return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(m_src_ptr) - m_addend;
     default:
         return nullptr;
     }
