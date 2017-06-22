@@ -16,7 +16,9 @@ namespace os {
 // bfd converts some R_386_GOT32[X] relocations to either
 // R_386_GOTOFF (which is fine for us) or to R_386_32 relocations
 // (which we need to detect and handle)
-static inline bool is_patched_got32(BytePointer at_ptr) {
+static inline bool is_patched_got32(BytePointer at_ptr, bool incl_lea) {
+    if (incl_lea && at_ptr[-2] == 0x8d)
+        return true;                // mov   foo@GOT, ...   => lea foo@GOTOFF, ...
     return at_ptr[-2] == 0xc7 ||    // mov   foo@GOT, ...   => mov $foo, ...
            at_ptr[-2] == 0xf7 ||    // test  ..., %foo@GOT  => test ..., $foo
            at_ptr[-2] == 0x81;      // binop foo@GOT, ...   => binop $foo, ...
@@ -34,7 +36,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_386_GOT32:
     case 43: // R_386_GOT32X
-        if (is_patched_got32(m_src_ptr))
+        if (is_patched_got32(m_src_ptr, false))
             goto abs32_reloc;
         // Fall-through
     case R_386_GOTOFF:
@@ -61,7 +63,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         break;
     case R_386_GOT32:
     case 43: // R_386_GOT32X
-        if (is_patched_got32(m_src_ptr))
+        if (is_patched_got32(m_src_ptr, false))
             goto abs32_reloc;
         // Fall-through
     case R_386_GOTOFF:
@@ -83,7 +85,7 @@ BytePointer Module::Relocation::get_got_entry() const {
     switch(m_type) {
     case R_386_GOT32:
     case 43: // R_386_GOT32X
-        if (is_patched_got32(m_src_ptr))
+        if (is_patched_got32(m_src_ptr, true))
             return nullptr;
         return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(m_src_ptr) - m_addend;
     default:
