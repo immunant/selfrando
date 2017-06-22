@@ -214,6 +214,10 @@ static inline bool is_ctors_section(const std::string &name) {
            is_prefix(".dtors", name);
 }
 
+static inline bool is_linkonce_x86_pic_thunk(const std::string &name) {
+    return is_prefix(".gnu.linkonce.t.__x86.get_pc_thunk", name);
+}
+
 ElfObject::SectionBuilderMap
 ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
     SectionBuilderMap section_builders;
@@ -498,6 +502,8 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         int trap_section_ndx = add_section(".txtrp", &trap_section_header,
                                            DataBuffer(builder.get_trap_data(), 1));
         auto trap_section_symbol = symbol_table.add_section_symbol(trap_section_ndx);
+
+        bool fake_init_anchor = false;
         if (is_ctors_section(name)) {
             // We need to implement a small hack to get around a restriction
             // in ld.bfd: .ctors/.dtors can only have exactly as many
@@ -506,6 +512,18 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             // instead, we create a corresponding .init section and put the
             // anchor there, which is fine from a GC point since both .init
             // and .ctors/.dtors are gc roots
+            fake_init_anchor = true;
+        } else if (m_target_info->trap_platform == TRAP_PLATFORM_POSIX_X86 &&
+                   is_linkonce_x86_pic_thunk(name)) {
+            // On 32-bit x86, crti.o contains a .gnu.linkonce.t section used
+            // for PIC (see issue #54). We rely on that section being
+            // discarded, but we still add a .txtrp section for it and count
+            // on the linker keeping it. To make sure that happens, we add
+            // the anchor reloc in .init here, instead of the discarded
+            // section.
+            fake_init_anchor = true;
+        }
+        if (fake_init_anchor) {
             GElf_Shdr fake_init_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             fake_init_header.sh_type = SHT_PROGBITS;
             fake_init_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
