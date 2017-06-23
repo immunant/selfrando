@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include <err.h>
 
@@ -34,7 +35,7 @@ int main(int argc, const char *argv[]) {
     uint8_t *trap_ptr = data.data;
     trap_read_header(&header, &trap_ptr,
                      data.trap_platform, data.base_address);
-    printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%lu\n",
+    printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%" PRIu64 "\n",
            header.flags, header.version, header.flags >> 8,
            header.pointer_size);
 
@@ -44,7 +45,7 @@ int main(int argc, const char *argv[]) {
         trap_ptr = header.reloc_start;
         while (trap_read_reloc(&header, &trap_ptr, &rel_addr, &reloc)) {
             assert(rel_addr == reloc.address);
-            printf("Rel[%ld]@%lx=%lx+%ld\n",
+            printf("Rel[%" PRId64 "]@%" PRIx64 "=%" PRIx64 "+%" PRId64 "\n",
                    reloc.type, reloc.address,
                    reloc.symbol, reloc.addend);
         }
@@ -56,7 +57,7 @@ int main(int argc, const char *argv[]) {
     while (trap_ptr < (data.data + data.size)) {
         trap_read_record(&header, &trap_ptr, NULL, &record);
         size_t first_ofs = record.first_symbol.address - record.address;
-        printf("Record@%lx(sec+%ld)\n",
+        printf("Record@%" PRIx64 "(sec+%zd)\n",
                record.address, first_ofs);
 
         struct trap_symbol_t symbol;
@@ -65,7 +66,7 @@ int main(int argc, const char *argv[]) {
         while (sym_ptr < record.symbol_end) {
             trap_read_symbol(&header, &sym_ptr, &sym_addr, &symbol);
             assert(sym_addr == symbol.address);
-            printf("  Sym@%lx/%lx[%lx] align:%ld\n",
+            printf("  Sym@%" PRIx64 "/%" PRIx64 "[%" PRIx64 "] align:%ld\n",
                    symbol.address - record.address,
                    symbol.address,
                    symbol.size,
@@ -80,14 +81,14 @@ int main(int argc, const char *argv[]) {
             while (rel_ptr < record.reloc_end &&
                    trap_read_reloc(&header, &rel_ptr, &rel_addr, &reloc)) {
                 assert(rel_addr == reloc.address);
-                printf("  Rel[%ld]@%lx=%lx+%ld\n",
+                printf("  Rel[%" PRId64 "]@%" PRIx64 "=%" PRIx64 "+%" PRId64 "\n",
                        reloc.type, reloc.address,
                        reloc.symbol, reloc.addend);
             }
         }
 
         if (trap_header_has_flag(&header, TRAP_HAS_RECORD_PADDING)) {
-            printf("  Padding[%ld]@%lx/%lx\n",
+            printf("  Padding[%" PRId64 "]@%" PRIx64 "/%" PRIx64 "\n",
                    record.padding_size,
                    record.padding_ofs,
                    record.padding_ofs + record.address);
