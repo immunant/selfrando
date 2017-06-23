@@ -25,7 +25,7 @@ or `gold`). The [linux build instructions](linux-build-instructions.md) provides
 - relocatable objects (`.o` files) are rewritten to include translation and protection (TRaP)
 information which drives the load-time rewriting process. For instance, TRaP information
 identifies the exact in-memory locations of all functions and bytes that need relocation
-inside each function. The TRaP information is contained  in a new section named `.txtrp`; the
+inside each function. The TRaP information is contained in a new section named `.txtrp`; the
 format of this section is documented in the [TRaP specification](TRaP_specification.md).
 
 - static libraries (`.a` files) are updated by rewriting each object file contained in the
@@ -45,7 +45,7 @@ use the randomized function address as the jump destination.
 ## Compiler requirements
 
 Any compiler can be used with selfrando, but the compiler just outputs each function in a
-separate code (typically this is accomplished by passing `-ffunction-sections`). In addition,
+separate code section (typically this is accomplished by passing `-ffunction-sections`). In addition,
 the compiler must generate position independent code (typically using the `-fPIC` option).
 Note that selfrando cannot currently be used to compile programs with link time optimization.
 
