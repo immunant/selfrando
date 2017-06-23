@@ -44,7 +44,7 @@ use the randomized function address as the jump destination.
 
 ## Compiler requirements
 
-Any compiler can be used with selfrando, but the compiler just output each function in a
+Any compiler can be used with selfrando, but the compiler just outputs each function in a
 separate code (typically this is accomplished by passing `-ffunction-sections`). In addition,
 the compiler must generate position independent code (typically using the `-fPIC` option).
 Note that selfrando cannot currently be used to compile programs with link time optimization.
@@ -52,14 +52,13 @@ Note that selfrando cannot currently be used to compile programs with link time 
 ## Linker requirements
 
 Traplinker is command line compatible with recent versions of `bfd` and `gold`. 
-Using binutils version 2.28 or later is recommended. See [LinkerOptions.table]
-(../src/TrapLinker/posix/LinkerOptions.table) for a list of supported command 
+Using binutils version 2.28 or later is recommended. See [LinkerOptions.table](../src/TrapLinker/posix/LinkerOptions.table) for a list of supported command 
 line options. Nothing in the design of selfrando precludes us from adding 
 support for additional options and linkers in the future.
 
 # Load-time randomization
 
-Since randomization happens before the program itself starts executing, no program functions have been called and no code pointers have been created in the data regions. That that not been the case, we'd have to scan stacks, heaps, and global data areas and update any code pointers to their randomized locations. Instead, we only need to update the code pointers inside the binary itself. These reside in the code and read-only data sections - e.g., inside C++ vtables and exception handling sections - and are identified in the TRaP information.  
+Since randomization happens before the program itself starts executing, no program functions have been called and no code pointers have been created in the data regions. Had that not been the case, we'd have to scan stacks, heaps, and global data areas and update any code pointers to their randomized locations. Instead, we only need to update the code pointers inside the binary itself. These reside in the code and read-only data sections - e.g., inside C++ vtables and exception handling sections - and are identified in the TRaP information.  
 
 The first step at load time is to read and parse the TRaP information in the `.txtrp` section. Next, we count and build a sorted list of all functions to randomize. Sorting functions makes it faster to look up functions by address; function lookups are frequent later on. We then shuffle the function list and move the actual functions around in memory. Finally, we need to ensure that all absolute and relative references inside the shuffled code are updated to point to the new locations. We use OS-provided relocation information to adjust all absolute pointers and use additional relocations encoded in the `.txtrp` section to adjust relative references that do not need relocation to work with ASLR. Finally we adjust the entry wrappers and transfer execution to the original entry point.
 
