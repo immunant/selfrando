@@ -95,8 +95,8 @@ int main(int argc, const char *argv[]) {
         }
         num_records++;
     }
-    printf("Records:%ld\n", num_records);
-    printf("Syms:%ld\n", num_symbols);
+    printf("Records:%zd\n", num_records);
+    printf("Syms:%zd\n", num_symbols);
 
     free_trap_data(&data);
     close_trap_file(file);
