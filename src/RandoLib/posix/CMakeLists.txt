@@ -49,10 +49,11 @@ if (SR_BUILD_MODULE_RANDOLIB)
     add_library(randoentry_so   STATIC ${entry_files} EntryPointSO.c)
 
     # Build the trapheader/footer objects
-    add_library(trapheader      STATIC TrapHeader.S)
-    add_library(trapheader_page STATIC TrapHeaderPage.S)
-    add_library(trapfooter      STATIC TrapFooter.S)
-    add_library(trapfooter_page STATIC TrapFooterPage.S)
+    add_library(trapheader        STATIC TrapHeader.S)
+    add_library(trapheader_page   STATIC TrapHeaderPage.S)
+    add_library(trapfooter        STATIC TrapFooter.S)
+    add_library(trapfooter_page   STATIC TrapFooterPage.S)
+    add_library(trapfooter_nopage STATIC TrapFooterNoPage.S)
 
     add_library(selfrando_objects OBJECT
         ../RandoLib.cpp
@@ -131,6 +132,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         trapheader_page
         trapfooter
         trapfooter_page
+        trapfooter_nopage
         DESTINATION bin/${SR_ARCH}
         )
 endif()

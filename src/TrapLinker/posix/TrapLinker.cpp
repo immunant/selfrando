@@ -47,7 +47,6 @@ static char kLinkerIdScript[] = "/linker_id.sh";
 // FOR TESTING! TODO: figure out a better way to find this path
 static char kSelfrandoObject[] = "/selfrando_txtrp.o";
 static char kTrapScript[] = "/linker_script.ld";
-static char kProvideTRaPEndPageScript[] = "/provide_TRaP_end_page.ld";
 #if 0 // FIXME: put this back in when we need it
 static const char *kExecSections[][2] = {
     { ".text", ".txtrp" }, // FIXME: ".trap.text" would be nicer
@@ -952,14 +951,13 @@ LinkerInvocation ArgParser::create_new_invocation(
         }
 
         // Add the files that mark the end of .txtrp
+        m_args.emplace_back("--whole-archive", true);
         if (m_static_selfrando && m_selfrando_txtrp_pages) {
-            m_args.emplace_back("--whole-archive", true);
             m_args.emplace_back("-ltrapfooter_page", true);
-            m_args.emplace_back("--no-whole-archive", true);
         } else {
-            std::string provide_trap_end_page_script = randolib_install_path + kProvideTRaPEndPageScript;
-            m_args.emplace_back(provide_trap_end_page_script.c_str(), true);
+            m_args.emplace_back("-ltrapfooter_nopage", true);
         }
+        m_args.emplace_back("--no-whole-archive", true);
     } else {
         m_enabled = false;
     }

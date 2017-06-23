@@ -42,6 +42,7 @@ lib_env.Library('trapheader', ['TrapHeader.S'])
 lib_env.Library('trapfooter', ['TrapFooter.S'])
 lib_env.Library('trapheader_page', ['TrapHeaderPage.S'])
 lib_env.Library('trapfooter_page', ['TrapFooterPage.S'])
+lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S'])
 
 # Build flags start here
 lib_env.Append(CCFLAGS = '-fPIC')
@@ -141,6 +142,7 @@ files += Glob('libtrapheader.a')
 files += Glob('libtrapheader_page.a')
 files += Glob('libtrapfooter.a')
 files += Glob('libtrapfooter_page.a')
+files += Glob('libtrapfooter_nopage.a')
 files += Glob('selfrando_txtrp.o')
 
 Return('files')

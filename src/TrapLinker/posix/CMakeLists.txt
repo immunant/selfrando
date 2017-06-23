@@ -56,7 +56,6 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         )
     install(FILES
         linker_script.ld
-        provide_TRaP_end_page.ld
         DESTINATION bin
         )
 endif()
