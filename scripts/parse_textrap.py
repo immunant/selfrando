@@ -103,6 +103,9 @@ elif platform.system() == 'Linux':
         reloc_has_extra_addend = lambda reloc_type : reloc_type in [
                 260, 261,
                 275, 276, 277, 278, 284, 285, 286, 299]
+    elif target_arch == 'Intel': # Should actually be "Intel 80386"
+        reloc_has_extra_symbol = lambda reloc_type : False
+        reloc_has_extra_addend = lambda reloc_type : reloc_type in [2, 4, 10]
     else:
         reloc_has_extra_symbol = lambda reloc_type : False
         reloc_has_extra_addend = lambda reloc_type : reloc_type in [
