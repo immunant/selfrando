@@ -41,7 +41,7 @@ int main(int argc, const char *argv[]) {
 
     if (trap_header_has_flag(&header, TRAP_HAS_NONEXEC_RELOCS)) {
         struct trap_reloc_t reloc;
-        uintptr_t rel_addr = 0;
+        trap_address_t rel_addr = 0;
         trap_ptr = header.reloc_start;
         while (trap_read_reloc(&header, &trap_ptr, &rel_addr, &reloc)) {
             assert(rel_addr == reloc.address);
@@ -62,7 +62,7 @@ int main(int argc, const char *argv[]) {
 
         struct trap_symbol_t symbol;
         uint8_t *sym_ptr = record.symbol_start;
-        uintptr_t sym_addr = record.address;
+        trap_address_t sym_addr = record.address;
         while (sym_ptr < record.symbol_end) {
             trap_read_symbol(&header, &sym_ptr, &sym_addr, &symbol);
             assert(sym_addr == symbol.address);
@@ -76,7 +76,7 @@ int main(int argc, const char *argv[]) {
 
         if (trap_header_has_flag(&header, TRAP_HAS_RECORD_RELOCS)) {
             struct trap_reloc_t reloc;
-            uintptr_t rel_addr = record.address;
+            trap_address_t rel_addr = record.address;
             trap_pointer_t rel_ptr = record.reloc_start;
             while (rel_ptr < record.reloc_end &&
                    trap_read_reloc(&header, &rel_ptr, &rel_addr, &reloc)) {
