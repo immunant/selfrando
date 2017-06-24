@@ -401,7 +401,7 @@ size_t Module::arch_reloc_type<Elf64_Rela>(const Elf64_Rela *rel) {
 }
 
 void Module::preprocess_arch() {
-    m_arch_relocs = 0;
+    m_linker_stubs = 0;
     build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
 
