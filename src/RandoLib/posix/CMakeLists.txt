@@ -18,7 +18,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
     add_compile_options(-Wa,--noexecstack)
 
     # We don't want to depend on memset/memcpy/the rest
-    add_compile_options(-minline-all-stringops)
+    if ("${SR_ARCH}" STREQUAL "x86" OR "${SR_ARCH}" STREQUAL "x86_64")
+        add_compile_options(-minline-all-stringops)
+    endif()
 
     add_compile_options(-fno-exceptions)
 
