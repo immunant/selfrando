@@ -121,7 +121,7 @@ name:					\
     /* We loaded the jump table and adjuested EDX. Go.  */	\
     jmp		*%ebx
 
-	.section	.gnu.linkonce.t.__x86.get_pc_thunk.bx,"ax",@progbits
+	.section .text.__x86.get_pc_thunk.bx,"axG",@progbits,__x86.get_pc_thunk.bx,comdat
 	.globl	__x86.get_pc_thunk.bx
 	.hidden	__x86.get_pc_thunk.bx
 	ALIGN (4)
