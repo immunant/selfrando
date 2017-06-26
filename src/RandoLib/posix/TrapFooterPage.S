@@ -8,8 +8,8 @@
 
 .section .txtrp, "a", %progbits
 .p2align 12
-.globl _TRaP_trap_end_page
-.hidden _TRaP_trap_end_page
-.type _TRaP_trap_end_page, %object
-_TRaP_trap_end_page:
+.globl trap_end_page
+.hidden trap_end_page
+.type trap_end_page, %object
+trap_end_page:
 

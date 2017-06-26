@@ -13,9 +13,9 @@
 
 .text
 
-.globl _TRaP_LinkerStubs
-.type _TRaP_LinkerStubs, %function
+.globl LinkerStubs
+.type LinkerStubs, %function
 
-_TRaP_LinkerStubs:
+LinkerStubs:
     nop
 

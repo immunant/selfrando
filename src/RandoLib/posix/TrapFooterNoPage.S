@@ -6,7 +6,7 @@
  *
  */
 
-.globl _TRaP_trap_end_page
-.hidden _TRaP_trap_end_page
-.type _TRaP_trap_end_page, %object
-.equ _TRaP_trap_end_page, 0
+.globl trap_end_page
+.hidden trap_end_page
+.type trap_end_page, %object
+.equ trap_end_page, 0

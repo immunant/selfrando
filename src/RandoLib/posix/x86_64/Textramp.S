@@ -7,10 +7,10 @@
  */
 
 .section .textramp, "ax", %progbits
-.globl _TRaP_textramp_anchor
-.hidden _TRaP_textramp_anchor
-.type _TRaP_textramp_anchor, %object
-_TRaP_textramp_anchor:
+.globl textramp_anchor
+.hidden textramp_anchor
+.type textramp_anchor, %object
+textramp_anchor:
 1:
     jmp 1b
 

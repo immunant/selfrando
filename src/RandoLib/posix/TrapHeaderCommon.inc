@@ -19,11 +19,11 @@
 #endif
 
 .section .txtrp, "a", %progbits
-.globl _TRaP_trap_begin
-.hidden _TRaP_trap_begin
-.type _TRaP_trap_begin, %object
+.globl trap_begin
+.hidden trap_begin
+.type trap_begin, %object
 .p2align TRAP_HEADER_ALIGNMENT
-_TRaP_trap_begin:
+trap_begin:
 // Version byte
 .byte 0x01
 // Flags byte 1
@@ -36,6 +36,6 @@ _TRaP_trap_begin:
 .byte RANDOLIB_ARCH_SIZE
 
 // Symbols for other sections
-DEFINE_SECTION_SYMBOL(_TRaP_xptramp_begin, .textramp, "ax", %progbits)
-DEFINE_SECTION_SYMBOL(_TRaP_got_begin,     .got,      "wa", %progbits)
-DEFINE_SECTION_SYMBOL(_TRaP_got_plt_begin, .got.plt,  "wa", %progbits)
+DEFINE_SECTION_SYMBOL(xptramp_begin, .textramp, "ax", %progbits)
+DEFINE_SECTION_SYMBOL(got_begin,     .got,      "wa", %progbits)
+DEFINE_SECTION_SYMBOL(got_plt_begin, .got.plt,  "wa", %progbits)

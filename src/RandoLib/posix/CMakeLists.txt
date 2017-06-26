@@ -57,6 +57,29 @@ if (SR_BUILD_MODULE_RANDOLIB)
     add_library(trapfooter_page   STATIC TrapFooterPage.S)
     add_library(trapfooter_nopage STATIC TrapFooterNoPage.S)
 
+    set(static_libs
+        randoentry_exec
+        randoentry_so
+        trapheader
+        trapheader_page
+        trapfooter
+        trapfooter_page
+        trapfooter_nopage
+        )
+    foreach(static_lib ${static_libs})
+        add_custom_command(TARGET ${static_lib}
+            POST_BUILD
+            COMMAND objcopy --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
+            COMMAND objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
+            COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $<TARGET_FILE:${static_lib}>
+            VERBATIM
+            )
+    endforeach()
+    install(TARGETS
+        ${static_libs}
+        DESTINATION bin/${SR_ARCH}
+        )
+
     add_library(selfrando_objects OBJECT
         ../RandoLib.cpp
         OSImpl.cpp
@@ -129,14 +152,4 @@ if (SR_BUILD_MODULE_RANDOLIB)
             DESTINATION bin)
     endif()
 
-    install(TARGETS
-        randoentry_exec
-        randoentry_so
-        trapheader
-        trapheader_page
-        trapfooter
-        trapfooter_page
-        trapfooter_nopage
-        DESTINATION bin/${SR_ARCH}
-        )
 endif()
