@@ -25,13 +25,16 @@
 
 #if RANDOLIB_IS_SHARED
 #define RANDO_PUBLIC  __attribute__((visibility("default")))
-#else
-#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
-#endif
-
-#define RANDO_ALWAYS_INLINE __attribute__((always_inline)) inline
 
 #define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void _TRaP_RandoMain(os::Module::Handle asm_module)
+#else // RANDOLIB_IS_SHARED
+#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
+
+// We don't need the _TRaP_ prefix for RandoMain, since objcopy adds it
+#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void RandoMain(os::Module::Handle asm_module)
+#endif // RANDOLIB_IS_SHARED
+
+#define RANDO_ALWAYS_INLINE __attribute__((always_inline)) inline
 
 // TODO
 //#define RANDO_ASSERT(cond) assert(cond)

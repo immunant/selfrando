@@ -102,6 +102,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         add_custom_target(libselfrando.a ALL
             COMMAND objcopy --prefix-alloc-sections=.selfrando libselfrando_noprefix.a libselfrando.a
             COMMAND objcopy --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
+            COMMAND objcopy --prefix-symbols=_TRaP_ libselfrando.a
             VERBATIM
             )
         add_dependencies(libselfrando.a selfrando_noprefix)
