@@ -35,14 +35,22 @@ if env['CPPDEFINES']['RANDOLIB_IS_ANDROID']:
     entry_files.append('%s/AndroidInit.c' % target)
 if target == 'arm':
     entry_files.append('arm/LinkerStubs.S')
-lib_env.Library('randoentry_exec', entry_files + exec_entry_files)
-lib_env.Library('randoentry_so', entry_files + so_entry_files)
 
-lib_env.Library('trapheader', ['TrapHeader.S'])
-lib_env.Library('trapfooter', ['TrapFooter.S'])
-lib_env.Library('trapheader_page', ['TrapHeaderPage.S'])
-lib_env.Library('trapfooter_page', ['TrapFooterPage.S'])
-lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S'])
+static_libs = []
+static_libs.append(lib_env.Library('randoentry_exec', entry_files + exec_entry_files))
+static_libs.append(lib_env.Library('randoentry_so', entry_files + so_entry_files))
+static_libs.append(lib_env.Library('trapheader', ['TrapHeader.S']))
+static_libs.append(lib_env.Library('trapfooter', ['TrapFooter.S']))
+static_libs.append(lib_env.Library('trapheader_page', ['TrapHeaderPage.S']))
+static_libs.append(lib_env.Library('trapfooter_page', ['TrapFooterPage.S']))
+static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
+
+# Prepend _TRaP_ to all symbols
+for lib in static_libs:
+   lib_env.AddPostAction(lib, 'objcopy --prefix-symbols=_TRaP_ $TARGET &&'
+                              'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET &&'
+                              'objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $TARGET &&'
+                              'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET')
 
 # Build flags start here
 lib_env.Append(CCFLAGS = '-fPIC')
@@ -114,7 +122,10 @@ lib_env.StaticLibrary('selfrando_noprefix', SOURCES)
 # prefixed by '.selfrando`, except for '.eh_frame'
 lib_env.Command('libselfrando.a', 'libselfrando_noprefix.a',
                 'objcopy --prefix-alloc-sections=.selfrando $SOURCE $TARGET && '
-                'objcopy --rename-section .selfrando.eh_frame=.eh_frame $TARGET')
+                'objcopy --rename-section .selfrando.eh_frame=.eh_frame $TARGET &&'
+                'objcopy --prefix-symbols=_TRaP_ $TARGET &&'
+                'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET'
+                )
 
 LDEMUL = { 'x86':     'elf_i386',
            'x86_64':  'elf_x86_64',
