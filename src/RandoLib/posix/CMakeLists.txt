@@ -70,6 +70,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         add_custom_command(TARGET ${static_lib}
             POST_BUILD
             COMMAND objcopy --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
+            COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $<TARGET_FILE:${static_lib}>
             COMMAND objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
             COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $<TARGET_FILE:${static_lib}>
             VERBATIM
