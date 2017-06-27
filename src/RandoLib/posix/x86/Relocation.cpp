@@ -24,6 +24,27 @@ static inline bool is_patched_got32(BytePointer at_ptr, bool incl_lea) {
            at_ptr[-2] == 0x81;      // binop foo@GOT, ...   => binop $foo, ...
 }
 
+static inline bool is_patched_tls_get_addr_call(BytePointer at_ptr) {
+    // TLS GD-IE or GD-LE transformation in gold:
+    // replaces a call to __tls_get_addr with a
+    // MOV from GS:0 to EAX
+    // Format is: 65 A1 00 00 00 00 MM NN ...
+    // where MM is one of 81, 2D, 03, 90, or 8D and
+    // the total length is either 11 or 12 byte
+    auto at_ptr32 = reinterpret_cast<uint32_t*>(at_ptr);
+    if (at_ptr32[-2] == 0x0000a165 && at_ptr32[-1] == 0xe8810000)
+        return true;
+    if (at_ptr32[-2] == 0x0000a165 && at_ptr32[-1] == 0x83030000)
+        return true;
+    if (at_ptr32[-2] == 0x0000a165 && at_ptr32[-1] == 0xb68d0000)
+        return true;
+    if ((at_ptr32[-2] >> 8) == 0x00a165 && at_ptr32[-1] == 0x2d000000)
+        return true;
+    if ((at_ptr32[-2] >> 8) == 0x00a165 && at_ptr32[-1] == 0x90000000)
+        return true;
+    return false;
+}
+
 BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
@@ -38,12 +59,20 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case 43: // R_386_GOT32X
         if (is_patched_got32(m_src_ptr, false))
             goto abs32_reloc;
+        // Compilers may try to indirectly call __tls_get_addr
+        // through the GOT, which would be encoded as an indirect
+        // call with a R_386_GOT32X relocation
+        if (m_type == 43 &&
+            is_patched_tls_get_addr_call(m_src_ptr))
+            return nullptr;
         // Fall-through
     case R_386_GOTOFF:
         return m_module.get_got_ptr() + *reinterpret_cast<ptrdiff_t*>(m_src_ptr);
     case R_386_PC32:
     case R_386_PLT32:
     case R_386_GOTPC:
+        if (is_patched_tls_get_addr_call(m_src_ptr))
+            return nullptr;
         // We need to use the original address as the source here (not the diversified one)
         // to keep in consistent with the original relocation entry (before shuffling)
         return m_orig_src_ptr - m_addend + *reinterpret_cast<int32_t*>(m_src_ptr);
@@ -65,6 +94,10 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     case 43: // R_386_GOT32X
         if (is_patched_got32(m_src_ptr, false))
             goto abs32_reloc;
+        // See comment in get_target_ptr()
+        if (m_type == 43 &&
+            is_patched_tls_get_addr_call(m_src_ptr))
+            break;
         // Fall-through
     case R_386_GOTOFF:
         *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
@@ -72,6 +105,8 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     case R_386_PC32:
     case R_386_PLT32:
     case R_386_GOTPC:
+        if (is_patched_tls_get_addr_call(m_src_ptr))
+            break;
         // FIXME: check for overflow here???
         *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target + m_addend - m_src_ptr);
         break;
