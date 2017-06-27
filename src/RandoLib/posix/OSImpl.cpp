@@ -349,7 +349,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             if (reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr) == m_got) {
                 m_dynamic_has_base = true;
             } else {
-                assert(RVA2Address(dyn->d_un.d_ptr).to_ptr() == m_got);
+                RANDO_ASSERT(RVA2Address(dyn->d_un.d_ptr).to_ptr() == m_got);
                 m_dynamic_has_base = false;
             }
             break;
