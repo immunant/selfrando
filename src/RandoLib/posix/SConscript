@@ -50,7 +50,8 @@ for lib in static_libs:
    lib_env.AddPostAction(lib, 'objcopy --prefix-symbols=_TRaP_ $TARGET &&'
                               'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET &&'
                               'objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $TARGET &&'
-                              'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET')
+                              'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET &&'
+                              'objcopy --redefine-sym=_TRaP___x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $TARGET')
 
 # Build flags start here
 lib_env.Append(CCFLAGS = '-fPIC')
