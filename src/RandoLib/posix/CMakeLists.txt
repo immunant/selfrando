@@ -128,6 +128,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
             COMMAND objcopy --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
             COMMAND objcopy --prefix-symbols=_TRaP_ libselfrando.a
             COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ libselfrando.a
+            COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr libselfrando.a
             VERBATIM
             )
         add_dependencies(libselfrando.a selfrando_noprefix)
