@@ -24,6 +24,10 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     add_compile_options(-fno-exceptions)
 
+    # Since we're trying to avoid depending on glibc,
+    # we have to disable the stack protector
+    add_compile_options(-fno-stack-protector)
+
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,noexecstack")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
