@@ -58,6 +58,8 @@ lib_env.Append(CCFLAGS = '-fPIC')
 
 lib_env.Append(CCFLAGS = '-fno-exceptions')
 
+lib_env.Append(CCFLAGS = '-fno-stack-protector')
+
 # Don't export anything from the library
 lib_env.Append(CCFLAGS='-fvisibility=hidden')
 lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
