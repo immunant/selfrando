@@ -27,10 +27,11 @@ static inline bool is_patched_tls_get_addr_call(BytePointer at_ptr) {
     // TLS GD-IE or GD-LE transformation in gold:
     // replaces a call to __tls_get_addr with a
     // RAX-relative LEA instruction
-    return (at_ptr[-12] == 0x64 && at_ptr[-11] == 0x48 &&
-            at_ptr[-10] == 0x8b && at_ptr[-9]  == 0x04 &&
-            at_ptr[-8]  == 0x25 && at_ptr[-3]  == 0x48 &&
-            at_ptr[-2]  == 0x8d && at_ptr[-1]  == 0x80);
+    // Bytes are: 64 48 8B 04 25 00 00 00 00 48 8D 80
+    auto at_ptr32 = reinterpret_cast<uint32_t*>(at_ptr);
+    return (at_ptr32[-3] == 0x048b4864 &&
+            at_ptr32[-2] == 0x00000025 &&
+            at_ptr32[-1] == 0x808d4800);
 }
 
 static inline bool is_pcrel_tlsxd(BytePointer at_ptr) {
