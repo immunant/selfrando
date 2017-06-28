@@ -54,6 +54,8 @@ for lib in static_libs:
                               'objcopy --redefine-sym=_TRaP___x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $TARGET')
 
 # Build flags start here
+# We need to pass -fPIC to the assembler separately
+lib_env.Append(ASFLAGS = '-fPIC')
 lib_env.Append(CCFLAGS = '-fPIC')
 
 lib_env.Append(CCFLAGS = '-fno-exceptions')
@@ -61,6 +63,7 @@ lib_env.Append(CCFLAGS = '-fno-exceptions')
 lib_env.Append(CCFLAGS = '-fno-stack-protector')
 
 # Don't export anything from the library
+lib_env.Append(ASFLAGS='-fvisibility=hidden')
 lib_env.Append(CCFLAGS='-fvisibility=hidden')
 lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
 
