@@ -64,6 +64,9 @@ lib_env.Append(CCFLAGS = '-fno-stack-protector')
 lib_env.Append(CCFLAGS='-fvisibility=hidden')
 lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
 
+if target in ['x86', 'x86_64']:
+    lib_env.Append(CCFLAGS = '-minline-all-stringops')
+
 if target == 'x86':
     # TODO: it would be nice to have a "is 32 bit" variable
     # and check that instead
