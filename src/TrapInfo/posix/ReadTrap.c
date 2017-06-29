@@ -90,7 +90,7 @@ struct trap_data_t read_trap_data(struct trap_file_t *file) {
         res.trap_platform = TRAP_PLATFORM_POSIX_ARM;
         break;
 
-    case EM_AARCH64:
+    case 183: // EM_AARCH64
         res.trap_platform = TRAP_PLATFORM_POSIX_ARM64;
         break;
 
