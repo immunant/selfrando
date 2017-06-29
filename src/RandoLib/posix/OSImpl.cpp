@@ -256,9 +256,7 @@ RANDO_SECTION File API::open_layout_file(bool write) {
 }
 
 #if RANDOLIB_DELETE_LAYOUTS > 0
-extern "C"
-RANDO_PUBLIC
-RANDO_SECTION void _TRaP_Linux_delete_layout_file(void) {
+RANDO_PUBLIC_FUNCTION(Linux_delete_layout_file, void, void) {
     // TODO: don't delete if disabled via environment variable
     char filename[32];
     build_pid_filename(filename, "/tmp/%d.mlf", API::getpid());
