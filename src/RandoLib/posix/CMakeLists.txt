@@ -153,6 +153,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
             COMMAND ${CMAKE_LINKER} -r -m ${arch_ldemul} -o selfrando_txtrp.o
                 -T${CMAKE_CURRENT_SOURCE_DIR}/selfrando_txtrp.ld
                 --whole-archive libselfrando_noprefix.a
+            COMMAND objcopy --prefix-symbols=_TRaP_ selfrando_txtrp.o
+            COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ selfrando_txtrp.o
+            COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr selfrando_txtrp.o
             VERBATIM
             )
         add_dependencies(selfrando_txtrp.o selfrando_noprefix)

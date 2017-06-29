@@ -143,8 +143,11 @@ LDEMUL = { 'x86':     'elf_i386',
            'aarch64': 'aarch64linux' }  # FIXME: correct???
 
 lib_env.Command('selfrando_txtrp.o', ['libselfrando_noprefix.a'],
-                'ld -r -m $LDEMUL -o $TARGET -T$SCRIPT --whole-archive $SOURCES',
-                SCRIPT=Glob('selfrando_txtrp.ld'),
+                'ld -r -m $LDEMUL -o $TARGET -T$SCRIPT --whole-archive $SOURCES && '
+                'objcopy --prefix-symbols=_TRaP_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET',
+                 SCRIPT=Glob('selfrando_txtrp.ld'),
                 LDEMUL=LDEMUL[target])
 
 sharedlib_env = lib_env.Clone()
