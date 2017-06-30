@@ -150,9 +150,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
         list(FIND ALL_ARCHES ${SR_ARCH} arch_idx)
         list(GET ALL_LDEMULS ${arch_idx} arch_ldemul)
         add_custom_target(selfrando_txtrp.o ALL
-            COMMAND ${CMAKE_LINKER} -r -m ${arch_ldemul} -o selfrando_txtrp.o
-                -T${CMAKE_CURRENT_SOURCE_DIR}/selfrando_txtrp.ld
-                --whole-archive libselfrando_noprefix.a
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
+                libselfrando_noprefix.a
+                selfrando_txtrp.o
             COMMAND objcopy --prefix-symbols=_TRaP_ selfrando_txtrp.o
             COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ selfrando_txtrp.o
             COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr selfrando_txtrp.o

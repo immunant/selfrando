@@ -142,8 +142,8 @@ LDEMUL = { 'x86':     'elf_i386',
            'arm':     'armelf',         # FIXME: correct???
            'aarch64': 'aarch64linux' }  # FIXME: correct???
 
-lib_env.Command('selfrando_txtrp.o', ['libselfrando_noprefix.a'],
-                'ld -r -m $LDEMUL -o $TARGET -T$SCRIPT --whole-archive $SOURCES && '
+lib_env.Command('selfrando_txtrp.o', ['rename_sections_txtrp.sh', 'libselfrando_noprefix.a'],
+                '$SOURCES $TARGET && '
                 'objcopy --prefix-symbols=_TRaP_ $TARGET && '
                 'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
                 'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET',
