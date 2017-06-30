@@ -214,6 +214,10 @@ static inline bool is_ctors_section(const std::string &name) {
            is_prefix(".dtors", name);
 }
 
+static inline bool is_gnu_linkonce(const std::string &name) {
+    return is_prefix(".gnu.linkonce", name);
+}
+
 static inline bool is_linkonce_x86_pic_thunk(const std::string &name) {
     return is_prefix(".gnu.linkonce.t.__x86.get_pc_thunk", name);
 }
@@ -402,6 +406,13 @@ void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_bui
             I = section_builders->erase(I);
             continue;
         }
+        if (m_target_info->trap_platform == TRAP_PLATFORM_POSIX_X86 &&
+            is_gnu_linkonce(section_name)) {
+            Debug::printf<10>("Skipping .gnu.linkonce... section %d\n", section_ndx);
+            I = section_builders->erase(I);
+            continue;
+
+        }
         ++I;
     }
 }
@@ -513,6 +524,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             // anchor there, which is fine from a GC point since both .init
             // and .ctors/.dtors are gc roots
             fake_init_anchor = true;
+#if 0 // Disabled, we just skip this section altogether
         } else if (m_target_info->trap_platform == TRAP_PLATFORM_POSIX_X86 &&
                    is_linkonce_x86_pic_thunk(name)) {
             // On 32-bit x86, crti.o contains a .gnu.linkonce.t section used
@@ -522,6 +534,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             // the anchor reloc in .init here, instead of the discarded
             // section.
             fake_init_anchor = true;
+#endif
         }
         if (fake_init_anchor) {
             GElf_Shdr fake_init_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

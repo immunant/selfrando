@@ -80,7 +80,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
             # On 32-bit x86, we need __x86.get_pc_thunk.bx to be defined as the
             # compiler emits it: a single-element group section
             # FIXME: it would be nice to get rid of this
-            COMMAND objcopy --redefine-sym=_TRaP___x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
+            COMMAND objcopy --redefine-sym=_TRaP_Linux_EntryPoint__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             VERBATIM
             )
     endforeach()
