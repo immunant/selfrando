@@ -68,14 +68,6 @@ Linux_EntryPoint__x86.get_pc_thunk.bx:
         movl	(%esp), %ebx
         ret
 
-// Add padding up to a length of 16 bytes, and mark it in .txtrp
-.local	Linux_EntryPoint__x86.get_pc_thunk.bx.end
-Linux_EntryPoint__x86.get_pc_thunk.bx.end:
-.fill 16 - (Linux_EntryPoint__x86.get_pc_thunk.bx.end - Linux_EntryPoint__x86.get_pc_thunk.bx)
-
-.local	Linux_EntryPoint__x86.get_pc_thunk.bx.padding_end
-Linux_EntryPoint__x86.get_pc_thunk.bx.padding_end:
-
 
 // The .txtrp section for the thunk above
 .section .txtrp, "a", @progbits
@@ -99,9 +91,9 @@ Linux_EntryPoint__x86.get_pc_thunk.bx.txtrp:
 .uleb128 00
 
 // PaddingOffset
-.uleb128 (Linux_EntryPoint__x86.get_pc_thunk.bx.end - Linux_EntryPoint__x86.get_pc_thunk.bx)
+.uleb128 00
 // PaddingSize
-.uleb128 (Linux_EntryPoint__x86.get_pc_thunk.bx.padding_end - Linux_EntryPoint__x86.get_pc_thunk.bx.end)
+.uleb128 00
 
 
 // Add a forced anchor in .init to make sure .txtrp gets included
