@@ -48,6 +48,8 @@ static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
 # Prepend _TRaP_ to all symbols
 for lib in static_libs:
    lib_env.AddPostAction(lib, 'objcopy --prefix-symbols=_TRaP_ $TARGET && '
+                              'objcopy --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $TARGET && '
+                              'objcopy --rename-section .text.Linux_EntryPoint__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $TARGET && '
                               'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
                               'objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $TARGET && '
                               'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET && '

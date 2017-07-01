@@ -59,7 +59,7 @@ Linux_EntryPoint_mprotect:
 // Instead, we manually add the same function here in a
 // single-element group section, and also include the
 // corresponding trap info
-.section .text.__x86.get_pc_thunk.bx, "axG", @progbits, Linux_EntryPoint__x86.get_pc_thunk.bx,comdat
+.section .text.Linux_EntryPoint__x86.get_pc_thunk.bx, "axG", @progbits, Linux_EntryPoint__x86.get_pc_thunk.bx,comdat
 .globl	Linux_EntryPoint__x86.get_pc_thunk.bx
 .hidden	Linux_EntryPoint__x86.get_pc_thunk.bx
 .align 4
