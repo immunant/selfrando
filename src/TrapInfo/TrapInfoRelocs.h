@@ -31,8 +31,23 @@ uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
         case 10:    // R_386_GOTPC
             return TRAP_RELOC_ADDEND;
 
+        // None of the TLS relocations are PC-relative
+        // or reference functions on x86, so ignore them
+        case 14:    // R_386_TLS_TPOFF
+        case 15:    // R_386_TLS_IE
+        case 16:    // R_386_TLS_GOTIE
+        case 17:    // R_386_TLS_LE
+        case 18:    // R_386_TLS_GD
+        case 19:    // R_386_TLS_LDM
+        case 32:    // R_386_TLS_LDO_32
+        case 33:    // R_386_TLS_IE_32
+        case 34:    // R_386_TLS_LE_32
+        case 35:    // R_386_DTPMOD32
         case 36:    // R_386_DTPOFF32
         case 37:    // R_386_TPOFF32
+        case 39:    // R_386_TLS_GOTDESC
+        case 40:    // R_386_TLS_DESC_CALL
+        case 41:    // R_386_TLS_DESC
             return TRAP_RELOC_IGNORE;
         }
         return TRAP_RELOC_NONE;

@@ -50,9 +50,6 @@ BytePointer Module::Relocation::get_target_ptr() const {
     // relocation requires a symbol and/or addend.
     switch(m_type) {
     case R_386_32:
-    case R_386_TLS_LDO_32:
-    case R_386_TLS_LDM:
-    case R_386_TLS_GD:
     abs32_reloc:
         return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
     case R_386_GOT32:
@@ -84,9 +81,6 @@ BytePointer Module::Relocation::get_target_ptr() const {
 void Module::Relocation::set_target_ptr(BytePointer new_target) {
     switch(m_type) {
     case R_386_32:
-    case R_386_TLS_LDO_32:
-    case R_386_TLS_LDM:
-    case R_386_TLS_GD:
     abs32_reloc:
         *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
