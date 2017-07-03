@@ -136,6 +136,7 @@ lib_env.Command('libselfrando.a', 'libselfrando_noprefix.a',
                 'objcopy --rename-section .selfrando.eh_frame=.eh_frame $TARGET && '
                 'objcopy --prefix-symbols=_TRaP_ $TARGET && '
                 'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_environ=environ $TARGET && '
                 'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET'
                 )
 
@@ -148,6 +149,7 @@ lib_env.Command('selfrando_txtrp.o', ['rename_sections_txtrp.sh', 'libselfrando_
                 '$SOURCES $TARGET && '
                 'objcopy --prefix-symbols=_TRaP_ $TARGET && '
                 'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_environ=environ $TARGET && '
                 'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET',
                  SCRIPT=Glob('selfrando_txtrp.ld'),
                 LDEMUL=LDEMUL[target])
