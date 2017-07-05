@@ -5,12 +5,13 @@
  * included with selfrando.
  *
  */
-
+#define _BSD_SOURCE
+#include <sys/time.h>
 #include "Filesystem.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <random>
-
+#include <sys/sendfile.h>
 #include <memory>
 
 std::string Filesystem::get_temp_dir() {
@@ -59,7 +60,7 @@ std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_ta
     int fd = open(temp_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1)
         Error::printf("Could not create temporary file '%s' error:%d\n",
-                      temp_filename.data(), errno);
+                temp_filename.data(), errno);
 
     return std::make_pair(fd, temp_filename.data());
 }
@@ -72,14 +73,39 @@ std::pair<int, std::string> Filesystem::copy_to_temp_file(int source, std::strin
 
     auto temp_file = create_temp_file(filename_tag);
 
+
+#if 0
     while ((size = read(source, buf, BUFSIZE)) > 0) {
         if(write(temp_file.first, buf, size) == -1)
             perror("write");
     }
+#else
+    /* Implementation of sendfile by replacing the read/write system call pair,also I have just implemented the gettimeofday to gauge the performance
+     * between read/write and sendfile() method*/
+
+    struct timeval tv;
+    struct timeval start_tv;
+
+    gettimeofday(&start_tv, NULL);
+    while ((size = sendfile(temp_file.first,source, NULL,BUFSIZE)) > 0);
+    double elapsed = 0.0;
+
+    gettimeofday(&tv, NULL);
+    elapsed = (tv.tv_sec - start_tv.tv_sec) +
+        (tv.tv_usec - start_tv.tv_usec) / 1000000.0;
+    //    while ((size = sendfile(temp_file.first,source, NULL,BUFSIZE)) > 0);
+    //    Error::printf("Size is %d\n",size);
+    //    offset += size;
+    //perror("sendfileinterrupted");
+#endif
+printf("Time elapsed %f",elapsed);
     lseek(temp_file.first, 0, SEEK_SET);
 
     return temp_file;
+
 }
+
+
 
 bool Filesystem::remove(std::string filename) {
     return (unlink(filename.c_str()) == 0);
