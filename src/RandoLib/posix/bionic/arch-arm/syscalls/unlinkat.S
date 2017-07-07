@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(unlinkat)
+ENTRY_SYSCALL(unlinkat)
 #ifdef __NR_unlinkat
     mov     ip, r7
     ldr     r7, =__NR_unlinkat
@@ -12,4 +12,4 @@ ENTRY(unlinkat)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(unlinkat)
+END_SYSCALL(unlinkat)

@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(lseek)
+ENTRY_SYSCALL(lseek)
 #ifdef __NR_lseek
     mov     ip, r7
     ldr     r7, =__NR_lseek
@@ -12,4 +12,4 @@ ENTRY(lseek)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(lseek)
+END_SYSCALL(lseek)

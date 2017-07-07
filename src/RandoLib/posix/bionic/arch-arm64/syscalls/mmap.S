@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mmap)
+ENTRY_SYSCALL(mmap)
 #ifdef __NR_mmap
     mov     x8, __NR_mmap
     svc     #0
@@ -10,6 +10,6 @@ ENTRY(mmap)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(mmap)
+END_SYSCALL(mmap)
 
-ALIAS_SYMBOL(mmap64, mmap)
+ALIAS_SYMBOL_SYSCALL(mmap64, mmap)

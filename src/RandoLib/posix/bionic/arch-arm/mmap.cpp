@@ -31,39 +31,19 @@
 #include <unistd.h>
 
 // mmap2(2) is like mmap(2), but the offset is in 4096-byte blocks, not bytes.
-extern "C" void*  _TRaP_libc___mmap2(void*, size_t, int, int, int, size_t);
+extern "C" void*  _TRaP_syscall___mmap2(void*, size_t, int, int, int, size_t);
 
 #define MMAP2_SHIFT 12 // 2**12 == 4096
 
-#if 0
-static bool kernel_has_MADV_MERGEABLE = true;
-#endif
-
 extern "C"
-void* _TRaP_libc_mmap64(void* addr, size_t size, int prot, int flags, int fd, off64_t offset) {
+void* _TRaP_syscall_mmap64(void* addr, size_t size, int prot, int flags, int fd, off64_t offset) {
   if (offset < 0 || (offset & ((1UL << MMAP2_SHIFT)-1)) != 0) {
-#if 0
-    errno = EINVAL;
-#endif
-    return MAP_FAILED;
+    return reinterpret_cast<void*>(-EINVAL);
   }
-
-#if 0
-  bool is_private_anonymous = (flags & (MAP_PRIVATE | MAP_ANONYMOUS)) != 0;
-  void* result = _TRaP_libc___mmap2(addr, size, prot, flags, fd, offset >> MMAP2_SHIFT);
-  if (result != MAP_FAILED && kernel_has_MADV_MERGEABLE && is_private_anonymous) {
-    ErrnoRestorer errno_restorer;
-    int rc = madvise(result, size, MADV_MERGEABLE);
-    if (rc == -1 && errno == EINVAL) {
-      kernel_has_MADV_MERGEABLE = false;
-    }
-  }
-  return result;
-#endif
-  return _TRaP_libc___mmap2(addr, size, prot, flags, fd, offset >> MMAP2_SHIFT);
+  return _TRaP_syscall___mmap2(addr, size, prot, flags, fd, offset >> MMAP2_SHIFT);
 }
 
 extern "C"
-void* _TRaP_libc_mmap(void* addr, size_t size, int prot, int flags, int fd, off_t offset) {
-  return _TRaP_libc_mmap64(addr, size, prot, flags, fd, static_cast<off64_t>(offset));
+void* _TRaP_syscall_mmap(void* addr, size_t size, int prot, int flags, int fd, off_t offset) {
+  return _TRaP_syscall_mmap64(addr, size, prot, flags, fd, static_cast<off64_t>(offset));
 }

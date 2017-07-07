@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mprotect)
+ENTRY_SYSCALL(mprotect)
 #ifdef __NR_mprotect
     mov     ip, r7
     ldr     r7, =__NR_mprotect
@@ -12,4 +12,4 @@ ENTRY(mprotect)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(mprotect)
+END_SYSCALL(mprotect)

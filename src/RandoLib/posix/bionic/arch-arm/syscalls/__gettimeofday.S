@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__gettimeofday)
+ENTRY_SYSCALL(__gettimeofday)
 #ifdef __NR_gettimeofday
     mov     ip, r7
     ldr     r7, =__NR_gettimeofday
@@ -12,4 +12,4 @@ ENTRY(__gettimeofday)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(__gettimeofday)
+END_SYSCALL(__gettimeofday)

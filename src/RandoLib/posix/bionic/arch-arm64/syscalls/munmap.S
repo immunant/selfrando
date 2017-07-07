@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(munmap)
+ENTRY_SYSCALL(munmap)
 #ifdef __NR_munmap
     mov     x8, __NR_munmap
     svc     #0
@@ -10,4 +10,4 @@ ENTRY(munmap)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(munmap)
+END_SYSCALL(munmap)

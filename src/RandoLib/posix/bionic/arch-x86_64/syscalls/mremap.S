@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mremap)
+ENTRY_SYSCALL(mremap)
     movq    %rcx, %r10
 #ifdef __NR_mremap
     movl    $__NR_mremap, %eax
@@ -11,4 +11,4 @@ ENTRY(mremap)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(mremap)
+END_SYSCALL(mremap)

@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__mmap2)
+ENTRY_SYSCALL(__mmap2)
 #ifdef __NR_mmap2
     mov     ip, sp
     stmfd   sp!, {r4, r5, r6, r7}
@@ -20,4 +20,4 @@ ENTRY(__mmap2)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(__mmap2)
+END_SYSCALL(__mmap2)

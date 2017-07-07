@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(cacheflush)
+ENTRY_SYSCALL(cacheflush)
 #ifdef __ARM_NR_cacheflush
     mov     ip, r7
     ldr     r7, =__ARM_NR_cacheflush
@@ -12,4 +12,4 @@ ENTRY(cacheflush)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(cacheflush)
+END_SYSCALL(cacheflush)

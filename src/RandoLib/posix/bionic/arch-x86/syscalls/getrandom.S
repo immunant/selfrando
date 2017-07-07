@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(getrandom)
+ENTRY_SYSCALL(getrandom)
     pushl   %ebx
     .cfi_def_cfa_offset 8
     .cfi_rel_offset ebx, 0
@@ -25,4 +25,4 @@ ENTRY(getrandom)
     popl    %ecx
     popl    %ebx
     ret
-END(getrandom)
+END_SYSCALL(getrandom)

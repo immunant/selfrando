@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mprotect)
+ENTRY_SYSCALL(mprotect)
     pushl   %ebx
     .cfi_def_cfa_offset 8
     .cfi_rel_offset ebx, 0
@@ -25,4 +25,4 @@ ENTRY(mprotect)
     popl    %ecx
     popl    %ebx
     ret
-END(mprotect)
+END_SYSCALL(mprotect)

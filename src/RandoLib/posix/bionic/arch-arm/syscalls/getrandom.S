@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(getrandom)
+ENTRY_SYSCALL(getrandom)
 #ifdef __NR_getrandom
     mov     ip, r7
     ldr     r7, =__NR_getrandom
@@ -12,4 +12,4 @@ ENTRY(getrandom)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(getrandom)
+END_SYSCALL(getrandom)

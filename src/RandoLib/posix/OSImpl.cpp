@@ -32,11 +32,11 @@ extern "C" {
 
 int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
 
-void *_TRaP_libc_mmap(void*, size_t, int, int, int, off_t);
-void *_TRaP_libc_mremap(void*, size_t, size_t, int, ...);
-int _TRaP_libc_munmap(void*, size_t);
-int _TRaP_libc_mprotect(const void*, size_t, int);
-int _TRaP_libc_unlinkat(int, const char*, int);
+void *_TRaP_syscall_mmap(void*, size_t, int, int, int, off_t);
+void *_TRaP_syscall_mremap(void*, size_t, size_t, int, ...);
+int _TRaP_syscall_munmap(void*, size_t);
+int _TRaP_syscall_mprotect(const void*, size_t, int);
+int _TRaP_syscall_unlinkat(int, const char*, int);
 
 void _TRaP_rand_close_fd(void);
 }
@@ -67,10 +67,10 @@ RANDO_SECTION void APIImpl::debug_printf_impl(const char *fmt, ...) {
     va_end(args);
     // FIXME: find better printing output
 #if RANDOLIB_LOG_TO_CONSOLE
-    _TRaP_libc_write(2, tmp, len);
+    _TRaP_syscall_write(2, tmp, len);
 #elif RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
     if (log_fd > 0)
-        _TRaP_libc_write(log_fd, tmp, len);
+        _TRaP_syscall_write(log_fd, tmp, len);
 #endif
 #elif RANDOLIB_LOG_TO_SYSTEM
     va_list args;
@@ -103,7 +103,7 @@ RANDO_SECTION void API::init() {
 
 #define STRINGIFY(x)    #x
 #define STRINGIFY_MACRO(x)    STRINGIFY(x)
-    log_fd = _TRaP_libc_open(STRINGIFY_MACRO(RANDOLIB_LOG_FILENAME), log_flags, 0660);
+    log_fd = _TRaP_syscall_open(STRINGIFY_MACRO(RANDOLIB_LOG_FILENAME), log_flags, 0660);
 #undef STRINGIFY
 #undef STRINGIFY_MACRO
 #endif
@@ -132,7 +132,7 @@ RANDO_SECTION void API::finish() {
     debug_printf<1>("Finished randomizing\n");
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
     if (log_fd != -1)
-        _TRaP_libc____close(log_fd);
+        _TRaP_syscall____close(log_fd);
 #endif
 #if RANDOLIB_RNG_IS_URANDOM
     _TRaP_rand_close_fd();
@@ -145,8 +145,8 @@ RANDO_SECTION void API::finish() {
 
 RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
     size = (size + sizeof(size) + kPageSize - 1) & ~kPageSize;
-    auto res = reinterpret_cast<size_t*>(_TRaP_libc_mmap(nullptr, size, PROT_READ | PROT_WRITE,
-                                                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    auto res = reinterpret_cast<size_t*>(_TRaP_syscall_mmap(nullptr, size, PROT_READ | PROT_WRITE,
+                                                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
     if (reinterpret_cast<intptr_t>(res) < 0)
         return nullptr;
 
@@ -168,8 +168,8 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
     if (new_size == old_size)
         return old_ptr;
 
-    auto res = reinterpret_cast<size_t*>(_TRaP_libc_mremap(old_size_ptr, old_size,
-                                                           new_size, MREMAP_MAYMOVE));
+    auto res = reinterpret_cast<size_t*>(_TRaP_syscall_mremap(old_size_ptr, old_size,
+                                                              new_size, MREMAP_MAYMOVE));
     if (reinterpret_cast<intptr_t>(res) < 0)
         return nullptr;
 
@@ -180,7 +180,7 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
 RANDO_SECTION void API::mem_free(void *ptr) {
     auto *size_ptr = reinterpret_cast<size_t*>(ptr);
     size_ptr--;
-    _TRaP_libc_munmap(size_ptr, *size_ptr);
+    _TRaP_syscall_munmap(size_ptr, *size_ptr);
 }
 
 // WARNING!!!: should be in the same order as the PagePermissions entries
@@ -204,12 +204,12 @@ RANDO_SECTION void *API::mmap(void *addr, size_t size, PagePermissions perms, bo
     if (addr != nullptr)
         flags |= MAP_FIXED;
     // FIXME: we should probably manually randomize the mmap address here
-    auto new_addr =_TRaP_libc_mmap(addr, size, prot_perms, flags, -1, 0);
+    auto new_addr =_TRaP_syscall_mmap(addr, size, prot_perms, flags, -1, 0);
     return reinterpret_cast<intptr_t>(new_addr) < 0 ? nullptr : new_addr;
 }
 
 RANDO_SECTION void API::munmap(void *addr, size_t size, bool commit) {
-    _TRaP_libc_munmap(addr, size);
+    _TRaP_syscall_munmap(addr, size);
 }
 
 RANDO_SECTION PagePermissions API::mprotect(void *addr, size_t size, PagePermissions perms) {
@@ -217,7 +217,7 @@ RANDO_SECTION PagePermissions API::mprotect(void *addr, size_t size, PagePermiss
     int prot_perms = PermissionsTable[static_cast<uint8_t>(perms)];
     auto paged_addr = (reinterpret_cast<uintptr_t>(addr) & ~(kPageSize - 1));
     auto paged_size = (reinterpret_cast<uintptr_t>(addr) + size) - paged_addr;
-    _TRaP_libc_mprotect(reinterpret_cast<void*>(paged_addr), paged_size, prot_perms);
+    _TRaP_syscall_mprotect(reinterpret_cast<void*>(paged_addr), paged_size, prot_perms);
     return PagePermissions::UNKNOWN;
 }
 
@@ -230,18 +230,18 @@ RANDO_SECTION File API::open_file(const char *name, bool write, bool create) {
     }
     if (create)
         flags |= O_CREAT;
-    int fd = _TRaP_libc_open(name, flags, 0660);
+    int fd = _TRaP_syscall_open(name, flags, 0660);
     return fd < 0 ? kInvalidFile : fd;
 }
 
 RANDO_SECTION ssize_t API::write_file(File file, const void *buf, size_t len) {
     RANDO_ASSERT(file != kInvalidFile);
-    return _TRaP_libc_write(file, buf, len);
+    return _TRaP_syscall_write(file, buf, len);
 }
 
 RANDO_SECTION void API::close_file(File file) {
     RANDO_ASSERT(file != kInvalidFile);
-    _TRaP_libc____close(file);
+    _TRaP_syscall____close(file);
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
@@ -266,7 +266,7 @@ RANDO_PUBLIC_FUNCTION(Linux_delete_layout_file, void, void) {
     // TODO: don't delete if disabled via environment variable
     char filename[32];
     build_pid_filename(filename, "/tmp/%d.mlf", API::getpid());
-    _TRaP_libc_unlinkat(AT_FDCWD, filename, 0);
+    _TRaP_syscall_unlinkat(AT_FDCWD, filename, 0);
 }
 #endif // RANDOLIB_DELETE_LAYOUTS
 #endif // RANDOLIB_WRITE_LAYOUTS

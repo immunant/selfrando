@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mprotect)
+ENTRY_SYSCALL(mprotect)
 #ifdef __NR_mprotect
     movl    $__NR_mprotect, %eax
     syscall
@@ -10,4 +10,4 @@ ENTRY(mprotect)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(mprotect)
+END_SYSCALL(mprotect)

@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mremap)
+ENTRY_SYSCALL(mremap)
 #ifdef __NR_mremap
     mov     ip, r7
     ldr     r7, =__NR_mremap
@@ -12,4 +12,4 @@ ENTRY(mremap)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(mremap)
+END_SYSCALL(mremap)

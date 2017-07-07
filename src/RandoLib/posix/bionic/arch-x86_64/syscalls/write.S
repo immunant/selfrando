@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(write)
+ENTRY_SYSCALL(write)
 #ifdef __NR_write
     movl    $__NR_write, %eax
     syscall
@@ -10,4 +10,4 @@ ENTRY(write)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(write)
+END_SYSCALL(write)

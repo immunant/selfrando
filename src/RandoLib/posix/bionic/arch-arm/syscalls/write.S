@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(write)
+ENTRY_SYSCALL(write)
 #ifdef __NR_write
     mov     ip, r7
     ldr     r7, =__NR_write
@@ -12,4 +12,4 @@ ENTRY(write)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(write)
+END_SYSCALL(write)

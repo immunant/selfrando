@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(___close)
+ENTRY_SYSCALL(___close)
     pushl   %ebx
     .cfi_def_cfa_offset 8
     .cfi_rel_offset ebx, 0
@@ -15,5 +15,5 @@ ENTRY(___close)
 #endif
     popl    %ebx
     ret
-END(___close)
-.hidden _TRaP_libc____close
+END_SYSCALL(___close)
+.hidden _TRaP_syscall____close
