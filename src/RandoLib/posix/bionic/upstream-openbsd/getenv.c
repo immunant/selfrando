@@ -33,6 +33,7 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -66,6 +67,12 @@ static void _TRaP_libc_build_trap_environ() {
         if (bytes == 0)
             break;
 
+        // Handle read errors
+        if (bytes == -EINTR)
+            continue; // Read got interrupted, keep going
+        if (bytes < 0)
+            break;    // Some other read error, just use what we have
+
         _TRaP_libc_environ_buf_size += bytes;
         for (i = 0; i < bytes; i++)
             if (buf[i] == '\0')
@@ -77,7 +84,7 @@ static void _TRaP_libc_build_trap_environ() {
                                              PROT_READ | PROT_WRITE,
                                              MAP_PRIVATE | MAP_ANONYMOUS,
                                              -1, 0);
-    if (_TRaP_libc_environ_buf == MAP_FAILED) {
+    if ((intptr_t)_TRaP_libc_environ_buf < 0) {
         _TRaP_libc_environ_buf = NULL;
         _TRaP_libc_environ_buf_size = 0;
         goto exit;
