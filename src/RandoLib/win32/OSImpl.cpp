@@ -51,6 +51,12 @@ long _TRaP_libc_strtol(const char*, char **, int);
 #pragma comment(lib, "ntdll")
 #pragma comment(lib, "kernel32")
 
+// We have an unintended dependency on operator delete (void *), which in turn depends on _free.
+// If the latter is not provided by the C library, we need to provide a placeholder
+// so the linker stops complaining
+extern "C" const char *TRaP_free_placeholder = nullptr;
+#pragma comment(linker, "/alternatename:_free=_TRaP_free_placeholder")
+
 // TODO: move these into os::Module
 static const char kRandoEntrySection[] = ".rndentr";
 static const char kRandoTextSection[] = ".rndtext";
