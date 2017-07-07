@@ -52,8 +52,8 @@ long _TRaP_libc_strtol(const char*, char **, int);
 #pragma comment(lib, "kernel32")
 
 // We have an unintended dependency on operator delete (void *), which in turn depends on _free.
-// If the latter is not provided by the C library, we need to provide a placeholder
-// so the linker stops complaining
+// If the latter is not provided by the C library (if the randomized program is linked with the
+// "/NODEFAULTLIB:LIBC" option), we need to provide a placeholder so the linker stops complaining
 extern "C" const char *TRaP_free_placeholder = nullptr;
 #pragma comment(linker, "/alternatename:_free=_TRaP_free_placeholder")
 
