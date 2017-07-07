@@ -68,7 +68,7 @@ static void _TRaP_libc_build_trap_environ() {
             break;
 
         // Handle read errors
-        if (bytes == -EINTR)
+        if (bytes == -EINTR || bytes == -EAGAIN)
             continue; // Read got interrupted, keep going
         if (bytes < 0)
             break;    // Some other read error, just use what we have
