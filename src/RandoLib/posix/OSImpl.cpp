@@ -147,6 +147,9 @@ RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
     size = (size + sizeof(size) + kPageSize - 1) & ~kPageSize;
     auto res = reinterpret_cast<size_t*>(_TRaP_libc_mmap(nullptr, size, PROT_READ | PROT_WRITE,
                                                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    if (reinterpret_cast<intptr_t>(res) < 0)
+        return nullptr;
+
     // We need to remember the size, so we know how much to munmap()
     // FIXME: mprotect doesn't work on this
     *res = size;
@@ -167,6 +170,9 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
 
     auto res = reinterpret_cast<size_t*>(_TRaP_libc_mremap(old_size_ptr, old_size,
                                                            new_size, MREMAP_MAYMOVE));
+    if (reinterpret_cast<intptr_t>(res) < 0)
+        return nullptr;
+
     *res = new_size;
     return reinterpret_cast<void*>(res + 1);
 }
@@ -199,7 +205,7 @@ RANDO_SECTION void *API::mmap(void *addr, size_t size, PagePermissions perms, bo
         flags |= MAP_FIXED;
     // FIXME: we should probably manually randomize the mmap address here
     auto new_addr =_TRaP_libc_mmap(addr, size, prot_perms, flags, -1, 0);
-    return new_addr == MAP_FAILED ? nullptr : new_addr;
+    return reinterpret_cast<intptr_t>(new_addr) < 0 ? nullptr : new_addr;
 }
 
 RANDO_SECTION void API::munmap(void *addr, size_t size, bool commit) {
