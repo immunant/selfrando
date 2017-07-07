@@ -119,16 +119,17 @@ static TString ProcessCommands(const _TCHAR *file) {
 }
 
 static TString ProcessInputFile(const _TCHAR *file) {
+    // If the file name is surrounded by quotes, remove them
+    auto input_file = StripQuotes(TString(file));
+
 	// If the file ends something other than .obj, skip it
-    TString output_file(file);
-    auto dot = PathFindExtension(file);
+    auto dot = PathFindExtension(input_file.c_str());
 	if (dot == nullptr) {
 		// MSDN says that files without an extension get .obj appended
-		output_file.append(TEXT(".obj"));
-		file = output_file.data();
+		input_file.append(TEXT(".obj"));
 	} else if (_tcsicmp(dot, TEXT(".lib")) == 0) {
         auto tmp_file = TempFile::Create(TEXT(".lib"), true);
-        auto trap_status = TRaPCOFFLibrary(file, tmp_file.data());
+        auto trap_status = TRaPCOFFLibrary(input_file.c_str(), tmp_file.data());
 #if 0
         if (trap_status == TRaPStatus::TRAP_ERROR) {
             perror("LinkWrapper:ProcessInputFile:TRaPCOFFLibrary");
@@ -137,26 +138,27 @@ static TString ProcessInputFile(const _TCHAR *file) {
 #endif
         if (trap_status == TRaPStatus::TRAP_ADDED)
             return tmp_file;
-        return output_file;
+        return input_file;
     } else if (_tcsicmp(dot, TEXT(".obj")) != 0 &&
-             _tcsicmp(dot, TEXT(".o")) != 0) // FIXME: create a list of allowed object file extensions (or let TRaPCOFFObject detect object files itself)
-		return output_file;
+               _tcsicmp(dot, TEXT(".o")) != 0) // FIXME: create a list of allowed object file extensions (or let TRaPCOFFObject detect object files itself)
+		return input_file;
 
 	// Run TrapObj.exe <file.obj> <file.obj>
 	// TODO: parallelize this (using WaitForMultipleObjects)
     // FIXME: output to a temporary file instead, and erase it afterwards
     // FIXME: Trap.cpp leaks some memory
+    TString output_file = input_file;
     COFFObject coff_file;
-    if (!coff_file.readFromFile(file))
+    if (!coff_file.readFromFile(input_file.c_str()))
         return output_file;
     if (coff_file.createTRaPInfo()) {
         output_file = TempFile::Create(TEXT(".obj"), true);
-        coff_file.writeToFile(output_file.data());
+        coff_file.writeToFile(output_file.c_str());
     }
 
     // Mark this input file if it's the first
     if (first_object_name.empty())
-        first_object_name = TString(file);
+        first_object_name = input_file;
     return output_file;
 }
 
