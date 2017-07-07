@@ -54,7 +54,7 @@ static void _TRaP_libc_build_trap_environ() {
         return;
 
     int fd = _TRaP_libc_open("/proc/self/environ", O_RDONLY);
-    if (fd == -1)
+    if (fd < 0)
        return;
 
     // Read total length of buffer
