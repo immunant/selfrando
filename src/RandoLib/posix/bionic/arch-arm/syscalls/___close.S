@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(___close)
+ENTRY_SYSCALL(___close)
 #ifdef __NR_close
     mov     ip, r7
     ldr     r7, =__NR_close
@@ -12,5 +12,5 @@ ENTRY(___close)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(___close)
-.hidden _TRaP_libc____close
+END_SYSCALL(___close)
+.hidden _TRaP_syscall____close

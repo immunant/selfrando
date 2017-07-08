@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__getpid)
+ENTRY_SYSCALL(__getpid)
 #ifdef __NR_getpid
     mov     x8, __NR_getpid
     svc     #0
@@ -10,5 +10,5 @@ ENTRY(__getpid)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(__getpid)
-.hidden _TRaP_libc___getpid
+END_SYSCALL(__getpid)
+.hidden _TRaP_syscall___getpid

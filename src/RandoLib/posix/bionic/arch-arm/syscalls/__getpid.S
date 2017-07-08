@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__getpid)
+ENTRY_SYSCALL(__getpid)
 #ifdef __NR_getpid
     mov     ip, r7
     ldr     r7, =__NR_getpid
@@ -12,4 +12,4 @@ ENTRY(__getpid)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(__getpid)
+END_SYSCALL(__getpid)

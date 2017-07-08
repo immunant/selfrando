@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(read)
+ENTRY_SYSCALL(read)
 #ifdef __NR_read
     mov     ip, r7
     ldr     r7, =__NR_read
@@ -12,4 +12,4 @@ ENTRY(read)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(read)
+END_SYSCALL(read)

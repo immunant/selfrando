@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__openat)
+ENTRY_SYSCALL(__openat)
 #ifdef __NR_openat
     mov     ip, r7
     ldr     r7, =__NR_openat
@@ -12,4 +12,4 @@ ENTRY(__openat)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(__openat)
+END_SYSCALL(__openat)

@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(___close)
+ENTRY_SYSCALL(___close)
 #ifdef __NR_close
     movl    $__NR_close, %eax
     syscall
@@ -10,5 +10,5 @@ ENTRY(___close)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(___close)
-.hidden _TRaP_libc____close
+END_SYSCALL(___close)
+.hidden _TRaP_syscall____close

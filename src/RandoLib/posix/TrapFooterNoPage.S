@@ -6,11 +6,7 @@
  *
  */
 
-.section .textramp, "ax", %progbits
-.globl textramp_anchor
-.hidden textramp_anchor
-.type textramp_anchor, %object
-textramp_anchor:
-1:
-    jmp 1b
-
+.globl trap_end_page
+.hidden trap_end_page
+.type trap_end_page, %object
+.equ trap_end_page, 0

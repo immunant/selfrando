@@ -35,22 +35,42 @@ if env['CPPDEFINES']['RANDOLIB_IS_ANDROID']:
     entry_files.append('%s/AndroidInit.c' % target)
 if target == 'arm':
     entry_files.append('arm/LinkerStubs.S')
-lib_env.Library('randoentry_exec', entry_files + exec_entry_files)
-lib_env.Library('randoentry_so', entry_files + so_entry_files)
 
-lib_env.Library('trapheader', ['TrapHeader.S'])
-lib_env.Library('trapfooter', ['TrapFooter.S'])
-lib_env.Library('trapheader_page', ['TrapHeaderPage.S'])
-lib_env.Library('trapfooter_page', ['TrapFooterPage.S'])
+static_libs = []
+static_libs.append(lib_env.Library('randoentry_exec', entry_files + exec_entry_files))
+static_libs.append(lib_env.Library('randoentry_so', entry_files + so_entry_files))
+static_libs.append(lib_env.Library('trapheader', ['TrapHeader.S']))
+static_libs.append(lib_env.Library('trapfooter', ['TrapFooter.S']))
+static_libs.append(lib_env.Library('trapheader_page', ['TrapHeaderPage.S']))
+static_libs.append(lib_env.Library('trapfooter_page', ['TrapFooterPage.S']))
+static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
+
+# Prepend _TRaP_ to all symbols
+for lib in static_libs:
+   lib_env.AddPostAction(lib, 'objcopy --prefix-symbols=_TRaP_ $TARGET && '
+                              'objcopy --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $TARGET && '
+                              'objcopy --rename-section .text.Linux_EntryPoint__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $TARGET && '
+                              'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
+                              'objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $TARGET && '
+                              'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET && '
+                              'objcopy --redefine-sym=_TRaP_Linux_EntryPoint__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $TARGET')
 
 # Build flags start here
+# We need to pass -fPIC to the assembler separately
+lib_env.Append(ASFLAGS = '-fPIC')
 lib_env.Append(CCFLAGS = '-fPIC')
 
 lib_env.Append(CCFLAGS = '-fno-exceptions')
 
+lib_env.Append(CCFLAGS = '-fno-stack-protector')
+
 # Don't export anything from the library
+lib_env.Append(ASFLAGS='-fvisibility=hidden')
 lib_env.Append(CCFLAGS='-fvisibility=hidden')
 lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
+
+if target in ['x86', 'x86_64']:
+    lib_env.Append(CCFLAGS = '-minline-all-stringops')
 
 if target == 'x86':
     # TODO: it would be nice to have a "is 32 bit" variable
@@ -113,16 +133,25 @@ lib_env.StaticLibrary('selfrando_noprefix', SOURCES)
 # prefixed by '.selfrando`, except for '.eh_frame'
 lib_env.Command('libselfrando.a', 'libselfrando_noprefix.a',
                 'objcopy --prefix-alloc-sections=.selfrando $SOURCE $TARGET && '
-                'objcopy --rename-section .selfrando.eh_frame=.eh_frame $TARGET')
+                'objcopy --rename-section .selfrando.eh_frame=.eh_frame $TARGET && '
+                'objcopy --prefix-symbols=_TRaP_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_environ=environ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET'
+                )
 
 LDEMUL = { 'x86':     'elf_i386',
            'x86_64':  'elf_x86_64',
            'arm':     'armelf',         # FIXME: correct???
            'aarch64': 'aarch64linux' }  # FIXME: correct???
 
-lib_env.Command('selfrando_txtrp.o', ['libselfrando_noprefix.a'],
-                'ld -r -m $LDEMUL -o $TARGET -T$SCRIPT --whole-archive $SOURCES',
-                SCRIPT=Glob('selfrando_txtrp.ld'),
+lib_env.Command('selfrando_txtrp.o', ['rename_sections_txtrp.sh', 'libselfrando_noprefix.a'],
+                '$SOURCES $TARGET && '
+                'objcopy --prefix-symbols=_TRaP_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_environ=environ $TARGET && '
+                'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET',
+                 SCRIPT=Glob('selfrando_txtrp.ld'),
                 LDEMUL=LDEMUL[target])
 
 sharedlib_env = lib_env.Clone()
@@ -141,6 +170,7 @@ files += Glob('libtrapheader.a')
 files += Glob('libtrapheader_page.a')
 files += Glob('libtrapfooter.a')
 files += Glob('libtrapfooter_page.a')
+files += Glob('libtrapfooter_nopage.a')
 files += Glob('selfrando_txtrp.o')
 
 Return('files')

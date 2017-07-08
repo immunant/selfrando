@@ -12,7 +12,11 @@ if (SR_BUILD_MODULE_TRAPLINKER)
     add_executable(traplinker
         ELF.cpp
         TrapLinker.cpp
-        arch/${SR_ARCH}/ELF.cpp
+        #FIXME: add them back in when they compile
+        #arch/arm/ELF.cpp
+        #arch/arm64/ELF.cpp
+        arch/x86/ELF.cpp
+        arch/x86_64/ELF.cpp
         LinkerOptions.inc
         )
 
@@ -40,7 +44,7 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         COMMENT "Creating ld symlinks"
         )
 
-    add_dependencies(traplinker randolib_support)
+    add_dependencies(traplinker randolib_support ${SR_LIBELF_TARGET})
 
     install(TARGETS traplinker DESTINATION bin)
     install(PROGRAMS
@@ -52,7 +56,6 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         )
     install(FILES
         linker_script.ld
-        provide_TRaP_end_page.ld
         DESTINATION bin
         )
 endif()

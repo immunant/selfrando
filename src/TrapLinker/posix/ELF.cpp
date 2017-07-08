@@ -19,6 +19,17 @@
 #include <libelf.h>
 #include <gelf.h>
 
+extern TargetOps *x86_ops;
+extern TargetOps *x86_64_ops;
+#if 0
+// FIXME: disabled for now, do not compile successfully
+extern TargetOps *arm_ops;
+extern TargetOps *arm64_ops;
+#else
+static TargetOps *arm_ops = nullptr;
+static TargetOps *arm64_ops = nullptr;
+#endif
+
 #ifdef EM_AARCH64
 static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
 #endif
@@ -30,6 +41,8 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 32,
+        .trap_platform   = TRAP_PLATFORM_POSIX_X86,
+        .ops             = x86_ops,
         }
     },
     { EM_X86_64, {
@@ -39,6 +52,8 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 0,
         .addr_size       = 64,
+        .trap_platform   = TRAP_PLATFORM_POSIX_X86_64,
+        .ops             = x86_64_ops,
         }
     },
     { EM_ARM, {
@@ -48,6 +63,8 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 1,
         .addr_size       = 32,
+        .trap_platform   = TRAP_PLATFORM_POSIX_ARM,
+        .ops             = arm_ops,
         }
     },
     // AArch4 information
@@ -60,6 +77,8 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .min_p2align     = 0,
         .padding_p2align = 2,
         .addr_size       = 64,
+        .trap_platform   = TRAP_PLATFORM_POSIX_ARM64,
+        .ops             = arm64_ops,
         }
     },
 };
@@ -182,15 +201,25 @@ static inline bool is_prefix(const char (&prefix)[len],
     return str.substr(0, len - 1) == prefix;
 }
 
-static inline bool is_text_section(const std::string &name) {
+static inline bool is_text_section(const std::string &name,
+                                   bool include_linkonce) {
+    if (include_linkonce && is_prefix(".gnu.linkonce.t", name))
+        return true;
     return is_prefix(".text", name) ||
-           is_prefix(".stub", name) ||
-           is_prefix(".gnu.linkonce.t", name);
+           is_prefix(".stub", name);
 }
 
 static inline bool is_ctors_section(const std::string &name) {
     return is_prefix(".ctors", name) ||
            is_prefix(".dtors", name);
+}
+
+static inline bool is_gnu_linkonce(const std::string &name) {
+    return is_prefix(".gnu.linkonce", name);
+}
+
+static inline bool is_linkonce_x86_pic_thunk(const std::string &name) {
+    return is_prefix(".gnu.linkonce.t.__x86.get_pc_thunk", name);
 }
 
 ElfObject::SectionBuilderMap
@@ -208,7 +237,9 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
 
         switch (section_header.sh_type) {
         case SHT_REL: {
-            section_builders[section_header.sh_info].set_reloc_section(cur_shndx);
+            auto &builder = section_builders[section_header.sh_info];
+            builder.set_reloc_section(cur_shndx);
+
             Elf_Data *data = nullptr;
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Rel relocation;
@@ -217,16 +248,16 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                     // contents
                     if (GELF_R_TYPE(relocation.r_info) == m_target_info->none_reloc)
                         continue; // Skip NONE relocs, they may overlap with others
-                    auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
-                        Target::check_rel_for_stubs(*this, &relocation, 0,
-                                                    section_header.sh_info, builder);
+                        m_target_info->ops->check_rel_for_stubs(*this, &relocation, 0,
+                                                                section_header.sh_info, builder);
                     if (rel_changed) {
                         gelf_update_rel(data, i, &relocation);
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
                     auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
+                    builder.set_object(this);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref);
                 }
@@ -234,23 +265,25 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
             break;
         }
         case SHT_RELA: {
-            section_builders[section_header.sh_info].set_reloc_section(cur_shndx);
+            auto &builder = section_builders[section_header.sh_info];
+            builder.set_reloc_section(cur_shndx);
+
             Elf_Data *data = nullptr;
             while ((data = elf_getdata(cur_section, data)) != nullptr) {
                 GElf_Rela relocation;
                 for (unsigned i = 0; gelf_getrela(data, i, &relocation) != nullptr; ++i) {
                     if (GELF_R_TYPE(relocation.r_info) == m_target_info->none_reloc)
                         continue; // Skip NONE relocs, they may overlap with others
-                    auto &builder = section_builders[section_header.sh_info];
                     bool rel_changed =
-                        Target::check_rel_for_stubs(*this, &relocation, relocation.r_addend,
-                                                    section_header.sh_info, builder);
+                        m_target_info->ops->check_rela_for_stubs(*this, &relocation, relocation.r_addend,
+                                                                 section_header.sh_info, builder);
                     if (rel_changed) {
                         gelf_update_rela(data, i, &relocation);
                         elf_flagdata(data, ELF_C_SET, ELF_F_DIRTY);
                     }
                     auto symbol_idx = GELF_R_SYM(relocation.r_info);
                     auto symbol_ref = symbol_table->get_input_symbol_ref(symbol_idx);
+                    builder.set_object(this);
                     builder.mark_relocation(relocation.r_offset, GELF_R_TYPE(relocation.r_info),
                                             symbol_ref, relocation.r_addend);
                 }
@@ -373,6 +406,13 @@ void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_bui
             I = section_builders->erase(I);
             continue;
         }
+        if (m_target_info->trap_platform == TRAP_PLATFORM_POSIX_X86 &&
+            is_gnu_linkonce(section_name)) {
+            Debug::printf<10>("Skipping .gnu.linkonce... section %d\n", section_ndx);
+            I = section_builders->erase(I);
+            continue;
+
+        }
         ++I;
     }
 }
@@ -396,6 +436,9 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     for (auto &I : section_builders) {
         auto section_ndx = I.first;
         auto &builder = I.second;
+
+        // Set m_object if we haven't already
+        builder.set_object(this);
 
         auto cur_section = elf_getscn(m_elf, section_ndx);
         GElf_Shdr header;
@@ -421,7 +464,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         // Mark and add padding
         auto name = get_section_name(cur_section);
         builder.mark_padding_offset(m_section_sizes[section_ndx]);
-        if ((header.sh_flags & SHF_EXECINSTR) != 0 && is_text_section(name)) {
+        if ((header.sh_flags & SHF_EXECINSTR) != 0 && is_text_section(name, false)) {
             // Add padding to .text
             size_t final_padding_size = (1 << builder.section_p2align()) - 1;
             if (final_padding_size < 4)
@@ -445,15 +488,15 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         // Build trampolines for this section
         Elf_SectionIndex tramp_section_ndx = 0;
         if (emit_textramp) {
-            TrampolineBuilder tramp_builder(*this, symbol_table);
+            auto tramp_builder = m_target_info->ops->get_trampoline_builder(*this, symbol_table);
             ElfSymbolTable::SymbolMapping symbol_mapping; 
             std::tie(tramp_section_ndx, symbol_mapping) =
-                tramp_builder.build_trampolines(builder.entry_symbols());
+                tramp_builder->build_trampolines(builder.entry_symbols());
             builder.update_symbol_indices(symbol_mapping);
         }
 
         // Compute relocation addends
-        builder.read_reloc_addends(cur_section);
+        builder.read_reloc_addends(*this, cur_section);
         builder.build_trap_data(symbol_table);
 
         // Add a txtrp section
@@ -470,6 +513,8 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         int trap_section_ndx = add_section(".txtrp", &trap_section_header,
                                            DataBuffer(builder.get_trap_data(), 1));
         auto trap_section_symbol = symbol_table.add_section_symbol(trap_section_ndx);
+
+        bool fake_init_anchor = false;
         if (is_ctors_section(name)) {
             // We need to implement a small hack to get around a restriction
             // in ld.bfd: .ctors/.dtors can only have exactly as many
@@ -478,6 +523,20 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
             // instead, we create a corresponding .init section and put the
             // anchor there, which is fine from a GC point since both .init
             // and .ctors/.dtors are gc roots
+            fake_init_anchor = true;
+#if 0 // Disabled, we just skip this section altogether
+        } else if (m_target_info->trap_platform == TRAP_PLATFORM_POSIX_X86 &&
+                   is_linkonce_x86_pic_thunk(name)) {
+            // On 32-bit x86, crti.o contains a .gnu.linkonce.t section used
+            // for PIC (see issue #54). We rely on that section being
+            // discarded, but we still add a .txtrp section for it and count
+            // on the linker keeping it. To make sure that happens, we add
+            // the anchor reloc in .init here, instead of the discarded
+            // section.
+            fake_init_anchor = true;
+#endif
+        }
+        if (fake_init_anchor) {
             GElf_Shdr fake_init_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             fake_init_header.sh_type = SHT_PROGBITS;
             fake_init_header.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
@@ -532,14 +591,14 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         auto it = section_builders.find(section_index);
         if (it != section_builders.end() &&
             it->second.reloc_section_ndx() != 0) {
-            Target::add_relocs_to_section(*this, it->second.reloc_section_ndx(), rel_buf);
+            m_target_info->ops->add_relocs_to_section(*this, it->second.reloc_section_ndx(), rel_buf);
         } else {
             Elf_Scn *section = elf_getscn(m_elf, section_index);
-            Target::create_reloc_section(*this,
-                                         get_section_name(section),
-                                         section_index,
-                                         symbol_table.section_index(),
-                                         rel_buf);
+            m_target_info->ops->create_reloc_section(*this,
+                                                     get_section_name(section),
+                                                     section_index,
+                                                     symbol_table.section_index(),
+                                                      rel_buf);
         }
     }
 
@@ -553,7 +612,7 @@ void ElfObject::add_anchor_reloc(const GElf_Shdr *header,
                                  size_t function_count) {
     GElf_Addr reloc_offset = (header->sh_size == 0) ? 0 : (header->sh_size - 1);
     ElfReloc reloc(reloc_offset, m_target_info->none_reloc, section_symbol, 0);
-    Target::add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
+    m_target_info->ops->add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
 }
 
 ElfStringTable *ElfObject::get_string_table(Elf_SectionIndex section_index) {
@@ -748,18 +807,18 @@ bool ElfObject::update_file() {
 Elf* ElfObject::write_new_file(int fd) {
     Elf *new_elf = elf_begin(fd, ELF_C_WRITE, nullptr);
     if (!new_elf)
-        Error::printf("Could not create ELF handle: %s", elf_errmsg(-1));
+        Error::printf("Could not create ELF handle: %s\n", elf_errmsg(-1));
 
     int elf_class = gelf_getclass(m_elf);
     if (!elf_class)
-        Error::printf("Could not get ELF class: %s", elf_errmsg(-1));
+        Error::printf("Could not get ELF class: %s\n", elf_errmsg(-1));
 
     if (!gelf_newehdr(new_elf, elf_class))
-        Error::printf("Could not create new ELF header for archive member copy: %s", elf_errmsg(-1));
+        Error::printf("Could not create new ELF header for archive member copy: %s\n", elf_errmsg(-1));
 
     GElf_Ehdr ehdr;
     if (!gelf_update_ehdr(new_elf, gelf_getehdr(m_elf, &ehdr)))
-        Error::printf("Could not copy ELF header for archive member copy: %s", elf_errmsg(-1));
+        Error::printf("Could not copy ELF header for archive member copy: %s\n", elf_errmsg(-1));
 
     if (ehdr.e_phnum > 0) {
         size_t num_phdr;
@@ -772,22 +831,27 @@ Elf* ElfObject::write_new_file(int fd) {
         for (size_t i = 0; i < num_phdr; ++i) {
             GElf_Phdr phdr;
             if (!gelf_update_phdr(new_elf, i, gelf_getphdr(m_elf, i, &phdr)))
-                Error::printf("Could not copy ELF header for archive member copy: %s", elf_errmsg(-1));
+                Error::printf("Could not copy ELF header for archive member copy: %s\n", elf_errmsg(-1));
         }
     }
 
     Elf_Scn *old_section = nullptr;
     while ((old_section = elf_nextscn(m_elf, old_section)) != nullptr) {
         Elf_Scn *new_section = elf_newscn(new_elf);
+        if (!new_section)
+            Error::printf("Could not create new section for archive member copy: %s\n", elf_errmsg(-1));
+
         GElf_Shdr shdr;
         if (!gelf_update_shdr(new_section, gelf_getshdr(old_section, &shdr)))
-            Error::printf("Could not copy section header for archive member copy: %s", elf_errmsg(-1));
+            Error::printf("Could not copy section header for archive member copy: %s\n", elf_errmsg(-1));
         Debug::printf<10>("Copied entity size: %u\n", shdr.sh_entsize);
         Debug::printf<10>("Copied section size: %u\n", shdr.sh_size);
 
         Elf_Data *old_data = nullptr;
         while ((old_data = elf_getdata(old_section, old_data)) != nullptr) {
             Elf_Data *new_data = elf_newdata(new_section);
+            if (!new_data)
+                Error::printf("Could not copy section data for archive member copy: %s\n", elf_errmsg(-1));
             *new_data = *old_data;
         }
     }
@@ -1321,7 +1385,7 @@ void ElfSymbolTable::XindexTable::update() {
 }
 
 std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
-TrampolineBuilder::build_trampolines(const Target::EntrySymbols &entry_symbols) {
+TrampolineBuilder::build_trampolines(const EntrySymbols &entry_symbols) {
     if (entry_symbols.empty())
         return std::make_tuple(0, ElfSymbolTable::SymbolMapping{});
 
@@ -1360,7 +1424,8 @@ void TrapRecordBuilder::mark_symbol(Elf_Offset offset, ElfSymbolTable::SymbolRef
 
 void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol) {
-    auto extra_info = trap_reloc_info(type);
+    auto trap_platform = m_object->get_target_info()->trap_platform;
+    auto extra_info = trap_reloc_info(type, trap_platform);
     if (extra_info & TRAP_RELOC_IGNORE)
         return;
     if (extra_info & TRAP_RELOC_ADDEND)
@@ -1371,7 +1436,8 @@ void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
 void TrapRecordBuilder::mark_relocation(Elf_Offset offset, uint32_t type,
                                         ElfSymbolTable::SymbolRef symbol,
                                         Elf_Offset addend) {
-    auto extra_info = trap_reloc_info(type);
+    auto trap_platform = m_object->get_target_info()->trap_platform;
+    auto extra_info = trap_reloc_info(type, trap_platform);
     if (extra_info & TRAP_RELOC_IGNORE)
         return;
     m_relocs.push_back(ElfReloc(offset, type, symbol, addend));
@@ -1399,7 +1465,8 @@ void TrapRecordBuilder::update_symbol_indices(ElfSymbolTable::SymbolMapping &sym
 }
 
 
-void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
+void TrapRecordBuilder::read_reloc_addends(ElfObject &object,
+                                           Elf_Scn *section) {
     if (m_addendless_relocs.empty())
         return;
 
@@ -1429,7 +1496,7 @@ void TrapRecordBuilder::read_reloc_addends(Elf_Scn *section) {
             // FIXME: size of the read should depend on the relocation
             // for now, only 32-bit x86 and ARM use these, and only for
             // full 32-bit relocations, so we're fine (for now)
-            auto addend = Target::read_reloc(
+            auto addend = object.get_target_info()->ops->read_reloc(
                 reinterpret_cast<char*>(data->d_buf) + rel_data_ofs, reloc);
             reloc.addend = addend;
             Debug::printf<10>("Found reloc addend %d at offset %d type %d\n",
@@ -1447,10 +1514,12 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
     // Type
     push_back_uleb128(reloc.type);
     Elf_Offset trap_addend = reloc.addend;
-    if (trap_reloc_info(reloc.type) & TRAP_RELOC_SYMBOL) {
+    auto trap_platform = m_object->get_target_info()->trap_platform;
+    auto extra_info = trap_reloc_info(reloc.type, trap_platform);
+    if (extra_info & TRAP_RELOC_SYMBOL) {
         // Symbol
         ElfReloc reloc(m_data.size(),
-                       symbol_table.object()->get_target_info()->symbol_reloc,
+                       m_object->get_target_info()->symbol_reloc,
                        reloc.symbol, 0);
         if (trap_addend > 0) {
             // Hack for the addend ambiguity: roll positive addends into the symbol
@@ -1458,10 +1527,10 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
             reloc.addend = trap_addend;
             trap_addend = 0;
         }
-        Target::add_reloc_to_buffer(m_reloc_data, &reloc);
-        push_back_int(reloc.addend, symbol_table.object()->get_target_info()->addr_size / 8);
+        m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &reloc);
+        push_back_int(reloc.addend, m_object->get_target_info()->addr_size / 8);
     }
-    if (trap_reloc_info(reloc.type) & TRAP_RELOC_ADDEND) {
+    if (extra_info & TRAP_RELOC_ADDEND) {
         // Addend
         push_back_sleb128(trap_addend);
     }
@@ -1479,11 +1548,11 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     Debug::printf<10>("Adding first trap symbol at %u\n", m_symbols[0].offset);
 
     // FirstSymAddr
-    m_data.insert(m_data.end(), symbol_table.object()->get_target_info()->addr_size / 8, 0);
+    m_data.insert(m_data.end(), m_object->get_target_info()->addr_size / 8, 0);
     ElfReloc symbol_reloc(0,
-                          symbol_table.object()->get_target_info()->symbol_reloc,
+                          m_object->get_target_info()->symbol_reloc,
                           m_symbols[0].symbol, 0);
-    Target::add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
+    m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
 
     // FirstSymOffset
     push_back_uleb128(m_symbols[0].offset);

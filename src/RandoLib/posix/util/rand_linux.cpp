@@ -37,10 +37,10 @@
 extern "C" {
 #include <util/fnv.h>
 
-int _TRaP_libc_getrandom(void*, size_t, unsigned int);
-int _TRaP_libc_open(const char*, int, ...);
-ssize_t _TRaP_libc_read(int, void*, size_t);
-int _TRaP_libc____close(int);
+int _TRaP_syscall_getrandom(void*, size_t, unsigned int);
+int _TRaP_syscall_open(const char*, int, ...);
+ssize_t _TRaP_syscall_read(int, void*, size_t);
+int _TRaP_syscall____close(int);
 }
 
 #ifdef __NR_getrandom
@@ -61,7 +61,7 @@ _TRaP_rand_getentropy(void *buf, size_t buflen) {
 
   if (_TRaP_rand_getrandom_works) {
     do {
-      l = _TRaP_libc_getrandom(buf, buflen, 0);
+      l = _TRaP_syscall_getrandom(buf, buflen, 0);
       if (l < 0) {
         switch (l) {
           case -ENOSYS:
@@ -83,13 +83,13 @@ _TRaP_rand_getentropy(void *buf, size_t buflen) {
     size_t nread = 0;
 
     if (_TRaP_rand_urandom_fd == -1) {
-      if ((_TRaP_rand_urandom_fd = _TRaP_libc_open("/dev/urandom", O_CLOEXEC | O_RDONLY)) < 0) {
+      if ((_TRaP_rand_urandom_fd = _TRaP_syscall_open("/dev/urandom", O_CLOEXEC | O_RDONLY)) < 0) {
         RANDO_ASSERT(false);
       }
     }
 
     for (nread = 0; nread < buflen;) {
-      ssize_t i = _TRaP_libc_read(_TRaP_rand_urandom_fd, out, buflen - nread);
+      ssize_t i = _TRaP_syscall_read(_TRaP_rand_urandom_fd, out, buflen - nread);
       if (i < 0) {
         if (i == -EAGAIN) {
           continue;
@@ -111,7 +111,7 @@ _TRaP_rand_getentropy(void *buf, size_t buflen) {
 extern "C"
 void _TRaP_rand_close_fd(void) {
     if (_TRaP_rand_urandom_fd != -1) {
-        _TRaP_libc____close(_TRaP_rand_urandom_fd);
+        _TRaP_syscall____close(_TRaP_rand_urandom_fd);
         _TRaP_rand_urandom_fd = -1;
     }
 }

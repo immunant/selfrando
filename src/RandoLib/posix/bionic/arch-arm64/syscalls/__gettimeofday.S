@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__gettimeofday)
+ENTRY_SYSCALL(__gettimeofday)
 #ifdef __NR_gettimeofday
     mov     x8, __NR_gettimeofday
     svc     #0
@@ -10,5 +10,5 @@ ENTRY(__gettimeofday)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(__gettimeofday)
-.hidden _TRaP_libc___gettimeofday
+END_SYSCALL(__gettimeofday)
+.hidden _TRaP_syscall___gettimeofday

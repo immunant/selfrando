@@ -52,7 +52,7 @@ syscall_stub_header = "/* " + warning + " */\n" + \
 """
 #include <private/bionic_asm.h>
 
-ENTRY(%(func)s)
+ENTRY_SYSCALL(%(func)s)
 """
 
 
@@ -70,7 +70,7 @@ arm_eabi_call_default = syscall_stub_header + """\
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(%(func)s)
+END_SYSCALL(%(func)s)
 """
 
 arm_eabi_call_long = syscall_stub_header + """\
@@ -91,7 +91,7 @@ arm_eabi_call_long = syscall_stub_header + """\
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(%(func)s)
+END_SYSCALL(%(func)s)
 """
 
 
@@ -107,7 +107,7 @@ arm64_call = syscall_stub_header + """\
     mov     x0, #-ENOSYS
 #endif
     ret
-END(%(func)s)
+END_SYSCALL(%(func)s)
 """
 
 
@@ -128,7 +128,7 @@ x86_call = """\
 
 x86_return = """\
     ret
-END(%(func)s)
+END_SYSCALL(%(func)s)
 """
 
 
@@ -144,7 +144,7 @@ x86_64_call = """\
     mov     $-ENOSYS, %%eax
 #endif
     ret
-END(%(func)s)
+END_SYSCALL(%(func)s)
 """
 
 
@@ -234,12 +234,12 @@ def add_footer(pointer_length, stub, syscall):
     # Add any aliases for this syscall.
     aliases = syscall["aliases"]
     for alias in aliases:
-        stub += "\nALIAS_SYMBOL(%s, %s)\n" % (alias, syscall["func"])
+        stub += "\nALIAS_SYMBOL_SYSCALL(%s, %s)\n" % (alias, syscall["func"])
 
     # Use hidden visibility on LP64 for any functions beginning with underscores.
     # Force hidden visibility for any functions which begin with 3 underscores
     if (pointer_length == 64 and syscall["func"].startswith("__")) or syscall["func"].startswith("___"):
-        stub += '.hidden _TRaP_libc_' + syscall["func"] + '\n'
+        stub += '.hidden _TRaP_syscall_' + syscall["func"] + '\n'
 
     return stub
 

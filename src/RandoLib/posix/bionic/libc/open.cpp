@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-extern "C" int _TRaP_libc___openat(int, const char*, int, int);
+extern "C" int _TRaP_syscall___openat(int, const char*, int, int);
 
 static inline int force_O_LARGEFILE(int flags) {
 #if __LP64__
@@ -42,7 +42,7 @@ static inline int force_O_LARGEFILE(int flags) {
 }
 
 extern "C"
-int _TRaP_libc_open(const char* pathname, int flags, ...) {
+int _TRaP_syscall_open(const char* pathname, int flags, ...) {
   mode_t mode = 0;
 
   if ((flags & O_CREAT) != 0) {
@@ -52,16 +52,16 @@ int _TRaP_libc_open(const char* pathname, int flags, ...) {
     va_end(args);
   }
 
-  return _TRaP_libc___openat(AT_FDCWD, pathname, force_O_LARGEFILE(flags), mode);
+  return _TRaP_syscall___openat(AT_FDCWD, pathname, force_O_LARGEFILE(flags), mode);
 }
 
 extern "C"
-int _TRaP_libc_creat(const char* pathname, mode_t mode) {
-  return _TRaP_libc_open(pathname, O_CREAT | O_TRUNC | O_WRONLY, mode);
+int _TRaP_syscall_creat(const char* pathname, mode_t mode) {
+  return _TRaP_syscall_open(pathname, O_CREAT | O_TRUNC | O_WRONLY, mode);
 }
 
 extern "C"
-int _TRaP_libc_openat(int fd, const char *pathname, int flags, ...) {
+int _TRaP_syscall_openat(int fd, const char *pathname, int flags, ...) {
   mode_t mode = 0;
 
   if ((flags & O_CREAT) != 0) {
@@ -71,6 +71,6 @@ int _TRaP_libc_openat(int fd, const char *pathname, int flags, ...) {
     va_end(args);
   }
 
-  return _TRaP_libc___openat(fd, pathname, force_O_LARGEFILE(flags), mode);
+  return _TRaP_syscall___openat(fd, pathname, force_O_LARGEFILE(flags), mode);
 }
 

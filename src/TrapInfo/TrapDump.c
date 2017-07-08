@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include <err.h>
 
@@ -30,20 +31,21 @@ int main(int argc, const char *argv[]) {
         errx(EXIT_FAILURE, "File does not contain any TRaP data: %s", argv[1]);
     printf("Read TRaP data bytes: %zd\n", data.size);
 
-    struct trap_header_t header;
+    struct trap_header_t header = {};
     uint8_t *trap_ptr = data.data;
-    trap_read_header(&header, &trap_ptr, &data.base_address, &header);
-    printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%lu\n",
+    trap_read_header(&header, &trap_ptr,
+                     data.trap_platform, data.base_address);
+    printf("Header: %08x Version: %02x Flags: %06x Ptrsize:%" PRIu64 "\n",
            header.flags, header.version, header.flags >> 8,
            header.pointer_size);
 
     if (trap_header_has_flag(&header, TRAP_HAS_NONEXEC_RELOCS)) {
         struct trap_reloc_t reloc;
-        uintptr_t rel_addr = 0;
+        trap_address_t rel_addr = 0;
         trap_ptr = header.reloc_start;
         while (trap_read_reloc(&header, &trap_ptr, &rel_addr, &reloc)) {
             assert(rel_addr == reloc.address);
-            printf("Rel[%ld]@%lx=%lx+%ld\n",
+            printf("Rel[%" PRId64 "]@%" PRIx64 "=%" PRIx64 "+%" PRId64 "\n",
                    reloc.type, reloc.address,
                    reloc.symbol, reloc.addend);
         }
@@ -55,16 +57,16 @@ int main(int argc, const char *argv[]) {
     while (trap_ptr < (data.data + data.size)) {
         trap_read_record(&header, &trap_ptr, NULL, &record);
         size_t first_ofs = record.first_symbol.address - record.address;
-        printf("Record@%lx(sec+%ld)\n",
+        printf("Record@%" PRIx64 "(sec+%zd)\n",
                record.address, first_ofs);
 
         struct trap_symbol_t symbol;
         uint8_t *sym_ptr = record.symbol_start;
-        uintptr_t sym_addr = record.address;
+        trap_address_t sym_addr = record.address;
         while (sym_ptr < record.symbol_end) {
             trap_read_symbol(&header, &sym_ptr, &sym_addr, &symbol);
             assert(sym_addr == symbol.address);
-            printf("  Sym@%lx/%lx[%lx] align:%ld\n",
+            printf("  Sym@%" PRIx64 "/%" PRIx64 "[%" PRIx64 "] align:%ld\n",
                    symbol.address - record.address,
                    symbol.address,
                    symbol.size,
@@ -74,27 +76,27 @@ int main(int argc, const char *argv[]) {
 
         if (trap_header_has_flag(&header, TRAP_HAS_RECORD_RELOCS)) {
             struct trap_reloc_t reloc;
-            uintptr_t rel_addr = record.address;
+            trap_address_t rel_addr = record.address;
             trap_pointer_t rel_ptr = record.reloc_start;
             while (rel_ptr < record.reloc_end &&
                    trap_read_reloc(&header, &rel_ptr, &rel_addr, &reloc)) {
                 assert(rel_addr == reloc.address);
-                printf("  Rel[%ld]@%lx=%lx+%ld\n",
+                printf("  Rel[%" PRId64 "]@%" PRIx64 "=%" PRIx64 "+%" PRId64 "\n",
                        reloc.type, reloc.address,
                        reloc.symbol, reloc.addend);
             }
         }
 
         if (trap_header_has_flag(&header, TRAP_HAS_RECORD_PADDING)) {
-            printf("  Padding[%ld]@%lx/%lx\n",
+            printf("  Padding[%" PRId64 "]@%" PRIx64 "/%" PRIx64 "\n",
                    record.padding_size,
                    record.padding_ofs,
                    record.padding_ofs + record.address);
         }
         num_records++;
     }
-    printf("Records:%ld\n", num_records);
-    printf("Syms:%ld\n", num_symbols);
+    printf("Records:%zd\n", num_records);
+    printf("Syms:%zd\n", num_symbols);
 
     free_trap_data(&data);
     close_trap_file(file);

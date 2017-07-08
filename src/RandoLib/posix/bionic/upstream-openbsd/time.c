@@ -31,14 +31,14 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-extern int _TRaP_libc___gettimeofday(struct timeval*, struct timezone*);
+extern int _TRaP_syscall___gettimeofday(struct timeval*, struct timezone*);
 
 time_t
 _TRaP_libc_time(time_t *t)
 {
 	struct timeval tt;
 
-	if (_TRaP_libc___gettimeofday(&tt, (struct timezone *)0) < 0)
+	if (_TRaP_syscall___gettimeofday(&tt, (struct timezone *)0) < 0)
 		return (-1);
 	if (t)
 		*t = (time_t)tt.tv_sec;

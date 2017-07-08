@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(lseek)
+ENTRY_SYSCALL(lseek)
 #ifdef __NR_lseek
     mov     x8, __NR_lseek
     svc     #0
@@ -10,6 +10,6 @@ ENTRY(lseek)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(lseek)
+END_SYSCALL(lseek)
 
-ALIAS_SYMBOL(lseek64, lseek)
+ALIAS_SYMBOL_SYSCALL(lseek64, lseek)

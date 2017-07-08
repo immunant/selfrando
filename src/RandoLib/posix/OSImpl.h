@@ -34,10 +34,10 @@ int _TRaP_libc_rand_r(unsigned int*);
 #elif RANDOLIB_RNG_IS_URANDOM
 long _TRaP_rand_linux(long);
 #endif
-pid_t _TRaP_libc___getpid(void);
-int _TRaP_libc_open(const char*, int, ...);
-ssize_t _TRaP_libc_write(int, const void*, size_t);
-int _TRaP_libc____close(int);
+pid_t _TRaP_syscall___getpid(void);
+int _TRaP_syscall_open(const char*, int, ...);
+ssize_t _TRaP_syscall_write(int, const void*, size_t);
+int _TRaP_syscall____close(int);
 }
 
 namespace os {
@@ -103,7 +103,7 @@ public:
     }
 
     static Pid getpid() {
-        return _TRaP_libc___getpid();
+        return _TRaP_syscall___getpid();
     }
 
     // TODO: make this into a compile-time value,

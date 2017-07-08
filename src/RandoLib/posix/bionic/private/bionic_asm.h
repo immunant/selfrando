@@ -49,19 +49,34 @@
     __bionic_asm_custom_entry(_TRaP_libc_##f); \
     .cfi_startproc \
 
+#define ENTRY_SYSCALL(f) \
+    .text; \
+    .globl _TRaP_syscall_##f; \
+    .hidden _TRaP_syscall_##f; \
+    .align __bionic_asm_align; \
+    .type _TRaP_syscall_##f, __bionic_asm_function_type; \
+    _TRaP_syscall_##f: \
+    __bionic_asm_custom_entry(_TRaP_syscall_##f); \
+    .cfi_startproc \
+
 #define END(f) \
     .cfi_endproc; \
     .size _TRaP_libc_##f, .-_TRaP_libc_##f; \
     __bionic_asm_custom_end(_TRaP_libc_##f) \
 
-/* Like ENTRY, but with hidden visibility. */
-#define ENTRY_PRIVATE(f) \
-    ENTRY(_TRaP_libc_##f); \
-    .hidden _TRaP_libc_##f \
+#define END_SYSCALL(f) \
+    .cfi_endproc; \
+    .size _TRaP_syscall_##f, .-_TRaP_syscall_##f; \
+    __bionic_asm_custom_end(_TRaP_syscall_##f) \
 
 #define ALIAS_SYMBOL(alias, original) \
     .globl _TRaP_libc_##alias; \
     .hidden _TRaP_libc_##alias; \
     .equ _TRaP_libc_##alias, _TRaP_libc_##original
+
+#define ALIAS_SYMBOL_SYSCALL(alias, original) \
+    .globl _TRaP_syscall_##alias; \
+    .hidden _TRaP_syscall_##alias; \
+    .equ _TRaP_syscall_##alias, _TRaP_syscall_##original
 
 #endif /* _PRIVATE_BIONIC_ASM_H_ */

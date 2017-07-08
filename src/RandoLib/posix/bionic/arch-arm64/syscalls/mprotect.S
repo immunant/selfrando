@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(mprotect)
+ENTRY_SYSCALL(mprotect)
 #ifdef __NR_mprotect
     mov     x8, __NR_mprotect
     svc     #0
@@ -10,4 +10,4 @@ ENTRY(mprotect)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(mprotect)
+END_SYSCALL(mprotect)

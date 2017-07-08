@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__openat)
+ENTRY_SYSCALL(__openat)
 #ifdef __NR_openat
     mov     x8, __NR_openat
     svc     #0
@@ -10,5 +10,5 @@ ENTRY(__openat)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(__openat)
-.hidden _TRaP_libc___openat
+END_SYSCALL(__openat)
+.hidden _TRaP_syscall___openat

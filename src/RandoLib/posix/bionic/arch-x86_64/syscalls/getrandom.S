@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(getrandom)
+ENTRY_SYSCALL(getrandom)
 #ifdef __NR_getrandom
     movl    $__NR_getrandom, %eax
     syscall
@@ -10,4 +10,4 @@ ENTRY(getrandom)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(getrandom)
+END_SYSCALL(getrandom)

@@ -40,7 +40,11 @@
 
 #define RANDO_ALWAYS_INLINE __forceinline
 
-#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_SECTION void WINAPI _TRaP_RandoMain(os::Module::Handle asm_module)
+#define RANDO_PUBLIC_FUNCTION(name, return_type, ...)   \
+    extern "C" RANDO_SECTION                            \
+    return_type WINAPI _TRaP_##name(__VA_ARGS__)
+
+#define RANDO_MAIN_FUNCTION()  RANDO_PUBLIC_FUNCTION(RandoMain, void, os::Module::Handle asm_module)
 
 #define RANDO_SYS_FUNCTION(library, function, ...)  (os::APIImpl::library##_##function)(__VA_ARGS__)
 

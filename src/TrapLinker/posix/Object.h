@@ -26,6 +26,8 @@
 #include <utility>
 #include <vector>
 
+#include <TrapInfo.h>
+
 typedef int64_t Elf_Offset;
 typedef size_t Elf_SectionIndex;
 
@@ -359,7 +361,49 @@ struct ElfReloc {
     }
 };
 
+class ElfObject;
+class TrampolineBuilder;
+
 typedef std::vector<ElfReloc> Elf_RelocBuffer;
+
+class TargetOps {
+public:
+    // Create an empty .rel.XXX section
+    virtual Elf_SectionIndex
+    create_reloc_section(ElfObject &object,
+                         const std::string &section_name,
+                         Elf_SectionIndex shndx,
+                         Elf_SectionIndex symtab_shndx,
+                         const Elf_RelocBuffer &relocs) = 0;
+
+    // Adds a relocation to an Elf_RelocBuffer structure.
+    // The caller should use whatever is left in reloc.addend
+    // as the actual relocated data, in case the target arch
+    // does not support explicit addends.
+    virtual void
+    add_reloc_to_buffer(Elf_RelocBuffer &buffer,
+                        ElfReloc *reloc) = 0;
+
+    // Copies an entire Elf_RelocBuffer to a section.
+    virtual void
+    add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
+                          const Elf_RelocBuffer &buffer) = 0;
+
+    virtual bool
+    check_rel_for_stubs(ElfObject &object, GElf_Rel *relocation, ptrdiff_t addend,
+                        uint32_t shndx, TrapRecordBuilder &builder) = 0;
+
+    virtual bool
+    check_rela_for_stubs(ElfObject &object, GElf_Rela *relocation, ptrdiff_t addend,
+                         uint32_t shndx, TrapRecordBuilder &builder) = 0;
+
+    virtual Elf_Offset
+    read_reloc(char* data, ElfReloc &reloc) = 0;
+
+    virtual std::unique_ptr<TrampolineBuilder>
+    get_trampoline_builder(ElfObject &object,
+                           ElfSymbolTable &symbol_table) = 0;
+};
 
 class ElfObject {
 public:
@@ -526,6 +570,8 @@ public:
         Elf_Offset min_p2align;
         Elf_Offset padding_p2align;
         size_t addr_size;
+        trap_platform_t trap_platform;
+        TargetOps *ops;
     };
 
     const TargetInfo *get_target_info() const {
@@ -626,51 +672,30 @@ private:
     const TargetInfo *m_target_info;
 };
 
-namespace Target {
-    typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
-
-    // Create an empty .rel.XXX section
-    Elf_SectionIndex create_reloc_section(ElfObject &object,
-                                          const std::string &section_name,
-                                          Elf_SectionIndex shndx,
-                                          Elf_SectionIndex symtab_shndx,
-                                          const Elf_RelocBuffer &relocs);
-
-    // Adds a relocation to an Elf_RelocBuffer structure.
-    // The caller should use whatever is left in reloc.addend
-    // as the actual relocated data, in case the target arch
-    // does not support explicit addends.
-    void add_reloc_to_buffer(Elf_RelocBuffer &buffer,
-                             ElfReloc *reloc);
-
-    // Copies an entire Elf_RelocBuffer to a section.
-    void add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
-                               const Elf_RelocBuffer &buffer);
-
-    template<typename RelType>
-    bool check_rel_for_stubs(ElfObject &object, RelType *relocation, ptrdiff_t addend,
-                             uint32_t shndx, TrapRecordBuilder &builder);
-
-    Elf_Offset read_reloc(char* data, ElfReloc &reloc);
-};
+typedef std::vector<ElfSymbolTable::SymbolRef> EntrySymbols;
 
 class TrampolineBuilder {
 public:
     TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
         : m_object(object), m_symbol_table(symbol_table) { }
+    virtual ~TrampolineBuilder() { }
 
     // Build the trampoline instructions.
     std::tuple<Elf_SectionIndex, ElfSymbolTable::SymbolMapping>
-    build_trampolines(const Target::EntrySymbols &entry_symbols);
+    build_trampolines(const EntrySymbols &entry_symbols);
 
-private:
-    ElfObject::DataBuffer create_trampoline_data(const Target::EntrySymbols &entry_symbols);
+protected:
+    virtual ElfObject::DataBuffer
+    create_trampoline_data(const EntrySymbols &entry_symbols) = 0;
 
-    void add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
+    virtual void
+    add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset) = 0;
 
-    void target_postprocessing(unsigned tramp_section_index);
+    virtual void
+    target_postprocessing(unsigned tramp_section_index) = 0;
 
-    size_t trampoline_size() const;
+    virtual size_t
+    trampoline_size() const = 0;
 
     std::map<ElfSymbolTable::SymbolRef, GElf_Addr> m_trampoline_offsets;
     Elf_RelocBuffer m_trampoline_relocs;
@@ -681,13 +706,20 @@ private:
 class TrapRecordBuilder {
 public:
     TrapRecordBuilder(bool include_sizes = false)
-        : m_section_symbol(), m_section_p2align(0),
+        : m_object(nullptr),
+          m_section_symbol(), m_section_p2align(0),
           m_new_section_symbol(false),
           m_has_func_symbols(false),
           m_in_group(false),
           m_reloc_section_ndx(0),
           m_padding_offset(0), m_padding_size(0),
           m_include_sizes(include_sizes) { }
+
+    void set_object(const ElfObject *object) {
+        assert((m_object == nullptr || m_object == object) &&
+               "Attempting to set TrapLinker object pointer to different value");
+        m_object = object;
+    }
 
     void set_section_symbol(ElfSymbolTable::SymbolRef section_symbol,
                             bool new_symbol = false) {
@@ -707,7 +739,7 @@ public:
         m_entry_symbols.push_back(symbol);
     }
 
-    const Target::EntrySymbols &entry_symbols() const {
+    const EntrySymbols &entry_symbols() const {
         return m_entry_symbols;
     }
 
@@ -770,7 +802,7 @@ public:
 
     void update_symbol_indices(ElfSymbolTable::SymbolMapping &symbol_mapping);
 
-    void read_reloc_addends(Elf_Scn *section);
+    void read_reloc_addends(ElfObject &object, Elf_Scn *section);
 
     void build_trap_data(const ElfSymbolTable &symbol_table);
     void write_reloc(const ElfReloc &reloc, Elf_Offset prev_offset,
@@ -798,11 +830,13 @@ private:
       }
     }
 
+    const ElfObject *m_object;
+
     ElfSymbolTable::SymbolRef m_section_symbol;
     Elf_Offset m_section_p2align;
     bool m_new_section_symbol;
     bool m_has_func_symbols;
-    Target::EntrySymbols m_entry_symbols;
+    EntrySymbols m_entry_symbols;
 
     bool m_in_group;
     Elf_SectionIndex m_group_section_ndx;

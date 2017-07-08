@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(read)
+ENTRY_SYSCALL(read)
 #ifdef __NR_read
     mov     x8, __NR_read
     svc     #0
@@ -10,4 +10,4 @@ ENTRY(read)
     mov     x0, #-ENOSYS
 #endif
     ret
-END(read)
+END_SYSCALL(read)

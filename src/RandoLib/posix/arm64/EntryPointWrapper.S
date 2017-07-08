@@ -7,41 +7,41 @@
  */
 
 .section .selfrando.entry, "ax", %progbits
-.globl _TRaP_Linux_EntryPoint_init
-.hidden _TRaP_Linux_EntryPoint_init
-.type _TRaP_Linux_EntryPoint_init,%function
-_TRaP_Linux_EntryPoint_init:
+.globl Linux_EntryPoint_init
+.hidden Linux_EntryPoint_init
+.type Linux_EntryPoint_init,%function
+Linux_EntryPoint_init:
     // selfrando will patch this to the correct target
     .long 0x14000001
 
     stp x0, x30, [sp, #-16]!
 
-    bl _TRaP_Linux_EntryPointImpl
+    bl Linux_EntryPointImpl
 
     // Restore the finalizer pointer and link register
     ldp x0, x30, [sp], #16
 
-    b _TRaP_Linux_EntryPoint_init
+    b Linux_EntryPoint_init
 
-.globl _TRaP_Linux_EntryPoint_entry
-.hidden _TRaP_Linux_EntryPoint_entry
-.type _TRaP_Linux_EntryPoint_entry,%function
-_TRaP_Linux_EntryPoint_entry:
+.globl Linux_EntryPoint_entry
+.hidden Linux_EntryPoint_entry
+.type Linux_EntryPoint_entry,%function
+Linux_EntryPoint_entry:
     // selfrando will patch this to the correct target
     .long 0x14000001
 
     stp x0, x30, [sp, #-16]!
 
-    bl _TRaP_Linux_EntryPointImpl
+    bl Linux_EntryPointImpl
 
     // Restore the finalizer pointer and link register
     ldp x0, x30, [sp], #16
 
-    b _TRaP_Linux_EntryPoint_entry
+    b Linux_EntryPoint_entry
 
-.globl _TRaP_Linux_EntryPoint_return
-.hidden _TRaP_Linux_EntryPoint_return
-.type _TRaP_Linux_EntryPoint_return,%function
-_TRaP_Linux_EntryPoint_return:
+.globl Linux_EntryPoint_return
+.hidden Linux_EntryPoint_return
+.type Linux_EntryPoint_return,%function
+Linux_EntryPoint_return:
     ret
 

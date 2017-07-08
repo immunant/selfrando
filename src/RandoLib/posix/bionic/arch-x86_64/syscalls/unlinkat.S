@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(unlinkat)
+ENTRY_SYSCALL(unlinkat)
 #ifdef __NR_unlinkat
     movl    $__NR_unlinkat, %eax
     syscall
@@ -10,4 +10,4 @@ ENTRY(unlinkat)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(unlinkat)
+END_SYSCALL(unlinkat)

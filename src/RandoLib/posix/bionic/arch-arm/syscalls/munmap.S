@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(munmap)
+ENTRY_SYSCALL(munmap)
 #ifdef __NR_munmap
     mov     ip, r7
     ldr     r7, =__NR_munmap
@@ -12,4 +12,4 @@ ENTRY(munmap)
     mov     r0, #-ENOSYS
 #endif
     bx      lr
-END(munmap)
+END_SYSCALL(munmap)

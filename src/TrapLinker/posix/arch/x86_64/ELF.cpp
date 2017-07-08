@@ -6,9 +6,72 @@
  *
  */
 
+#include <memory>
+
 #include <Object.h>
 #include <Debug.h>
 
+class X8664TargetOps : public TargetOps {
+public:
+    X8664TargetOps() { }
+
+    virtual Elf_SectionIndex
+    create_reloc_section(ElfObject &object,
+                         const std::string &section_name,
+                         Elf_SectionIndex shndx,
+                         Elf_SectionIndex symtab_shndx,
+                         const Elf_RelocBuffer &relocs);
+
+    virtual void
+    add_reloc_to_buffer(Elf_RelocBuffer &buffer,
+                        ElfReloc *reloc);
+
+    virtual void
+    add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
+                          const Elf_RelocBuffer &buffer);
+
+    virtual bool
+    check_rel_for_stubs(ElfObject &object, GElf_Rel *relocation, ptrdiff_t addend,
+                        uint32_t shndx, TrapRecordBuilder &builder);
+
+    virtual bool
+    check_rela_for_stubs(ElfObject &object, GElf_Rela *relocation, ptrdiff_t addend,
+                         uint32_t shndx, TrapRecordBuilder &builder);
+
+    virtual Elf_Offset
+    read_reloc(char* data, ElfReloc &reloc);
+
+    virtual std::unique_ptr<TrampolineBuilder>
+    get_trampoline_builder(ElfObject &object,
+                           ElfSymbolTable &symbol_table);
+};
+
+static X8664TargetOps x86_64_ops_instance;
+X8664TargetOps *x86_64_ops = &x86_64_ops_instance;
+
+class X8664TrampolineBuilder : public TrampolineBuilder {
+public:
+    X8664TrampolineBuilder(ElfObject &object, ElfSymbolTable &symbol_table)
+        : TrampolineBuilder(object, symbol_table) {
+    }
+
+    virtual ~X8664TrampolineBuilder() { }
+
+protected:
+    virtual ElfObject::DataBuffer
+    create_trampoline_data(const EntrySymbols &entry_symbols);
+
+    virtual void
+    add_reloc(ElfSymbolTable::SymbolRef symbol_index, GElf_Addr trampoline_offset);
+
+    virtual void
+    target_postprocessing(unsigned tramp_section_index);
+
+    virtual size_t
+    trampoline_size() const;
+};
+
+#pragma pack(push, 1)
 typedef struct {
     uint8_t opcode;
     int32_t dest;
@@ -17,11 +80,12 @@ typedef struct {
     // class member pointers)
     uint8_t padding[1];
 } TrampolineInstruction;
+#pragma pack(pop)
 
 static TrampolineInstruction kJumpInstruction = {0xe9, 0, {0x90}};
 
-ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
-    const Target::EntrySymbols &entry_symbols) {
+ElfObject::DataBuffer X8664TrampolineBuilder::create_trampoline_data(
+    const EntrySymbols &entry_symbols) {
     std::vector<TrampolineInstruction> tramp_data;
     for (auto &sym : entry_symbols) {
         m_trampoline_offsets[sym] = tramp_data.size()*sizeof(TrampolineInstruction);
@@ -31,18 +95,24 @@ ElfObject::DataBuffer TrampolineBuilder::create_trampoline_data(
     return ElfObject::DataBuffer(tramp_data, 1);
 }
 
-void TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
-                                  GElf_Addr trampoline_offset) {
+void X8664TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
+                                       GElf_Addr trampoline_offset) {
     ElfReloc reloc(trampoline_offset+1, R_X86_64_PC32, symbol_index, -4);
-    Target::add_reloc_to_buffer(m_trampoline_relocs, &reloc);
+    x86_64_ops->add_reloc_to_buffer(m_trampoline_relocs, &reloc);
     assert(reloc.addend == 0 && "Invalid trampoline addend");
 }
 
-size_t TrampolineBuilder::trampoline_size() const {
+size_t X8664TrampolineBuilder::trampoline_size() const {
     return sizeof(TrampolineInstruction);
 }
 
-void TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+void X8664TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
+}
+
+std::unique_ptr<TrampolineBuilder>
+X8664TargetOps::get_trampoline_builder(ElfObject &object,
+                                       ElfSymbolTable &symbol_table) {
+    return std::unique_ptr<TrampolineBuilder>{new X8664TrampolineBuilder(object, symbol_table)};
 }
 
 static std::vector<Elf64_Rela> build_relas(const Elf_RelocBuffer &relocs) {
@@ -55,11 +125,11 @@ static std::vector<Elf64_Rela> build_relas(const Elf_RelocBuffer &relocs) {
     return relas;
 }
 
-Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
-                                              const std::string &section_name,
-                                              Elf_SectionIndex shndx,
-                                              Elf_SectionIndex symtab_shndx,
-                                              const Elf_RelocBuffer &relocs) {
+Elf_SectionIndex X8664TargetOps::create_reloc_section(ElfObject &object,
+                                                      const std::string &section_name,
+                                                      Elf_SectionIndex shndx,
+                                                      Elf_SectionIndex symtab_shndx,
+                                                      const Elf_RelocBuffer &relocs) {
     // Create a new reloc section
     GElf_Shdr rel_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     rel_header.sh_type = SHT_RELA;
@@ -74,33 +144,29 @@ Elf_SectionIndex Target::create_reloc_section(ElfObject &object,
                               ELF_T_RELA);
 }
 
-void Target::add_reloc_to_buffer(Elf_RelocBuffer &buffer, ElfReloc *reloc) {
+void X8664TargetOps::add_reloc_to_buffer(Elf_RelocBuffer &buffer, ElfReloc *reloc) {
     buffer.push_back(*reloc);
     reloc->addend = 0;
 }
 
-void Target::add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
-                                   const Elf_RelocBuffer &relocs) {
+void X8664TargetOps::add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
+                                           const Elf_RelocBuffer &relocs) {
     std::vector<Elf64_Rela> relas = build_relas(relocs);
     object.add_data(reloc_shndx, reinterpret_cast<char*>(relas.data()),
                     relas.size() * sizeof(Elf64_Rela), sizeof(uint64_t), ELF_T_RELA);
 }
 
-template<typename RelType>
-bool Target::check_rel_for_stubs(ElfObject &object, RelType *relocation, ptrdiff_t addend,
-                                 uint32_t shndx, TrapRecordBuilder &builder) {
+bool X8664TargetOps::check_rel_for_stubs(ElfObject &object, GElf_Rel *relocation, ptrdiff_t addend,
+                                         uint32_t shndx, TrapRecordBuilder &builder) {
     return false;
 }
 
-template
-bool Target::check_rel_for_stubs<GElf_Rel>(ElfObject &object, GElf_Rel *relocation, ptrdiff_t addend,
-                                           uint32_t shndx, TrapRecordBuilder &builder);
-
-template
-bool Target::check_rel_for_stubs<GElf_Rela>(ElfObject &object, GElf_Rela *relocation, ptrdiff_t addend,
-                                            uint32_t shndx, TrapRecordBuilder &builder);
+bool X8664TargetOps::check_rela_for_stubs(ElfObject &object, GElf_Rela *relocation, ptrdiff_t addend,
+                                          uint32_t shndx, TrapRecordBuilder &builder) {
+    return false;
+}
 
 // TODO: Implement any weird code relocs
-Elf_Offset Target::read_reloc(char* data, ElfReloc &reloc) {
+Elf_Offset X8664TargetOps::read_reloc(char* data, ElfReloc &reloc) {
   return *reinterpret_cast<Elf_Offset*>(data);
 }

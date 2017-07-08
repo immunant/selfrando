@@ -25,13 +25,21 @@
 
 #if RANDOLIB_IS_SHARED
 #define RANDO_PUBLIC  __attribute__((visibility("default")))
-#else
+#define RANDO_PUBLIC_FUNCTION(name, return_type, ...)   \
+    extern "C" RANDO_PUBLIC RANDO_SECTION               \
+    return_type _TRaP_##name(__VA_ARGS__)
+
+#else // RANDOLIB_IS_SHARED
 #define RANDO_PUBLIC  __attribute__((visibility("hidden")))
-#endif
+// We don't need the _TRaP_ prefix for public functions, since objcopy adds it
+#define RANDO_PUBLIC_FUNCTION(name, return_type, ...)   \
+    extern "C" RANDO_PUBLIC RANDO_SECTION               \
+    return_type name(__VA_ARGS__)
+#endif // RANDOLIB_IS_SHARED
+
+#define RANDO_MAIN_FUNCTION()   RANDO_PUBLIC_FUNCTION(RandoMain, void, os::Module::Handle asm_module)
 
 #define RANDO_ALWAYS_INLINE __attribute__((always_inline)) inline
-
-#define RANDO_MAIN_FUNCTION()  extern "C" RANDO_PUBLIC void _TRaP_RandoMain(os::Module::Handle asm_module)
 
 // TODO
 //#define RANDO_ASSERT(cond) assert(cond)

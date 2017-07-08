@@ -162,7 +162,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_ARM_MOVT_ABS:
     case R_ARM_THM_MOVT_ABS:
         RANDO_ASSERT(m_has_symbol_ptr);
-        return m_symbol_ptr.to_ptr() + m_addend;
+        return m_symbol_ptr + m_addend;
     case R_ARM_GOT32:
         // Nothing to do here, we just need this for get_got_entry()
         return nullptr;

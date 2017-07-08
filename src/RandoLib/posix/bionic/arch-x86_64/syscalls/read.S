@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(read)
+ENTRY_SYSCALL(read)
 #ifdef __NR_read
     movl    $__NR_read, %eax
     syscall
@@ -10,4 +10,4 @@ ENTRY(read)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(read)
+END_SYSCALL(read)

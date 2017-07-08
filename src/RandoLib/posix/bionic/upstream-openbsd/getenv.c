@@ -33,15 +33,16 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-void *_TRaP_libc_mmap(void*, size_t, int, int, int, off_t);
-int _TRaP_libc_munmap(void*, size_t);
-int _TRaP_libc_open(const char*, int, ...);
-ssize_t _TRaP_libc_read(int, void*, size_t);
-off_t _TRaP_libc_lseek(int, off_t, int);
-int _TRaP_libc____close(int);
+void *_TRaP_syscall_mmap(void*, size_t, int, int, int, off_t);
+int _TRaP_syscall_munmap(void*, size_t);
+int _TRaP_syscall_open(const char*, int, ...);
+ssize_t _TRaP_syscall_read(int, void*, size_t);
+off_t _TRaP_syscall_lseek(int, off_t, int);
+int _TRaP_syscall____close(int);
 
 static char *_TRaP_libc_environ_buf = NULL;
 static size_t _TRaP_libc_environ_buf_size = 0;
@@ -53,18 +54,24 @@ static void _TRaP_libc_build_trap_environ() {
     if (_TRaP_libc_environ != NULL)
         return;
 
-    int fd = _TRaP_libc_open("/proc/self/environ", O_RDONLY);
-    if (fd == -1)
+    int fd = _TRaP_syscall_open("/proc/self/environ", O_RDONLY);
+    if (fd < 0)
        return;
 
     // Read total length of buffer
     size_t envp_size = 1;
     char buf[32];
     for (;;) {
-        ssize_t bytes = _TRaP_libc_read(fd, buf, sizeof(buf));
+        ssize_t bytes = _TRaP_syscall_read(fd, buf, sizeof(buf));
         ssize_t i;
         if (bytes == 0)
             break;
+
+        // Handle read errors
+        if (bytes == -EINTR || bytes == -EAGAIN)
+            continue; // Read got interrupted, keep going
+        if (bytes < 0)
+            break;    // Some other read error, just use what we have
 
         _TRaP_libc_environ_buf_size += bytes;
         for (i = 0; i < bytes; i++)
@@ -72,12 +79,12 @@ static void _TRaP_libc_build_trap_environ() {
                 envp_size++;
     }
     _TRaP_libc_environ_buf_size += envp_size * sizeof(char*);
-    _TRaP_libc_environ_buf = _TRaP_libc_mmap(NULL,
-                                             _TRaP_libc_environ_buf_size,
-                                             PROT_READ | PROT_WRITE,
-                                             MAP_PRIVATE | MAP_ANONYMOUS,
-                                             -1, 0);
-    if (_TRaP_libc_environ_buf == MAP_FAILED) {
+    _TRaP_libc_environ_buf = _TRaP_syscall_mmap(NULL,
+                                                _TRaP_libc_environ_buf_size,
+                                                PROT_READ | PROT_WRITE,
+                                                MAP_PRIVATE | MAP_ANONYMOUS,
+                                                -1, 0);
+    if ((intptr_t)_TRaP_libc_environ_buf < 0) {
         _TRaP_libc_environ_buf = NULL;
         _TRaP_libc_environ_buf_size = 0;
         goto exit;
@@ -87,8 +94,8 @@ static void _TRaP_libc_build_trap_environ() {
     char **envpp = _TRaP_libc_environ;
     char *buf_ptr = _TRaP_libc_environ_buf + envp_size * sizeof(char*);
     char *buf_end = _TRaP_libc_environ_buf + _TRaP_libc_environ_buf_size;
-    _TRaP_libc_lseek(fd, 0, SEEK_SET);
-    _TRaP_libc_read(fd, buf_ptr, buf_end - buf_ptr);
+    _TRaP_syscall_lseek(fd, 0, SEEK_SET);
+    _TRaP_syscall_read(fd, buf_ptr, buf_end - buf_ptr);
     while (buf_ptr < buf_end) {
         *envpp++ = buf_ptr;
         while (*buf_ptr++ != '\0') {
@@ -97,15 +104,15 @@ static void _TRaP_libc_build_trap_environ() {
     *envpp = NULL;
 
 exit:
-    _TRaP_libc____close(fd);
+    _TRaP_syscall____close(fd);
 }
 
 static void _TRaP_libc_free_trap_environ() {
     if (_TRaP_libc_environ == NULL)
         return;
 
-    _TRaP_libc_munmap(_TRaP_libc_environ_buf,
-                      _TRaP_libc_environ_buf_size);
+    _TRaP_syscall_munmap(_TRaP_libc_environ_buf,
+                         _TRaP_libc_environ_buf_size);
     _TRaP_libc_environ_buf = NULL;
     _TRaP_libc_environ_buf_size = 0;
     _TRaP_libc_environ = NULL;

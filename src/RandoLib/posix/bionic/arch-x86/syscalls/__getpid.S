@@ -2,7 +2,7 @@
 
 #include <private/bionic_asm.h>
 
-ENTRY(__getpid)
+ENTRY_SYSCALL(__getpid)
 #ifdef __NR_getpid
     movl    $__NR_getpid, %eax
     int     $0x80
@@ -10,4 +10,4 @@ ENTRY(__getpid)
     mov     $-ENOSYS, %eax
 #endif
     ret
-END(__getpid)
+END_SYSCALL(__getpid)

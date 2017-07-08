@@ -51,6 +51,12 @@ long _TRaP_libc_strtol(const char*, char **, int);
 #pragma comment(lib, "ntdll")
 #pragma comment(lib, "kernel32")
 
+// We have an unintended dependency on operator delete (void *), which in turn depends on _free.
+// If the latter is not provided by the C library (if the randomized program is linked with the
+// "/NODEFAULTLIB:LIBC" option), we need to provide a placeholder so the linker stops complaining
+extern "C" const char *TRaP_free_placeholder = nullptr;
+#pragma comment(linker, "/alternatename:_free=_TRaP_free_placeholder")
+
 // TODO: move these into os::Module
 static const char kRandoEntrySection[] = ".rndentr";
 static const char kRandoTextSection[] = ".rndtext";
@@ -624,7 +630,8 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
                 continue; // Skip ".xptramp"
             // Found executable section (maybe .text)
             Module::Section exec_section(*this, &m_sections[i]);
-            ::TrapInfo trap_info(textrap_data, textrap_size);
+            ::TrapInfo trap_info(textrap_data, textrap_size,
+                                 TRAP_CURRENT_PLATFORM);
             auto xptramp_section = export_section();
             // FIXME: moved the page mapping from ExecSectionProcessor here
             // Still haven't decided if here is better

@@ -111,7 +111,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case R_AARCH64_LDST64_ABS_LO12_NC:
     case R_AARCH64_LDST128_ABS_LO12_NC:
         RANDO_ASSERT(m_has_symbol_ptr);
-        return m_symbol_ptr.to_ptr();
+        return m_symbol_ptr;
     case R_AARCH64_LD_PREL_LO19:
     case R_AARCH64_GOT_LD_PREL19:
     case R_AARCH64_TLSLD_LD_PREL19:
@@ -401,7 +401,7 @@ size_t Module::arch_reloc_type<Elf64_Rela>(const Elf64_Rela *rel) {
 }
 
 void Module::preprocess_arch() {
-    m_arch_relocs = 0;
+    m_linker_stubs = 0;
     build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
 

@@ -3,8 +3,12 @@ from os import path
 
 Import('env')
 
-SOURCES = (['ELF.cpp', 'TrapLinker.cpp'])
-SOURCES.append('arch/%s/ELF.cpp' % env['TARGET_ARCH'])
+SOURCES = (['ELF.cpp', 'TrapLinker.cpp',
+            #FIXME: re-enable these when they work
+            #'arch/arm/ELF.cpp',
+            #'arch/arm64/ELF.cpp',
+            'arch/x86/ELF.cpp',
+            'arch/x86_64/ELF.cpp'])
 
 traplinker_env = env.Clone()
 traplinker_env.Append(CPPPATH = ['#/src',
@@ -38,7 +42,6 @@ traplinker_env.Command('ld.bfd', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
 traplinker_env.Command('ld.gold', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
 
 files = [Glob('traplinker'), Glob('ld'), Glob('ld.bfd'), Glob('ld.gold'),
-         Glob('linker_script.ld'), Glob('linker_id.sh'),
-         Glob('provide_TRaP_end_page.ld')]
+         Glob('linker_script.ld'), Glob('linker_id.sh')]
 
 Return('files')
