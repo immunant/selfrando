@@ -32,8 +32,8 @@ install:
 script:
 - sh scripts/build_libelf.sh $PWD/libelf
 - scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1
-- Tests/thttpd.sh
-- Tests/lua.sh
-- Tests/nginx.sh
+- tests/posix/thttpd.sh
+- tests/posix/lua.sh
+- tests/posix/nginx.sh
 after_success:
 - bash <(curl -s https://codecov.io/bash)
