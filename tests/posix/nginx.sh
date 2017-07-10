@@ -9,7 +9,7 @@ NORMAL='\e[0;m'
 
 
 SCRIPT_DIR="$(cd "$(dirname "$0" )" && pwd)"
-SELFRANDO_BIN=$SCRIPT_DIR/../out/$(uname -p)/bin
+SELFRANDO_BIN=$SCRIPT_DIR/../../out/$(uname -p)/bin
 if [ ! -e "$SELFRANDO_BIN/traplinker" ]; then
   echo "Build selfrando before running this script"
   exit 1
