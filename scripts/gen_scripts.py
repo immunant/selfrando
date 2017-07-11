@@ -6,6 +6,7 @@
 #
 
 import re
+from os import path
 from trap_msvc_libs import *
 
 def set_env_vars():
@@ -124,14 +125,17 @@ def set_env_vars():
 def gen_msbuild_properties(sln_dir):
     # python -m pip install mako
     from mako.template import Template
-    props_templ = Template(filename="TrapLinker32.props.mako")
-    conf = "Release"
 
-    with open("TrapLinker32.props", "wb") as propfile:
+    script_dir = path.dirname(path.realpath(__file__))
+    props_path = path.join(script_dir, "TrapLinker32.props")
+    props_templ = Template(filename=props_path + ".mako")
+    conf = "Release"
+    with open(props_path, "wb") as propfile:
         propfile.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf))
 
-    props_templ = Template(filename="TrapLinker64.props.mako")
-    with open("TrapLinker64.props", "wb") as propfile:
+    props_path = path.join(script_dir, "TrapLinker64.props")
+    props_templ = Template(filename=props_path + ".mako")
+    with open(props_path, "wb") as propfile:
         propfile.write(props_templ.render(SolutionDir=sln_dir, Configuration=conf,
                                           Platform="x64"))
 
