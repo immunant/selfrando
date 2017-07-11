@@ -19,5 +19,11 @@ if (-not (Test-Path "cpython"))
 } else {
     Write-Host "cpython already checked out to $env:TEMP\cpython"
 }
+cd "$env:TEMP\cpython\PCBuild"
+
+# build python for Windows. -e fetches exernals as needed.
+.\build.bat -e
+# run python testsuite. -q means quick (single) run.
+.\rt.bat -q  
 
 cd $ScriptDir
