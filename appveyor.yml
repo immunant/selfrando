@@ -38,7 +38,11 @@ test_script:
 - cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:normal /target:SimpleRandoTest /p:Platform=%MSBUILD_PLATFORM%"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
 - cmd: dumpbin /section:.txtrp  "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
-
+- ps: >- 
+    If ($env:PLATFORM -Match "x86") {
+      Write-Host $env:github_git
+      & $env:APPVEYOR_BUILD_FOLDER\\tests\win32\python36.ps1 
+    }
 
 notifications:
 - provider: Slack
