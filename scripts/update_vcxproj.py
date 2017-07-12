@@ -31,7 +31,7 @@ def parse():
                         dest="output_project", required=False, default=None,
                         help=o_help)
     parser.add_argument('-p', '--inplace', action="store_true",
-                        dest="inplace", required=False, default=False, 
+                        dest="inplace", required=False, default=False,
                         help='Update Visual Studio Project (.vcxproj) file in-place.')
     # TODO: add --configuration and --platform parameters
     args = parser.parse_args()
@@ -95,14 +95,11 @@ def transform_project(input_project, output_project):
                 tree_modified = transform_importgroup(importgroup)
                 break
     else: # didn't hit break, need to create new ImportGroup element
-        new_importgroup = ET.SubElement(root, 
-                                            NAMESPACE_PREFIX + "ImportGroup", 
-                                            attrib={'Condition': cond_filter})
+        new_importgroup = ET.SubElement(root,
+                                        NAMESPACE_PREFIX + "ImportGroup",
+                                        attrib={'Condition': cond_filter})
         tree_modified = transform_importgroup(new_importgroup)
         assert tree_modified, "Error, tree not modified after inserting new ImportGroup."
-        # emsg = "Error, didn't find ImportGroup element for configuration '{}'".format(configuration)
-        # print >> sys.stderr, emsg
-        # quit(errno.EINVAL)
 
     if tree_modified:
         tree.write(output_project, encoding='utf-8', xml_declaration=True)
@@ -112,10 +109,12 @@ def transform_project(input_project, output_project):
 
 
 def main():
+    """ Script entrypoint """
     args = parse()
 
     def have_file(fname):
-        if not os.path.isfile(fname):
+        """ Check if named file is present in same dir as script. """
+        if not os.path.isfile(os.path.join(SCRIPT_ABS_PATH, fname)):
             emsg = "{} not found; run gen_scripts.py and retry.".format(fname)
             print >> sys.stderr, emsg
             quit(errno.ENOENT)
