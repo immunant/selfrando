@@ -42,7 +42,7 @@ test_script:
 - cmd: dumpbin /section:.txtrp  "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
 - ps: >- 
     If ($env:PLATFORM -Match "x86") {
-      & $env:APPVEYOR_BUILD_FOLDER\\tests\win32\python36.ps1 
+      & $env:APPVEYOR_BUILD_FOLDER\\tests\win32\python36.ps1 %APPVEYOR_BUILD_FOLDER%
     }
 
 notifications:
