@@ -50,9 +50,14 @@ def set_env_vars():
     cygwin_lines.append("export MSVC_LINKER_PATH=\"%s\"" %
         os.path.dirname(link_exe))
 
-    # PATH
-    scpt_path = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    exes_path = os.path.join(scpt_path, os.pardir, "Release")
+    # PATH to selfrando wrappers for lib.exe and link.exe
+    # NOTE: these are always Win32 binaries even on 64 bit systems.
+    scpt_path = os.path.dirname(os.path.abspath(__file__))
+    selfrando_root = os.path.join(scpt_path, os.pardir, os.pardir)
+    files_in_root = ["LICENSE", "CONTRIBUTING", "CMakeLists.txt", "appveyor.yml"]
+    for rfile in files_in_root:
+        assert os.path.isfile(os.path.join(selfrando_root, rfile))
+    exes_path = os.path.join(selfrando_root, "Release")
     exes_path = os.path.abspath(exes_path)
     if os.path.exists(exes_path) and os.path.isdir(exes_path):
         pshell_lines.append(set_env_var_ps("PATH", exes_path, True))
