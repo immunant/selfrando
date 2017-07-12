@@ -44,8 +44,13 @@ python.exe "$SelfrandoHome\scripts\update_vcxproj.py" --inplace -i python3dll.vc
 .\build.bat -e
 
 # check that the python binaries contains a .txtrp section
-# dumpbin /section:.txtrp win32\python.exe
-# dumpbin /section:.txtrp win32\python3.dll
+if ((Get-Command "dumpbin.exe" -ErrorAction SilentlyContinue))
+{ 
+    dumpbin /section:.txtrp win32\python.exe
+    dumpbin /section:.txtrp win32\python3.dll
+} else {
+    Write-Host "Unable to find dumpbin.exe in your PATH; not checking for trap info."
+}
 
 # run python testsuite. -q means quick (single) run.
 .\rt.bat -q  
