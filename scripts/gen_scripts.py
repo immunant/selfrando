@@ -53,7 +53,7 @@ def set_env_vars():
     # PATH to selfrando wrappers for lib.exe and link.exe
     # NOTE: these are always Win32 binaries even on 64 bit systems.
     scpt_path = os.path.dirname(os.path.abspath(__file__))
-    selfrando_root = os.path.join(scpt_path, os.pardir, os.pardir)
+    selfrando_root = os.path.join(scpt_path, os.pardir)
     files_in_root = ["LICENSE", "CONTRIBUTING", "CMakeLists.txt", "appveyor.yml"]
     for rfile in files_in_root:
         assert os.path.isfile(os.path.join(selfrando_root, rfile))
