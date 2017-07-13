@@ -142,7 +142,7 @@ def gen_msbuild_properties(script_dir, sln_dir):
 
 if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    selfrando_root = os.path.join(script_dir, os.pardir)
+    selfrando_root = os.path.abspath(os.path.join(script_dir, os.pardir))
     # sanity check selfrando_root 
     files_in_root = ["LICENSE", "CONTRIBUTING", "CMakeLists.txt", "appveyor.yml"]
     for rfile in files_in_root:
