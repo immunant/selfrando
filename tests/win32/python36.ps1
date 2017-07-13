@@ -40,6 +40,9 @@ python.exe "$SelfrandoHome\scripts\update_vcxproj.py" --inplace -i python.vcxpro
 python.exe "$SelfrandoHome\scripts\update_vcxproj.py" --inplace -i pythoncore.vcxproj
 python.exe "$SelfrandoHome\scripts\update_vcxproj.py" --inplace -i python3dll.vcxproj
 
+# show the contents of rewritten pythoncore.vcxproj
+git --no-pager diff pythoncore.vcxproj
+
 # build python for Windows. -e fetches exernals as needed.
 .\build.bat -e
 
