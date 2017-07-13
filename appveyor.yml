@@ -36,7 +36,7 @@ test_script:
 - cmd: "python -m pip install mako"
 - cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\trap_msvc_libs.py"
 - cmd: "python %APPVEYOR_BUILD_FOLDER%\\scripts\\gen_scripts.py"
-- ps:  cat %APPVEYOR_BUILD_FOLDER%\\scripts\\TrapLinker32.props
+- ps:  cat $env:APPVEYOR_BUILD_FOLDER\\scripts\\TrapLinker32.props
 - cmd: "rmdir /q /s %APPVEYOR_BUILD_FOLDER%\\src\\TrapLinker\\win32\\SimpleRandoTest\\%SR_PLATFORM%\\%CONFIGURATION%"
 - cmd: "msbuild /p:Configuration=%CONFIGURATION% /verbosity:normal /target:SimpleRandoTest /p:Platform=%MSBUILD_PLATFORM%"
 - cmd: "%APPVEYOR_BUILD_FOLDER%\\%SR_PLATFORM%\\%CONFIGURATION%\\SimpleRandoTest.exe"
