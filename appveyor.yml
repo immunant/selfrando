@@ -45,7 +45,7 @@ test_script:
 - ps: >- 
     If ($env:PLATFORM -Match "x86") {
       & $env:APPVEYOR_BUILD_FOLDER\\tests\win32\python36.ps1 
-    }
+    } # Python on x64 is blocked on this https://github.com/immunant/selfrando/issues/59
 
 notifications:
 - provider: Slack
