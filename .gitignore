@@ -13,6 +13,7 @@ scripts/Traplinker*.props
 *.user
 *.sln.docstates
 .vs/*/v15
+*.vscode
 
 # Build results
 
