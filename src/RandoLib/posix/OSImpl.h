@@ -123,6 +123,13 @@ public:
     // for MAX_ERRNO == 4095 (for now)
     template<typename T>
     static inline bool syscall_retval_is_err(T retval) {
+        auto ival = static_cast<intptr_t>(retval);
+        return ival < 0 && ival >= -4095;
+    }
+
+    // Template specialization for pointers
+    template<typename T>
+    static inline bool syscall_retval_is_err(T *retval) {
         auto ival = reinterpret_cast<intptr_t>(retval);
         return ival < 0 && ival >= -4095;
     }
