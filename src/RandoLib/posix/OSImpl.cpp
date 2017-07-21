@@ -147,7 +147,7 @@ RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
     size = (size + sizeof(size) + kPageSize - 1) & ~kPageSize;
     auto res = reinterpret_cast<size_t*>(_TRaP_syscall_mmap(nullptr, size, PROT_READ | PROT_WRITE,
                                                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-    if (reinterpret_cast<intptr_t>(res) < 0)
+    if (APIImpl::syscall_retval_is_err(res))
         return nullptr;
 
     // We need to remember the size, so we know how much to munmap()
@@ -170,7 +170,7 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
 
     auto res = reinterpret_cast<size_t*>(_TRaP_syscall_mremap(old_size_ptr, old_size,
                                                               new_size, MREMAP_MAYMOVE));
-    if (reinterpret_cast<intptr_t>(res) < 0)
+    if (APIImpl::syscall_retval_is_err(res))
         return nullptr;
 
     *res = new_size;
@@ -205,7 +205,7 @@ RANDO_SECTION void *API::mmap(void *addr, size_t size, PagePermissions perms, bo
         flags |= MAP_FIXED;
     // FIXME: we should probably manually randomize the mmap address here
     auto new_addr =_TRaP_syscall_mmap(addr, size, prot_perms, flags, -1, 0);
-    return reinterpret_cast<intptr_t>(new_addr) < 0 ? nullptr : new_addr;
+    return APIImpl::syscall_retval_is_err(new_addr) ? nullptr : new_addr;
 }
 
 RANDO_SECTION void API::munmap(void *addr, size_t size, bool commit) {
@@ -231,7 +231,7 @@ RANDO_SECTION File API::open_file(const char *name, bool write, bool create) {
     if (create)
         flags |= O_CREAT;
     int fd = _TRaP_syscall_open(name, flags, 0660);
-    return fd < 0 ? kInvalidFile : fd;
+    return APIImpl::syscall_retval_is_err(fd) ? kInvalidFile : fd;
 }
 
 RANDO_SECTION ssize_t API::write_file(File file, const void *buf, size_t len) {

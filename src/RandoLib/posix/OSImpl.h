@@ -117,6 +117,16 @@ public:
     static bool is_one_byte_nop(BytePointer);
     static void insert_nops(BytePointer, size_t);
 
+    // Check if a syscall return value is an error
+    // We mainly replicate what bionic does:
+    // consider an error any value in [-MAX_ERRNO, 0)
+    // for MAX_ERRNO == 4095 (for now)
+    template<typename T>
+    static inline bool syscall_retval_is_err(T retval) {
+        auto ival = reinterpret_cast<intptr_t>(retval);
+        return ival < 0 && ival >= -4095;
+    }
+
 protected:
     static void debug_printf_impl(const char *fmt, ...);
 
