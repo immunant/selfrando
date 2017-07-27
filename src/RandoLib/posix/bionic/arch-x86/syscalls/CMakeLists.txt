@@ -14,4 +14,7 @@ target_sources(selfrando_objects
     bionic/arch-x86/syscalls/__getpid.S
     bionic/arch-x86/syscalls/__gettimeofday.S
     bionic/arch-x86/syscalls/getrandom.S
+    bionic/arch-x86/syscalls/__socket.S
+    bionic/arch-x86/syscalls/__connect.S
+    bionic/arch-x86/syscalls/recvmsg.S
     )
