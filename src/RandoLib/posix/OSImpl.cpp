@@ -18,6 +18,9 @@
 #include <elf.h>
 #include <link.h>
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <type_traits>
@@ -37,6 +40,10 @@ void *_TRaP_syscall_mremap(void*, size_t, size_t, int, ...);
 int _TRaP_syscall_munmap(void*, size_t);
 int _TRaP_syscall_mprotect(const void*, size_t, int);
 int _TRaP_syscall_unlinkat(int, const char*, int);
+
+int _TRaP_syscall___socket(int, int, int);
+int _TRaP_syscall___connect(int, const struct sockaddr*, socklen_t);
+int _TRaP_syscall_recvmsg(int, struct msghdr*, int);
 
 void _TRaP_rand_close_fd(void);
 }
@@ -656,5 +663,107 @@ RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
     os::API::debug_printf<1>("Final GOT relocations: %d\n",
                              m_got_entries.num_elems);
 }
+
+#if RANDOLIB_USE_RANDOD
+#define RANDOD_SOCKET   "/tmp/randod.socket"
+
+#define RANDOD_REQUEST_SELFRANDO    1
+
+#define RANDOD_FUNC_SKIP_COPY       0x01
+#define RANDOD_FUNC_FROM_TRAP       0x02
+#define RANDOD_FUNC_IS_PADDING      0x04
+#define RANDOD_FUNC_IS_GAP          0x08
+#define RANDOD_FUNC_HAS_SIZE        0x10
+
+void Module::randod_shuffle_code(const Section &exec_section,
+                                 FunctionList *functions,
+                                 size_t *shuffled_order) const {
+    int sk = _TRaP_syscall___socket(AF_UNIX, SOCK_STREAM, 0);
+    RANDO_ASSERT(!APIImpl::syscall_retval_is_err(sk)); // FIXME
+
+    struct sockaddr_un addr = { AF_UNIX, RANDOD_SOCKET };
+    int ret = _TRaP_syscall___connect(sk,
+                                      reinterpret_cast<const struct sockaddr*>(&addr),
+                                      sizeof(addr));
+    RANDO_ASSERT(!APIImpl::syscall_retval_is_err(ret));
+
+    int32_t req = RANDOD_REQUEST_SELFRANDO;
+    _TRaP_syscall_write(sk, &req, sizeof(req));
+
+    uint8_t tmp_u8;
+    uint64_t tmp_u64;
+    tmp_u64 = exec_section.start().to_ptr<uint64_t>();
+    _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+    tmp_u64 = static_cast<uint64_t>(exec_section.size());
+    _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+
+    tmp_u64 = 0;
+    for (size_t i = 0; i < functions->num_elems; i++) {
+        // Send only the copied functions
+        const auto &func = functions->elems[i];
+        if (!func.skip_copy)
+            tmp_u64++;
+    }
+    _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+    for (size_t i = 0; i < functions->num_elems; i++) {
+        const auto &func = functions->elems[i];
+        if (func.skip_copy)
+            continue;
+
+        tmp_u64 = reinterpret_cast<uint64_t>(func.undiv_start);
+        _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+        tmp_u64 = reinterpret_cast<uint64_t>(func.div_start);
+        _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+        tmp_u64 = static_cast<uint64_t>(func.size);
+        _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+        tmp_u8 = static_cast<uint8_t>(func.undiv_p2align);
+        _TRaP_syscall_write(sk, &tmp_u8, sizeof(tmp_u8));
+        tmp_u8 = 0;
+        if (func.skip_copy)  tmp_u8 |= RANDOD_FUNC_SKIP_COPY;
+        if (func.from_trap)  tmp_u8 |= RANDOD_FUNC_FROM_TRAP;
+        if (func.is_padding) tmp_u8 |= RANDOD_FUNC_IS_PADDING;
+        if (func.is_gap)     tmp_u8 |= RANDOD_FUNC_IS_GAP;
+        if (func.has_size)   tmp_u8 |= RANDOD_FUNC_HAS_SIZE;
+        _TRaP_syscall_write(sk, &tmp_u8, sizeof(tmp_u8));
+    }
+
+    int fd;
+    {
+        // Receive the fd for the new file
+        struct msghdr msg = { };
+        char cmsgbuf[CMSG_SPACE(sizeof(uint32_t))] = { };
+        struct cmsghdr *cmsg;
+        struct iovec vec = { &tmp_u8, sizeof(tmp_u8) };
+        msg.msg_iov = &vec;
+        msg.msg_iovlen = 1;
+        msg.msg_control = cmsgbuf;
+        msg.msg_controllen = sizeof(cmsgbuf);
+        ret = _TRaP_syscall_recvmsg(sk, &msg, MSG_CMSG_CLOEXEC | MSG_WAITALL);
+        RANDO_ASSERT(!APIImpl::syscall_retval_is_err(ret));
+
+        cmsg = CMSG_FIRSTHDR(&msg);
+        RANDO_ASSERT(cmsg != nullptr);
+        RANDO_ASSERT(cmsg->cmsg_type == SCM_RIGHTS);
+        fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    }
+    _TRaP_syscall____close(sk);
+
+    auto exec_page_start = exec_section.start().to_ptr<uintptr_t>() &
+                           ~static_cast<uintptr_t>(4095);
+    auto exec_page_end = (exec_section.end().to_ptr<uintptr_t>() + 4095) &
+                           ~static_cast<uintptr_t>(4095);
+    auto exec_page_size = exec_page_end - exec_page_start;
+    ret = _TRaP_syscall_munmap(reinterpret_cast<void*>(exec_page_start),
+                               exec_page_size);
+    RANDO_ASSERT(!APIImpl::syscall_retval_is_err(ret));
+    void *vret = _TRaP_syscall_mmap(reinterpret_cast<void*>(exec_page_start),
+                                    exec_page_size,
+                                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                                    MAP_PRIVATE | MAP_FIXED,
+                                    fd, 0);
+    RANDO_ASSERT(!APIImpl::syscall_retval_is_err(vret));
+    _TRaP_syscall____close(fd);
+}
+#endif // RANDOLIB_USE_RANDOD
 
 }

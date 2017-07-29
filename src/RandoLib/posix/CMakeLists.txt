@@ -3,6 +3,8 @@ cmake_policy(SET CMP0063 NEW)
 
 set(SR_RNG "urandom" CACHE STRING
     "Random number generator to use ('rand_r' or 'urandom')")
+set(SR_USE_RANDOD ON CACHE BOOL
+    "Use randod for randomization")
 
 set(ALLOWED_RNGS rand_r urandom)
 set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
@@ -12,6 +14,10 @@ if(${rng_idx} LESS 0)
 endif()
 string(TOUPPER ${SR_RNG} upper_rng)
 add_definitions(-DRANDOLIB_RNG_IS_${upper_rng}=1)
+
+if(SR_USE_RANDOD)
+    add_definitions(-DRANDOLIB_USE_RANDOD=1)
+endif()
 
 if (SR_BUILD_MODULE_RANDOLIB)
     # Make stack non-executable in assembly files

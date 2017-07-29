@@ -411,6 +411,13 @@ void ExecSectionProcessor::layout_code() {
 }
 
 void ExecSectionProcessor::shuffle_code() {
+#if RANDOLIB_USE_RANDOD
+    m_module.randod_shuffle_code(m_exec_section,
+                                 &m_functions,
+                                 m_shuffled_order);
+    return;
+#endif
+
     // Copy the code to a backup
     // FIXME: randomize the base address manually
     auto orig_code = m_exec_section.start().to_ptr();

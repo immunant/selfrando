@@ -170,6 +170,12 @@ public:
 
     RANDO_SECTION void read_got_relocations(const TrapInfo *trap_info);
 
+#if RANDOLIB_USE_RANDOD
+    void randod_shuffle_code(const Section &exec_section,
+                             FunctionList *functions,
+                             size_t *shuffled_order) const;
+#endif
+
 private:
     ModuleInfo *m_module_info;
     BytePointer m_image_base;
