@@ -3,7 +3,7 @@ cmake_policy(SET CMP0063 NEW)
 
 set(SR_RNG "urandom" CACHE STRING
     "Random number generator to use ('rand_r' or 'urandom')")
-set(SR_USE_RANDOD ON CACHE BOOL
+set(SR_USE_RANDOD OFF CACHE BOOL
     "Use randod for randomization")
 
 set(ALLOWED_RNGS rand_r urandom)
