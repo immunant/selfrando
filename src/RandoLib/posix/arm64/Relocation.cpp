@@ -91,7 +91,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
-    auto at_ptr = m_src_ptr;
+    auto at_ptr = m_orig_src_ptr;
     auto orig_ptr = m_orig_src_ptr;
     switch(m_type) {
     case R_AARCH64_ABS32:
@@ -229,11 +229,11 @@ void write_insn_operand(BytePointer at_ptr, Instruction insn,
 }
 
 void Module::Relocation::set_target_ptr(BytePointer new_target) {
-    auto at_ptr = m_src_ptr;
-    ptrdiff_t        pcrel_delta = new_target - at_ptr;
+    auto at_ptr = m_orig_src_ptr;
+    ptrdiff_t        pcrel_delta = new_target - m_src_ptr;
     ptrdiff_t addend_pcrel_delta = pcrel_delta + m_addend;
-    ptrdiff_t        pcrel_page_delta = (page_address(new_target)            - page_address(at_ptr));
-    ptrdiff_t addend_pcrel_page_delta = (page_address(new_target + m_addend) - page_address(at_ptr));
+    ptrdiff_t        pcrel_page_delta = (page_address(new_target)            - page_address(m_src_ptr));
+    ptrdiff_t addend_pcrel_page_delta = (page_address(new_target + m_addend) - page_address(m_src_ptr));
     switch(m_type) {
     case R_AARCH64_ABS32:
         *reinterpret_cast<uint32_t*>(at_ptr) = reinterpret_cast<uintptr_t>(new_target);
@@ -346,7 +346,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 }
 
 BytePointer Module::Relocation::get_got_entry() const {
-    auto at_ptr = m_src_ptr;
+    auto at_ptr = m_orig_src_ptr;
     switch(m_type) {
     // TODO: handle arch GOT relocations
     default:

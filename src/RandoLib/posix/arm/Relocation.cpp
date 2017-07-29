@@ -121,7 +121,7 @@ BytePointer Module::Relocation::get_target_ptr() const {
     // IMPORTANT: Keep TrapInfo/TrapInfoRelocs.h in sync whenever a new
     // relocation requires a symbol and/or addend.
 
-    auto cur_address = m_src_ptr;
+    auto cur_address = m_orig_src_ptr;
     auto reloc_contents = *reinterpret_cast<uint32_t*>(cur_address);
     auto orig_address = m_orig_src_ptr;
     switch(m_type) {
@@ -181,9 +181,9 @@ BytePointer Module::Relocation::get_target_ptr() const {
     } while (0)
 
 void Module::Relocation::set_target_ptr(BytePointer new_target) {
-    auto cur_address = m_src_ptr;
+    auto cur_address = m_orig_src_ptr;
     auto reloc_contents = *reinterpret_cast<uint32_t*>(cur_address);
-    ptrdiff_t        pcrel_delta = new_target - cur_address;
+    ptrdiff_t        pcrel_delta = new_target - m_src_ptr;
     ptrdiff_t addend_pcrel_delta = pcrel_delta + m_addend;
     switch(m_type) {
     case R_ARM_REL32:
@@ -287,7 +287,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 }
 
 BytePointer Module::Relocation::get_got_entry() const {
-    auto at_ptr = m_src_ptr;
+    auto at_ptr = m_orig_src_ptr;
     switch(m_type) {
     case R_ARM_GOT32:
         return m_module.get_got_ptr() + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;

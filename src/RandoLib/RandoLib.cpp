@@ -141,11 +141,11 @@ public:
             TIME_FUNCTION_CALL(remove_empty_functions);
             TIME_FUNCTION_CALL(shuffle_functions);
             TIME_FUNCTION_CALL(layout_code);
+            TIME_FUNCTION_CALL(fixup_relocations);
+            TIME_FUNCTION_CALL(process_trap_relocations);
+            TIME_FUNCTION_CALL(fixup_exports);
             TIME_FUNCTION_CALL(shuffle_code);
         }
-        TIME_FUNCTION_CALL(fixup_relocations);
-        TIME_FUNCTION_CALL(process_trap_relocations);
-        TIME_FUNCTION_CALL(fixup_exports);
 #if RANDOLIB_WRITE_LAYOUTS > 0
         TIME_FUNCTION_CALL(write_layout_file);
 #endif
@@ -410,6 +410,33 @@ void ExecSectionProcessor::layout_code() {
 #endif
 }
 
+void ExecSectionProcessor::fixup_relocations() {
+    // FIXME(performance): this is pretty slow (profile confirms it)
+    m_module.for_all_relocations(&m_functions);
+}
+
+void ExecSectionProcessor::process_trap_relocations() {
+    m_trap_info.for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
+        auto reloc = os::Module::Relocation(m_module, trap_reloc);
+        m_functions.adjust_relocation(&reloc);
+    });
+}
+
+void ExecSectionProcessor::fixup_exports() {
+    // FIXME: these should either be in regular relocs, or in Trap info
+    auto export_section = m_module.export_section();
+    if (export_section.empty())
+        return;
+
+    // Fixup trampolines in .xptramp section (if included)
+    auto export_start = export_section.start().to_ptr();
+    auto export_end = export_section.end().to_ptr();
+    for (auto export_ptr = export_start; export_ptr < export_end;)
+        os::Module::Relocation::fixup_export_trampoline(&export_ptr,
+                                                        m_module,
+                                                        &m_functions);
+}
+
 void ExecSectionProcessor::shuffle_code() {
 #if RANDOLIB_USE_RANDOD
     m_module.randod_shuffle_code(m_exec_section,
@@ -513,33 +540,6 @@ void ExecSectionProcessor::shuffle_code() {
             }
         }
     }
-}
-
-void ExecSectionProcessor::fixup_relocations() {
-    // FIXME(performance): this is pretty slow (profile confirms it)
-    m_module.for_all_relocations(&m_functions);
-}
-
-void ExecSectionProcessor::process_trap_relocations() {
-    m_trap_info.for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
-        auto reloc = os::Module::Relocation(m_module, trap_reloc);
-        m_functions.adjust_relocation(&reloc);
-    });
-}
-
-void ExecSectionProcessor::fixup_exports() {
-    // FIXME: these should either be in regular relocs, or in Trap info
-    auto export_section = m_module.export_section();
-    if (export_section.empty())
-        return;
-
-    // Fixup trampolines in .xptramp section (if included)
-    auto export_start = export_section.start().to_ptr();
-    auto export_end = export_section.end().to_ptr();
-    for (auto export_ptr = export_start; export_ptr < export_end;)
-        os::Module::Relocation::fixup_export_trampoline(&export_ptr,
-                                                        m_module,
-                                                        &m_functions);
 }
 
 #if RANDOLIB_WRITE_LAYOUTS > 0
