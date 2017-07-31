@@ -115,7 +115,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
     case 42: // R_X86_64_REX_GOTPCRELX
-        if (is_patched_gotpcrel(m_src_ptr, m_addend)) {
+        if (is_patched_gotpcrel(m_orig_src_ptr, m_addend)) {
             set_p32(new_target);
             return;
         }

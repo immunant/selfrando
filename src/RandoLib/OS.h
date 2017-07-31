@@ -252,12 +252,12 @@ protected:
         template<typename T>
         void set_u32(T x) {
             // FIXME: check for overflow in narrowing static_cast
-            *reinterpret_cast<uint32_t*>(m_src_ptr) = static_cast<uint32_t>(x);
+            *reinterpret_cast<uint32_t*>(m_orig_src_ptr) = static_cast<uint32_t>(x);
         }
 
         template<typename T>
         void set_u64(T x) {
-            *reinterpret_cast<uint64_t*>(m_src_ptr) = static_cast<uint64_t>(x);
+            *reinterpret_cast<uint64_t*>(m_orig_src_ptr) = static_cast<uint64_t>(x);
         }
 
         template<typename T>
