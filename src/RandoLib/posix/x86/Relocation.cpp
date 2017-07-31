@@ -82,7 +82,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     switch(m_type) {
     case R_386_32:
     abs32_reloc:
-        *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        set_p32(new_target);
         break;
     case R_386_GOT32:
     case 43: // R_386_GOT32X
@@ -94,7 +94,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
             break;
         // Fall-through
     case R_386_GOTOFF:
-        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
+        set_u32(new_target - m_module.get_got_ptr());
         break;
     case R_386_PC32:
     case R_386_PLT32:
@@ -102,7 +102,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         if (is_patched_tls_get_addr_call(m_src_ptr))
             break;
         // FIXME: check for overflow here???
-        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target + m_addend - m_src_ptr);
+        set_u32(new_target + m_addend - m_src_ptr);
         break;
     default:
         RANDO_ASSERT(false);

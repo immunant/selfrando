@@ -248,6 +248,28 @@ protected:
             : m_module(mod), m_orig_src_ptr(reinterpret_cast<BytePointer>(ptr)),
               m_src_ptr(reinterpret_cast<BytePointer>(ptr)), m_type(type) { }
 
+        // Helper functions for the arch-specific code
+        template<typename T>
+        void set_u32(T x) {
+            // FIXME: check for overflow in narrowing static_cast
+            *reinterpret_cast<uint32_t*>(m_src_ptr) = static_cast<uint32_t>(x);
+        }
+
+        template<typename T>
+        void set_u64(T x) {
+            *reinterpret_cast<uint64_t*>(m_src_ptr) = static_cast<uint64_t>(x);
+        }
+
+        template<typename T>
+        void set_p32(T *x) {
+            set_u32(reinterpret_cast<uintptr_t>(x));
+        }
+
+        template<typename T>
+        void set_p64(T *x) {
+            set_u64(reinterpret_cast<uintptr_t>(x));
+        }
+
     protected:
         const Module &m_module;
         const BytePointer m_orig_src_ptr;

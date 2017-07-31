@@ -103,20 +103,20 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     switch(m_type) {
     case R_X86_64_32:
     case R_X86_64_32S: // FIXME: is this correct???
-        *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        set_p32(new_target);
         break;
     case R_X86_64_64:
-        *reinterpret_cast<uint64_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        set_p64(new_target);
         break;
     case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
-        *reinterpret_cast<ptrdiff_t*>(m_src_ptr) = new_target - m_module.get_got_ptr();
+        set_u64(new_target - m_module.get_got_ptr());
         break;
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
     case 42: // R_X86_64_REX_GOTPCRELX
         if (is_patched_gotpcrel(m_src_ptr, m_addend)) {
-            *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
+            set_p32(new_target);
             return;
         }
         goto pcrel_reloc;
@@ -126,13 +126,12 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         if (is_patched_tls_get_addr_call(m_src_ptr))
             break;
     pcrel_reloc:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target + m_addend - m_src_ptr);
+        set_u32(new_target + m_addend - m_src_ptr);
         break;
     case R_X86_64_PC64:
     case R_X86_64_GOTPCREL64:
     case R_X86_64_GOTPC64:
-        // FIXME: check for overflow here???
-        *reinterpret_cast<int64_t*>(m_src_ptr) = static_cast<int64_t>(new_target + m_addend - m_src_ptr);
+        set_u64(new_target + m_addend - m_src_ptr);
         break;
     case R_X86_64_TLSGD:
     case R_X86_64_TLSLD:
