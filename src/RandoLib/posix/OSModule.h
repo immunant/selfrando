@@ -207,6 +207,20 @@ private:
     Vector<ArchReloc> m_arch_relocs;
     Vector<BytePointer> m_got_entries;
     size_t m_linker_stubs;
+
+#if RANDOLIB_USE_RANDOD
+    mutable Vector<RandodReloc32> m_randod_32_relocs;
+    mutable Vector<RandodReloc64> m_randod_64_relocs;
+
+    void add_randod_reloc32(const RandodReloc32 &reloc) const {
+        m_randod_32_relocs.append(reloc);
+    }
+
+    void add_randod_reloc64(const RandodReloc64 &reloc) const {
+        m_randod_64_relocs.append(reloc);
+    }
+    friend class ModuleBase<Module>::RelocationBase<size_t>;
+#endif
 };
 
 } // namespace os

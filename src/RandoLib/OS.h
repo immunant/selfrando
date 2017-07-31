@@ -219,6 +219,18 @@ protected:
         }
     };
 
+#if RANDOLIB_USE_RANDOD
+#pragma pack(push, 1)
+    template<typename Value>
+    struct RandodReloc {
+        BytePointer addr;
+        Value val;
+    };
+#pragma pack(pop)
+    using RandodReloc32 = RandodReloc<uint32_t>;
+    using RandodReloc64 = RandodReloc<uint64_t>;
+#endif
+
     template<typename RelocType>
     class RANDO_SECTION RelocationBase {
     public:
@@ -251,13 +263,25 @@ protected:
         // Helper functions for the arch-specific code
         template<typename T>
         void set_u32(T x) {
+#if RANDOLIB_USE_RANDOD
+            RandodReloc<uint32_t> reloc = { m_src_ptr,
+                                            static_cast<uint32_t>(x) };
+            m_module.add_randod_reloc32(reloc);
+#else
             // FIXME: check for overflow in narrowing static_cast
             *reinterpret_cast<uint32_t*>(m_orig_src_ptr) = static_cast<uint32_t>(x);
+#endif
         }
 
         template<typename T>
         void set_u64(T x) {
+#if RANDOLIB_USE_RANDOD
+            RandodReloc<uint64_t> reloc = { m_src_ptr,
+                                            static_cast<uint64_t>(x) };
+            m_module.add_randod_reloc64(reloc);
+#else
             *reinterpret_cast<uint64_t*>(m_orig_src_ptr) = static_cast<uint64_t>(x);
+#endif
         }
 
         template<typename T>

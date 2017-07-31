@@ -763,6 +763,16 @@ void Module::randod_shuffle_code(const Section &exec_section,
                                     fd, 0);
     RANDO_ASSERT(!APIImpl::syscall_retval_is_err(vret));
     _TRaP_syscall____close(fd);
+
+    // Apply the relocations
+    for (size_t i = 0; i < m_randod_32_relocs.num_elems; i++) {
+        auto &reloc = m_randod_32_relocs[i];
+        *reinterpret_cast<uint32_t*>(reloc.addr) = reloc.val;
+    }
+    for (size_t i = 0; i < m_randod_64_relocs.num_elems; i++) {
+        auto &reloc = m_randod_64_relocs[i];
+        *reinterpret_cast<uint64_t*>(reloc.addr) = reloc.val;
+    }
 }
 #endif // RANDOLIB_USE_RANDOD
 
