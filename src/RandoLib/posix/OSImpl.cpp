@@ -676,6 +676,15 @@ RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
 #define RANDOD_FUNC_IS_GAP          0x08
 #define RANDOD_FUNC_HAS_SIZE        0x10
 
+#pragma pack(push, 1)
+struct RandodHeader {
+    uint32_t req;
+    uint64_t exec_start, exec_size;
+    uint64_t num_funcs;
+    uint64_t num_32_relocs, num_64_relocs;
+};
+#pragma pack(pop)
+
 void Module::randod_shuffle_code(const Section &exec_section,
                                  FunctionList *functions,
                                  size_t *shuffled_order) const {
@@ -688,24 +697,24 @@ void Module::randod_shuffle_code(const Section &exec_section,
                                       sizeof(addr));
     RANDO_ASSERT(!APIImpl::syscall_retval_is_err(ret));
 
-    int32_t req = RANDOD_REQUEST_SELFRANDO;
-    _TRaP_syscall_write(sk, &req, sizeof(req));
-
-    uint8_t tmp_u8;
-    uint64_t tmp_u64;
-    tmp_u64 = exec_section.start().to_ptr<uint64_t>();
-    _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
-    tmp_u64 = static_cast<uint64_t>(exec_section.size());
-    _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
-
-    tmp_u64 = 0;
+    struct RandodHeader hdr = {
+        .req = RANDOD_REQUEST_SELFRANDO,
+        .exec_start = exec_section.start().to_ptr<uint64_t>(),
+        .exec_size = static_cast<uint64_t>(exec_section.size()),
+        .num_funcs = 0,
+        .num_32_relocs = m_randod_32_relocs.num_elems,
+        .num_64_relocs = m_randod_64_relocs.num_elems,
+    };
     for (size_t i = 0; i < functions->num_elems; i++) {
         // Send only the copied functions
         const auto &func = functions->elems[i];
         if (!func.skip_copy)
-            tmp_u64++;
+            hdr.num_funcs++;
     }
-    _TRaP_syscall_write(sk, &tmp_u64, sizeof(tmp_u64));
+    _TRaP_syscall_write(sk, &hdr, sizeof(hdr));
+
+    uint8_t tmp_u8;
+    uint64_t tmp_u64;
     for (size_t i = 0; i < functions->num_elems; i++) {
         const auto &func = functions->elems[i];
         if (func.skip_copy)
@@ -726,6 +735,18 @@ void Module::randod_shuffle_code(const Section &exec_section,
         if (func.is_gap)     tmp_u8 |= RANDOD_FUNC_IS_GAP;
         if (func.has_size)   tmp_u8 |= RANDOD_FUNC_HAS_SIZE;
         _TRaP_syscall_write(sk, &tmp_u8, sizeof(tmp_u8));
+    }
+    for (size_t i = 0; i < m_randod_32_relocs.num_elems; i++) {
+        auto &reloc = m_randod_32_relocs[i];
+        uint64_t tmpv[2] = { reinterpret_cast<uint64_t>(reloc.addr),
+                             static_cast<uint64_t>(reloc.val) };
+        _TRaP_syscall_write(sk, &tmpv, sizeof(tmpv));
+    }
+    for (size_t i = 0; i < m_randod_64_relocs.num_elems; i++) {
+        auto &reloc = m_randod_64_relocs[i];
+        uint64_t tmpv[2] = { reinterpret_cast<uint64_t>(reloc.addr),
+                             static_cast<uint64_t>(reloc.val) };
+        _TRaP_syscall_write(sk, &tmpv, sizeof(tmpv));
     }
 
     int fd;
@@ -755,27 +776,33 @@ void Module::randod_shuffle_code(const Section &exec_section,
     RANDO_ASSERT((addrs[1] & 4095) == 0);
     _TRaP_syscall____close(sk);
 
-    auto exec_page_start = addrs[0];
-    auto exec_page_end = addrs[1];
+    auto exec_page_start = reinterpret_cast<BytePointer>(addrs[0]);
+    auto exec_page_end = reinterpret_cast<BytePointer>(addrs[1]);
     auto exec_page_size = exec_page_end - exec_page_start;
     ret = _TRaP_syscall_munmap(reinterpret_cast<void*>(exec_page_start),
                                exec_page_size);
     RANDO_ASSERT(!APIImpl::syscall_retval_is_err(ret));
-    void *vret = _TRaP_syscall_mmap(reinterpret_cast<void*>(exec_page_start),
+    void *vret = _TRaP_syscall_mmap(exec_page_start,
                                     exec_page_size,
-                                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                                    PROT_READ | PROT_EXEC,
                                     MAP_PRIVATE | MAP_FIXED,
                                     fd, 0);
     RANDO_ASSERT(!APIImpl::syscall_retval_is_err(vret));
     _TRaP_syscall____close(fd);
 
-    // Apply the relocations
+    // Apply the relocations that randod couldn't apply itself
     for (size_t i = 0; i < m_randod_32_relocs.num_elems; i++) {
         auto &reloc = m_randod_32_relocs[i];
+        if (reloc.addr >= exec_page_start &&
+            reloc.addr <  exec_page_end)
+            continue; // randod performed the relocation on its end
         *reinterpret_cast<uint32_t*>(reloc.addr) = reloc.val;
     }
     for (size_t i = 0; i < m_randod_64_relocs.num_elems; i++) {
         auto &reloc = m_randod_64_relocs[i];
+        if (reloc.addr >= exec_page_start &&
+            reloc.addr <  exec_page_end)
+            continue; // randod performed the relocation on its end
         *reinterpret_cast<uint64_t*>(reloc.addr) = reloc.val;
     }
 }
