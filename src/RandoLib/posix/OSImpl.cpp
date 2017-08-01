@@ -44,6 +44,7 @@ int _TRaP_syscall_unlinkat(int, const char*, int);
 int _TRaP_syscall___socket(int, int, int);
 int _TRaP_syscall___connect(int, const struct sockaddr*, socklen_t);
 int _TRaP_syscall_recvmsg(int, struct msghdr*, int);
+ssize_t _TRaP_syscall_read(int, void*, size_t);
 
 void _TRaP_rand_close_fd(void);
 }
@@ -746,12 +747,16 @@ void Module::randod_shuffle_code(const Section &exec_section,
         RANDO_ASSERT(cmsg->cmsg_type == SCM_RIGHTS);
         fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
     }
+
+    uint64_t addrs[2];
+    ret = _TRaP_syscall_read(sk, &addrs, sizeof(addrs));
+    RANDO_ASSERT(!APIImpl::syscall_retval_is_err(ret));
+    RANDO_ASSERT((addrs[0] & 4095) == 0);
+    RANDO_ASSERT((addrs[1] & 4095) == 0);
     _TRaP_syscall____close(sk);
 
-    auto exec_page_start = exec_section.start().to_ptr<uintptr_t>() &
-                           ~static_cast<uintptr_t>(4095);
-    auto exec_page_end = (exec_section.end().to_ptr<uintptr_t>() + 4095) &
-                           ~static_cast<uintptr_t>(4095);
+    auto exec_page_start = addrs[0];
+    auto exec_page_end = addrs[1];
     auto exec_page_size = exec_page_end - exec_page_start;
     ret = _TRaP_syscall_munmap(reinterpret_cast<void*>(exec_page_start),
                                exec_page_size);
