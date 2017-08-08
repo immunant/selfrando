@@ -1,85 +1,59 @@
-## Building Self-Randomizing Firefox on Windows
+# Preparing to build selfrando
 
-### Building the Randomizer
+Tested on Windows 10 build 1607 using Visual Studio 2015 Update 3. **Note:** Debug builds are broken on Visual Studio 2015, update 3. It is assumed that python 2.7 is installed to `C:\Python27`.
 
-- Microsoft Windows Vista or later.
-- [Visual Studio](http://www.visualstudio.com/downloads/download-visual-studio-vs#d-express-windows-desktop), e.g., Community Edition 2013.
-- [WinDbg](http://msdn.microsoft.com/en-us/windows/hardware/hh852365) (part of the Windows SDK) to debug self-randomizing binaries.
-- Git VCS for Windows. e.g.,
- - [Github for Windows](https://windows.github.com/) or
- - [Git for Windows](http://msysgit.github.io/) (can be installed from within Visual Studio)
-- Add TRaP information to Visual Studio C/C++ libraries by running `self-rando-windows/Scripts/trap-msvc-libs.py`. This will copy over the following libraries from the Visual Studio distribution to the new sub-directory `TrappedMSVCLibs` and run `TrapLib.exe` on each of them to add a new section `.textrap`. The files we instrument so far include:
-     - `libcmt.lib`
-     - `libcmtd.lib`
-     - `libcpmt.lib`
-     - `libcpmt1.lib`
-     - `libcptmd.lib`
-     - `libcpmtd0.lib`
-     - `libcpmtd1.lib`
-     - `msvcrt.lib`
-     - `msvcrtd.lib`
-     - `msvcprt.lib`
-     - `msvcprtd.lib`
-- This list of libraries suffices for Firefox but may need to be expanded for other programs.
-- **WARNING**: the path to `self-rando-windows` should not contain any spaces.
-- Running `trap-msvc-libs.py` also generates a machine-specific script `set-buildvars-cygwin.sh` used to intercept calls to the MSVC linker to create self-randomizing binaries.
-
-### Building 32-bit Firefox Nightly
-
-- [Mozilla Build Prerequisites for Windows](https://ftp.mozilla.org/pub/mozilla.org/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe) this includes
- - [Mercurial](http://mercurial.selenic.com/downloads) VCS to build Firefox from source
- - [Python for Windows](https://www.python.org/downloads/windows/) for the Firefox build system
-- [Firefox](https://developer.mozilla.org/en-US/docs/Simple_Firefox_build) build from source
- - Checkout sources using `hg clone https://hg.mozilla.org/mozilla-release`.
- - Switch to Firefox version 34 or lower (required for now, build breaks for newer versions). Tag `FIREFOX_34_0_RELEASE` should work fine, switch using `hg update FIREFOX_34_0_RELEASE`.
- - Start a command prompt using `c:\mozilla-build\start-shell-msvc2013.bat` (for Visual Studio 2013).
- - Source `self-rando-windows/Scripts/set-buildvars-cygwin.sh` (created by `trap-msvc-libs.py`) **or**
-   - Set the `MSVC_LINKER` environment variable to the full path of the MSVC linker, in quotes and with forward slashes. Example: `export MSVC_LINKER="c:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/BIN/amd64_x86/link.exe"` on 64-bit Windows with Visual Studio 2013.
-   - Add `self-rando-windows/Release` (or `Debug`) to the beginning of the `PATH` variable, in forward-slash Cygwin-compatible form. Example: `export PATH=/c/Users/JohnDoe/self-rando-windows/Release:$PATH`. Avoid spaces in path.
-   - Add the directory with the TRaP-friendly libraries to the beginning of the `LIB` and `LIBPATH` variables. Example: `export LIB="c:\Users\JohnDoe\self-rando-windows\TrappedMSVCLibs;"$LIB`. Note the semicolon inside the double quotes.
- - copy `mozconfig.self-rando` to `mozilla-central/mozconfig`, then edit it before building (may need to change the `PATH` variable inside).
- - Build using `./mach build` in the `mozilla-central` directory.
-
-### Testing 32-bit Firefox
-- To check that a library contains TRaP information, run `dumpbin --all <filename>` and check it has a `.textrap` section.
-- run `mach run` to start self-randomizing Firefox
-
-### Building LLVM from Command Line (with Visual Studio 2013)
-- Install [Cmake](http://www.cmake.org/download/)
-- Install [MingW](http://gnuwin32.sourceforge.net/) and add to `PATH`
- - Install Unix command line tools by running `mingw-get install msys` with `mingw-get` on the path.
- - Add `%MINGW_HOME%\msys\1.0\bin` to the `PATH`.
-- Follow [Getting Started](http://llvm.org/docs/GettingStartedVS.html) instructions for Windows.
- - Note: instructions advise use of *GnuWin32* but MingW seems to a better way to get the required Unix commands.
- - Set the `MSVC_LINKER` environment variable to the full path of the MSVC linker, **without quotes and with backslashes**. Example: `set MSVC_LINKER=c:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\BIN\amd64_x86\link.exe` on 64-bit Windows with Visual Studio 2013.
- - Add `link.exe` and `lib.exe` to MSVC tools path:
-   - edit `C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\vcvars32`. Change the line `@if exist "%VCINSTALLDIR%BIN" set PATH=%VCINSTALLDIR%BIN;%PATH%` to `@if exist "%VCINSTALLDIR%BIN" set PATH=\Path\to\self-rando-windows\Debug;%VCINSTALLDIR%BIN;%PATH%`.
-   - edit `C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.Cpp.Common.props`. Change
-
-```xml
-<!-- VC directories -->
-<PropertyGroup>
-  <VC_ExecutablePath_x86_x86>$(VCInstallDir)bin</VC_ExecutablePath_x86_x86>
-  <VC_ExecutablePath_x86_x64>$(VCInstallDir)bin\x86_amd64</VC_ExecutablePath_x86_x64>
-...
-</PropertyGroup>
+# Building selfrando for Win32 (x86) platforms
+1. Check out or unpack selfrando to `%SR_HOME%`
+2. Open a terminal (`cmd.exe`) and run:
+```
+msbuild %SR_HOME%\self-rando-windows.sln /p:Configuration=Release /verbosity:minimal /p:Platform=Win32
 ```
 
-```xml
-<!-- VC directories -->
-<PropertyGroup>
-  <VC_ExecutablePath_x86_x86>\Path\to\self-rando-windows\Debug;$(VCInstallDir)bin</VC_ExecutablePath_x86_x86>
-  <VC_ExecutablePath_x86_x64>\Path\to\self-rando-windows\Debug;$(VCInstallDir)bin\x86_amd64</VC_ExecutablePath_x86_x64>
-  ...
-</PropertyGroup>
+# Building selfrando for x64 (amd64) platforms
+1. Check out or unpack selfrando to `%SR_HOME%`
+2. Open a terminal (`cmd.exe`) and run:
 ```
-**WARNING** Revert `Microsoft.Cpp.Common.properties` before building within Visual Studio.
+msbuild %SR_HOME%\self-rando-windows.sln /p:Configuration=Release /verbosity:minimal /p:Platform=x64
+```
 
- - Make sure code is built with `/Gy` (Function-Level Linking) enabled. Add the following to `CMakeLists.txt` in the LLVM source directory before running CMake.
- ```
- if( MSVC )
- SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Gy")
- endif()
- ```
- - To enable faster builds, change `set(LLVM_TARGETS_TO_BUILD "all"...` to `set(LLVM_TARGETS_TO_BUILD "X86"`. 
- - Open a command line from the `Visual Studio Tools` folder and use `msbuild LLVM.sln` to build from the command line
+# Applying selfrando to Win32 (x86) programs
+1. Open a terminal window (`cmd.exe`, not powershell)
+2. `call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%`
+3. `SET PATH=C:\Python27;%PATH%`
+4. `python %SR_HOME%\scripts\trap-msvc-libs.py` (This step only needs to be performed once for each platform)
+5. `python %SR_HOME%\scripts\gen_scripts.py`
+6. For each `.vcxproj` project file that should build with selfrando, run:
+`python %SR_HOME%\scripts\update_vcxproj.py --inplace -i python.vcxproj`
+(**Note:** this will rewrite the `.vcxproj` file in place, make sure to keep a backup or use the `-o` option to specify the output file.)
+7. Build your C/C++ Win32 program as usual using `msbuild` or Visual Studio.
+
+# Testing whether a Win32 program is protected by selfrando
+1. Open a terminal window (`cmd.exe`, not powershell)
+2. `call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%`
+3. `dumpbin /section:.txtrp %PATH_TO_YOUR_EXE_OR_DLL%`
+
+Output should be similar to
+```
+Microsoft (R) COFF/PE Dumper Version 14.00.24215.1
+Copyright (C) Microsoft Corporation.  All rights reserved.
+Dump of file C:\projects\selfrando\Release\SimpleRandoTest.exe
+File Type: EXECUTABLE IMAGE
+SECTION HEADER #7
+  .txtrp name
+     26C virtual size
+    D000 virtual address (0040D000 to 0040D26B)
+     400 size of raw data
+    7E00 file pointer to raw data (00007E00 to 000081FF)
+       0 file pointer to relocation table
+       0 file pointer to line numbers
+       0 number of relocations
+       0 number of line numbers
+42000040 flags
+         Initialized Data
+         Discardable
+         Read Only
+  Summary
+        1000 .txtrp
+```
+
+See `%SR_HOME%\tests\win32\python36.ps1` for an example on how to automatically apply selfrando to a Visual Studio project.
