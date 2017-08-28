@@ -21,6 +21,7 @@ vars.Add(EnumVariable('DELETE_LAYOUTS', 'Delete the layout file on process exit'
                       'always', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('RNG', 'Random number generator to use',
                       'urandom', allowed_values=('rand_r', 'urandom')))
+vars.Add(BoolVariable('NO_MREMAP', 'Avoid using mremap() to reallocate memory', 0))
 
 def decode_debug_level(var):
     if var == 'env':
@@ -54,6 +55,7 @@ defines = {
     'RANDOLIB_FORCE_INPLACE': 1 if env['FORCE_INPLACE'] else 0,
     'RANDOLIB_WRITE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['WRITE_LAYOUTS']],
     'RANDOLIB_DELETE_LAYOUTS': { 'no': 0, 'env': 1, 'always': 2 }[env['DELETE_LAYOUTS']],
+    'RANDOLIB_NO_MREMAP': 1 if env['NO_MREMAP'] else 0,
 }
 defines['RANDOLIB_IS_%s' % env['PLATFORM'].upper()] = 1
 defines['RANDOLIB_IS_%s' % env['TARGET_ARCH'].upper()] = 1

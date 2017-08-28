@@ -168,13 +168,64 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
     if (new_size == old_size)
         return old_ptr;
 
-    auto res = reinterpret_cast<size_t*>(_TRaP_syscall_mremap(old_size_ptr, old_size,
-                                                              new_size, MREMAP_MAYMOVE));
+    void *res = nullptr;
+#if RANDOLIB_NO_MREMAP
+    if (new_size < old_size) {
+        // We're shrinking the region
+        auto new_end = reinterpret_cast<BytePointer>(old_ptr) + new_size;
+        _TRaP_syscall_munmap(new_end, old_size - new_size);
+        if (new_size > 0) {
+            *old_size_ptr = new_size;
+            return reinterpret_cast<void*>(old_size_ptr);
+        }
+        return nullptr;
+    } else {
+        // new_size > old_size
+        // We're growing the region
+        // First, try to just mmap in the extra pages at the end
+        // We're going to try to mmap() some pages at the end of
+        // the old region, and see if the kernel gives them to us
+        auto old_end = reinterpret_cast<BytePointer>(old_ptr) + old_size;
+        auto size_delta = new_size - old_size;
+        res = _TRaP_syscall_mmap(old_end, size_delta,
+                                 PROT_READ | PROT_WRITE,
+                                 MAP_PRIVATE | MAP_ANONYMOUS,
+                                 -1, 0);
+        if (!APIImpl::syscall_retval_is_err(res)) {
+            if (res == old_end) {
+                *old_size_ptr = new_size;
+                return reinterpret_cast<void*>(old_size_ptr);
+            } else {
+                // We got a valid mapping, but at the wrong address
+                // Unmap it before proceeding
+                _TRaP_syscall_munmap(res, size_delta);
+            }
+        }
+        // We couldn't get the region we wanted, so fall back to
+        // allocating a whole new region the copying the old data over
+        res = _TRaP_syscall_mmap(nullptr, new_size,
+                                 PROT_READ | PROT_WRITE,
+                                 MAP_PRIVATE | MAP_ANONYMOUS,
+                                 -1, 0);
+        if (APIImpl::syscall_retval_is_err(res)) {
+            // Release the old memory, then return an error
+            _TRaP_syscall_munmap(old_size_ptr, old_size);
+            return nullptr;
+        }
+        // Copy over the old data, then release the old region
+        API::memcpy(res, old_size_ptr, old_size);
+        _TRaP_syscall_munmap(old_size_ptr, old_size);
+    }
+#else
+    res = _TRaP_syscall_mremap(old_size_ptr, old_size,
+                               new_size, MREMAP_MAYMOVE);
     if (APIImpl::syscall_retval_is_err(res))
         return nullptr;
+#endif
 
-    *res = new_size;
-    return reinterpret_cast<void*>(res + 1);
+    auto new_size_ptr = reinterpret_cast<size_t*>(res);
+    *new_size_ptr = new_size;
+    return reinterpret_cast<void*>(new_size_ptr + 1);
 }
 
 RANDO_SECTION void API::mem_free(void *ptr) {

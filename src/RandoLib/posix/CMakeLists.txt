@@ -3,6 +3,8 @@ cmake_policy(SET CMP0063 NEW)
 
 set(SR_RNG "urandom" CACHE STRING
     "Random number generator to use ('rand_r' or 'urandom')")
+set(SR_NO_MREMAP OFF CACHE BOOL
+    "Avoid using mremap() to rallocate memory")
 
 set(ALLOWED_RNGS rand_r urandom)
 set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
@@ -114,6 +116,10 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     if("${SR_RNG}" STREQUAL "urandom")
         target_sources(selfrando_objects PRIVATE util/rand_linux.cpp)
+    endif()
+
+    if(SR_NO_MREMAP)
+        add_definitions(-DRANDOLIB_NO_MREMAP=1)
     endif()
 
     include(bionic/CMakeLists.txt)
