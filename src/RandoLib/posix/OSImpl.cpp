@@ -144,7 +144,7 @@ RANDO_SECTION void API::finish() {
 
 
 RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
-    size = (size + sizeof(size) + kPageSize - 1) & ~kPageSize;
+    size = (size + sizeof(size) + kPageSize - 1) & ~(kPageSize - 1);
     auto res = reinterpret_cast<size_t*>(_TRaP_syscall_mmap(nullptr, size, PROT_READ | PROT_WRITE,
                                                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
     if (APIImpl::syscall_retval_is_err(res))
@@ -164,7 +164,7 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
     old_size_ptr--;
 
     auto old_size = *old_size_ptr;
-    new_size = (new_size + sizeof(new_size) + kPageSize - 1) & ~kPageSize;
+    new_size = (new_size + sizeof(new_size) + kPageSize - 1) & ~(kPageSize - 1);
     if (new_size == old_size)
         return old_ptr;
 
