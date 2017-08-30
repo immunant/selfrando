@@ -48,9 +48,17 @@ Linux_EntryPoint_return:
 .hidden Linux_EntryPoint_mprotect
 .type Linux_EntryPoint_mprotect,@function
 Linux_EntryPoint_mprotect:
+        push %ebx
+        push %ecx
+        push %edx
         movl $__NR_mprotect, %eax
-        // TODO: copy arguments to ebx/ecx/edx
+        mov 16(%esp), %ebx
+        mov 20(%esp), %ecx
+        mov 24(%esp), %edx
         int $0x80
+        pop %edx
+        pop %ecx
+        pop %ebx
         ret
 
 // On 32-bit x86, some versions of crti.o from glibc
