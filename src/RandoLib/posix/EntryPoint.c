@@ -69,7 +69,7 @@ void Linux_EntryPointImpl(void) {
 
     RandoMain(&module_info);
 
-#if RANDOLIB_IS_X86_64 // FIXME: other architectures too
+#if RANDOLIB_IS_X86 || RANDOLIB_IS_X86_64 // FIXME: other architectures too
     // Prevent access to selfrando code and constants
     if (&trap_end_page != NULL) {
         Linux_EntryPoint_mprotect((void*)PIT.sections[1].trap,
