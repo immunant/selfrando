@@ -8,21 +8,19 @@
 
 #include <asm/unistd.h>
 
+.section .selfrando.entry, "ax", @progbits
 .globl Linux_EntryPoint_init
 .hidden Linux_EntryPoint_init
 .type Linux_EntryPoint_init,@function
-
-.globl Linux_EntryPoint_entry
-.hidden Linux_EntryPoint_entry
-.type Linux_EntryPoint_entry,@function
-
-.section .selfrando.entry, "ax", @progbits
 Linux_EntryPoint_init:
 1:
         // selfrando will patch this to the correct target
         call .Lcall_selfrando
         jmp 1b
 
+.globl Linux_EntryPoint_entry
+.hidden Linux_EntryPoint_entry
+.type Linux_EntryPoint_entry,@function
 Linux_EntryPoint_entry:
 1:
         // selfrando will patch this to the correct target
