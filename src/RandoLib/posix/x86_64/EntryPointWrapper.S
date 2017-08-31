@@ -8,36 +8,28 @@
 
 #include <asm/unistd.h>
 
-.section .selfrando.entry, "ax", @progbits
 .globl Linux_EntryPoint_init
 .hidden Linux_EntryPoint_init
 .type Linux_EntryPoint_init,@function
-Linux_EntryPoint_init:
-        // selfrando will patch this to the correct target
-        .byte 0xe9
-        .long 0x00000000
-
-        push %rdx
-        push %rbp
-        mov %rsp, %rbp
-        and $-0x10, %rsp // need to align stack to 16 bytes
-
-        call Linux_EntryPointImpl
-
-        mov %rbp, %rsp
-        pop %rbp
-        pop %rdx
-
-        // Try again
-        jmp Linux_EntryPoint_init
 
 .globl Linux_EntryPoint_entry
 .hidden Linux_EntryPoint_entry
 .type Linux_EntryPoint_entry,@function
-Linux_EntryPoint_entry:
-        .byte 0xe9
-        .long 0x00000000
 
+.section .selfrando.entry, "ax", @progbits
+Linux_EntryPoint_init:
+1:
+        // selfrando will patch this to the correct target
+        call .Lcall_selfrando
+        jmp 1b
+
+Linux_EntryPoint_entry:
+1:
+        // selfrando will patch this to the correct target
+        call .Lcall_selfrando
+        jmp 1b
+
+.Lcall_selfrando:
         push %rdx
         push %rbp
         mov %rsp, %rbp
@@ -48,9 +40,7 @@ Linux_EntryPoint_entry:
         mov %rbp, %rsp
         pop %rbp
         pop %rdx
-
-        // Try again
-        jmp Linux_EntryPoint_entry
+        ret
 
 .globl Linux_EntryPoint_return
 .hidden Linux_EntryPoint_return
