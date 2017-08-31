@@ -76,7 +76,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         add_custom_command(TARGET ${static_lib}
             POST_BUILD
             COMMAND objcopy --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
-            COMMAND objcopy --rename-section .text.Linux_EntryPoint__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
+            COMMAND objcopy --rename-section .text.selfrando__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             COMMAND objcopy --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
             COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $<TARGET_FILE:${static_lib}>
             COMMAND objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
@@ -84,7 +84,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
             # On 32-bit x86, we need __x86.get_pc_thunk.bx to be defined as the
             # compiler emits it: a single-element group section
             # FIXME: it would be nice to get rid of this
-            COMMAND objcopy --redefine-sym=_TRaP_Linux_EntryPoint__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
+            COMMAND objcopy --redefine-sym=_TRaP_selfrando__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             VERBATIM
             )
     endforeach()

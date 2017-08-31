@@ -6,22 +6,22 @@
  *
  */
 
-extern void Linux_EntryPointImpl(void) __attribute__((section(".selfrando.entry")));
+extern void selfrando_run(void) __attribute__((section(".selfrando.entry")));
 
-extern void Linux_delete_layout_file(void);
+extern void selfrando_delete_layout_file(void);
 
 // Make sure that we randomize as early as possible,
 // by creating a .preinit_array entry for our entry point.
-void (*const Linux_preinit_array[])(void)
+void (*const selfrando_preinit_array[])(void)
     __attribute__((section(".preinit_array"), aligned(sizeof(void*)))) =
 {
-    &Linux_EntryPointImpl
+    &selfrando_run
 };
 
-void (*const Linux_fini_array[])(void)
+void (*const selfrando_fini_array[])(void)
     __attribute__((section(".fini_array"), aligned(sizeof(void*)))) =
 {
 #if RANDOLIB_WRITE_LAYOUTS > 0 && RANDOLIB_DELETE_LAYOUTS > 0
-    &Linux_delete_layout_file,
+    &selfrando_delete_layout_file,
 #endif
 };

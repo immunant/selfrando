@@ -542,11 +542,11 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
         functions->adjust_relocation(&reloc);
     } else {
         // Point the branch to the return instruction
-        new_dt_init = m_module_info->program_info_table->rando_return;
+        new_dt_init = m_module_info->program_info_table->selfrando_return;
     }
     // Patch the initial branch to point directly to the relocated function
     Relocation::fixup_entry_point(*this,
-                                  m_module_info->program_info_table->rando_init,
+                                  m_module_info->program_info_table->selfrando_init,
                                   new_dt_init);
 
     uintptr_t new_entry;
@@ -557,11 +557,11 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
         functions->adjust_relocation(&reloc);
     } else {
         // See above
-        new_entry = m_module_info->program_info_table->rando_return;
+        new_entry = m_module_info->program_info_table->selfrando_return;
     }
     // Patch the initial branch to point directly to the relocated function
     Relocation::fixup_entry_point(*this,
-                                  m_module_info->program_info_table->rando_entry,
+                                  m_module_info->program_info_table->selfrando_entry,
                                   new_entry);
     API::debug_printf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 

@@ -30,8 +30,8 @@
 namespace {
 
 static const char kProgramInfoTableName[] = "_TRaP_ProgramInfoTable";
-static const char kInitEntryPointName[] = "_TRaP_Linux_EntryPoint_init";
-static const char kStartEntryPointName[] = "_TRaP_Linux_EntryPoint_entry";
+static const char kInitEntryPointName[] = "_TRaP_selfrando_init";
+static const char kStartEntryPointName[] = "_TRaP_selfrando_entry";
 static const char kTextrampAnchorName[] = "_TRaP_textramp_anchor";
 
 // This is the name of the built executable. Used to determine if we are

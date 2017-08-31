@@ -33,9 +33,9 @@ struct TrapProgramInfoTable {
     uintptr_t orig_entry;
 
     // Locations of entry trampolines to relocate
-    uintptr_t rando_init;
-    uintptr_t rando_entry;
-    uintptr_t rando_return;
+    uintptr_t selfrando_init;
+    uintptr_t selfrando_entry;
+    uintptr_t selfrando_return;
 
     // Location of export trampoline table
     uintptr_t xptramp_start;

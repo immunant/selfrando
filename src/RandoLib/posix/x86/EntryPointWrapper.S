@@ -9,19 +9,19 @@
 #include <asm/unistd.h>
 
 .section .selfrando.entry, "ax", @progbits
-.globl Linux_EntryPoint_init
-.hidden Linux_EntryPoint_init
-.type Linux_EntryPoint_init,@function
-Linux_EntryPoint_init:
+.globl selfrando_init
+.hidden selfrando_init
+.type selfrando_init,@function
+selfrando_init:
 1:
         // selfrando will patch this to the correct target
         call .Lcall_selfrando
         jmp 1b
 
-.globl Linux_EntryPoint_entry
-.hidden Linux_EntryPoint_entry
-.type Linux_EntryPoint_entry,@function
-Linux_EntryPoint_entry:
+.globl selfrando_entry
+.hidden selfrando_entry
+.type selfrando_entry,@function
+selfrando_entry:
 1:
         // selfrando will patch this to the correct target
         call .Lcall_selfrando
@@ -29,20 +29,20 @@ Linux_EntryPoint_entry:
 
 .Lcall_selfrando:
         push %edx
-        call Linux_EntryPointImpl
+        call selfrando_run
         pop %edx
         ret
 
-.globl Linux_EntryPoint_return
-.hidden Linux_EntryPoint_return
-.type Linux_EntryPoint_return,@function
-Linux_EntryPoint_return:
+.globl selfrando_return
+.hidden selfrando_return
+.type selfrando_return,@function
+selfrando_return:
         ret
 
-.globl Linux_EntryPoint_mprotect
-.hidden Linux_EntryPoint_mprotect
-.type Linux_EntryPoint_mprotect,@function
-Linux_EntryPoint_mprotect:
+.globl selfrando_mprotect
+.hidden selfrando_mprotect
+.type selfrando_mprotect,@function
+selfrando_mprotect:
         push %ebx
         push %ecx
         push %edx
@@ -62,24 +62,24 @@ Linux_EntryPoint_mprotect:
 // Instead, we manually add the same function here in a
 // single-element group section, and also include the
 // corresponding trap info
-.section .text.Linux_EntryPoint__x86.get_pc_thunk.bx, "axG", @progbits, Linux_EntryPoint__x86.get_pc_thunk.bx,comdat
-.globl	Linux_EntryPoint__x86.get_pc_thunk.bx
-.hidden	Linux_EntryPoint__x86.get_pc_thunk.bx
+.section .text.selfrando__x86.get_pc_thunk.bx, "axG", @progbits, selfrando__x86.get_pc_thunk.bx,comdat
+.globl	selfrando__x86.get_pc_thunk.bx
+.hidden	selfrando__x86.get_pc_thunk.bx
 .align 4
-.type	Linux_EntryPoint__x86.get_pc_thunk.bx,@function
-Linux_EntryPoint__x86.get_pc_thunk.bx:
+.type	selfrando__x86.get_pc_thunk.bx,@function
+selfrando__x86.get_pc_thunk.bx:
         movl	(%esp), %ebx
         ret
 
 
 // The .txtrp section for the thunk above
 .section .txtrp, "a", @progbits
-.local	Linux_EntryPoint__x86.get_pc_thunk.bx.txtrp
-Linux_EntryPoint__x86.get_pc_thunk.bx.txtrp:
+.local	selfrando__x86.get_pc_thunk.bx.txtrp
+selfrando__x86.get_pc_thunk.bx.txtrp:
 1:
 // FirstSymAddr
 .int 0
-.reloc 1b, R_386_GOTOFF, Linux_EntryPoint__x86.get_pc_thunk.bx
+.reloc 1b, R_386_GOTOFF, selfrando__x86.get_pc_thunk.bx
 
 // FirstSymbol
 .uleb128 00
@@ -103,4 +103,4 @@ Linux_EntryPoint__x86.get_pc_thunk.bx.txtrp:
 .section .init, "ax", @progbits
 1:
 .byte 0x90
-.reloc 1b, R_386_NONE, Linux_EntryPoint__x86.get_pc_thunk.bx.txtrp
+.reloc 1b, R_386_NONE, selfrando__x86.get_pc_thunk.bx.txtrp

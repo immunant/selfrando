@@ -20,9 +20,9 @@ extern char
 
 #pragma GCC visibility push(hidden)
 extern char
-    Linux_EntryPoint_init,
-    Linux_EntryPoint_entry,
-    Linux_EntryPoint_return,
+    selfrando_init,
+    selfrando_entry,
+    selfrando_return,
     xptramp_begin __attribute__((weak)),
     xptramp_end __attribute__((weak)),
     text_begin,
@@ -36,17 +36,17 @@ extern char
 extern char _DYNAMIC __attribute__((weak));
 #pragma GCC visibility pop
 
-extern void Linux_EntryPoint_mprotect(void*, size_t, int) __attribute__((section(".selfrando.entry")));
+extern void selfrando_mprotect(void*, size_t, int) __attribute__((section(".selfrando.entry")));
 
-void Linux_EntryPointImpl(void) __attribute__((section(".selfrando.entry")));
+void selfrando_run(void) __attribute__((section(".selfrando.entry")));
 
-void Linux_EntryPointImpl(void) {
+void selfrando_run(void) {
     struct TrapProgramInfoTable PIT;
     PIT.orig_dt_init = (uintptr_t)(&orig_init);
     PIT.orig_entry = (uintptr_t)(&orig_entry);
-    PIT.rando_init = (uintptr_t)(&Linux_EntryPoint_init);
-    PIT.rando_entry = (uintptr_t)(&Linux_EntryPoint_entry);
-    PIT.rando_return = (uintptr_t)(&Linux_EntryPoint_return);
+    PIT.selfrando_init = (uintptr_t)(&selfrando_init);
+    PIT.selfrando_entry = (uintptr_t)(&selfrando_entry);
+    PIT.selfrando_return = (uintptr_t)(&selfrando_return);
     PIT.xptramp_start = (uintptr_t)(&xptramp_begin);
     PIT.xptramp_size = &xptramp_end - &xptramp_begin;
     PIT.got_start = (uintptr_t*)(&got_begin);
@@ -72,7 +72,7 @@ void Linux_EntryPointImpl(void) {
 #if RANDOLIB_IS_X86 || RANDOLIB_IS_X86_64 // FIXME: other architectures too
     // Prevent access to selfrando code and constants
     if (&trap_end_page != NULL) {
-        Linux_EntryPoint_mprotect((void*)PIT.sections[1].trap,
+        selfrando_mprotect((void*)PIT.sections[1].trap,
                                         PIT.sections[1].trap_size,
                                         PROT_NONE);
     }
