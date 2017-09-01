@@ -191,7 +191,7 @@ void Module::relocate_arch(FunctionList *functions) const {
         // To do that, we put the syscall sequence at the very end of
         // .txtrp, so that the instruction immediately after the syscall
         // is on the next page and can execute normally after the kernel
-        // return. The instructions look something like this:
+        // returns. The instructions look something like this:
         //    ... <rest of .txtrp>
         //    PUSH EBX
         //    PUSH ECX
