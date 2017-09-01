@@ -11,7 +11,7 @@ set(SR_FORCE_INPLACE OFF CACHE BOOL
     "Terminate execution (via failed assertion) if in-place randomization would fail")
 set(SR_WRITE_LAYOUTS "no" CACHE STRING
     "After randomization, write layout files to /tmp/ (set to 'no', 'env' or 'always')")
-set(SR_DELETE_LAYOUTS "always" CACHE STRING
+set(SR_DELETE_LAYOUTS "no" CACHE STRING
     "Delete the layout file on process exit (set to 'no', 'env' or 'always')")
 
 set(ALLOWED_LOG default none console file system)

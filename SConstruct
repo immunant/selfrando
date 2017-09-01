@@ -18,7 +18,7 @@ vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertio
 vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files to /tmp/',
                       'no', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('DELETE_LAYOUTS', 'Delete the layout file on process exit',
-                      'always', allowed_values=('no', 'env', 'always')))
+                      'no', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('RNG', 'Random number generator to use',
                       'urandom', allowed_values=('rand_r', 'urandom')))
 vars.Add(BoolVariable('NO_MREMAP', 'Avoid using mremap() to reallocate memory', 0))
