@@ -6,7 +6,7 @@
  *
  */
 
-.globl trap_end_page
-.hidden trap_end_page
-.type trap_end_page, %object
-.equ trap_end_page, 0
+#include "TrapCommon.h"
+
+DEFINE_SECTION_SYMBOL(trap_end_page,    .txtrp,    "a",  %progbits)
+

@@ -9,6 +9,8 @@
 #include <OS.h>
 #include <TrapInfo.h>
 
+#include <asm/unistd.h>
+
 #include <elf.h>
 
 namespace os {
@@ -169,7 +171,67 @@ void Module::preprocess_arch() {
     build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
 }
 
+static const char kRemoveBytes[] =
+    "\x53"                 // PUSH EBX
+    "\x51"                 // PUSH ECX
+    "\xBB\x00\x00\x00\x00" // MOV trap_start,  EBX
+    "\xB9\x00\x00\x00\x00" // MOV trap_size,   ECX
+    "\xB8\x00\x00\x00\x00" // MOV __NR_munmap, EAX
+    "\xCD\x80";            // INT 0x80
+
+static constexpr size_t kRemoveBytesSize = sizeof(kRemoveBytes) - 1;
+
 void Module::relocate_arch(FunctionList *functions) const {
+    if (m_module_info->program_info_table->trap_end_page != 0) {
+        // If we built with --traplinker-selfrando-txtrp-pages,
+        // putting all TRaP info and our own code together
+        // in one contiguous .txtrp section, we can remove it from memory
+        // after randomization. We do that using the munmap() syscall,
+        // but we also want the syscall itself to disappear.
+        // To do that, we put the syscall sequence at the very end of
+        // .txtrp, so that the instruction immediately after the syscall
+        // is on the next page and can execute normally after the kernel
+        // return. The instructions look something like this:
+        //    ... <rest of .txtrp>
+        //    PUSH EBX
+        //    PUSH ECX
+        //    MOV trap_start,  EBX
+        //    MOV trap_size,   ECX
+        //    MOV __NR_munmap, EAX
+        //    INT 0x80
+        //    ------- end of last .txtrp page
+        // _TRaP_trap_end_page:
+        //    POP ECX
+        //    POP EBX
+        //    RET
+        auto end_page = m_module_info->program_info_table->trap_end_page;
+        RANDO_ASSERT((end_page & (kPageSize - 1)) == 0);
+
+        auto end_page_ptr = reinterpret_cast<BytePointer>(end_page);
+        RANDO_ASSERT(end_page_ptr[0] == 0x59 &&
+                     end_page_ptr[1] == 0x5B &&
+                     end_page_ptr[2] == 0xC3);
+
+        auto remove_code = end_page_ptr - kRemoveBytesSize;
+        API::memcpy(remove_code, kRemoveBytes, kRemoveBytesSize);
+
+        // FIXME: this assumes that the start of .txtrp is always in
+        // sections[0].trap
+        auto trap_start = m_module_info->program_info_table->sections[0].trap;
+        auto trap_pages = end_page - trap_start;
+        *reinterpret_cast<uint32_t*>(remove_code +  3) = trap_start;
+        *reinterpret_cast<uint32_t*>(remove_code +  8) = trap_pages;
+        *reinterpret_cast<uint32_t*>(remove_code + 13) = __NR_munmap;
+
+        // Patch the NOP at selfrando_remove_call to call remove_code
+        auto remove_call = reinterpret_cast<BytePointer>(
+            m_module_info->program_info_table->selfrando_remove_call);
+        RANDO_ASSERT(remove_call[0] == 0x0F &&
+                     remove_call[1] == 0x1F &&
+                     remove_call[2] == 0x44);
+        remove_call[0] = 0xE8;
+        *reinterpret_cast<uint32_t*>(remove_call + 1) = (remove_code - (remove_call + 5));
+    }
 }
 
 } // namespace os

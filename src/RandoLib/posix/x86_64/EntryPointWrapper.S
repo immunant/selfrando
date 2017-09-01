@@ -6,8 +6,6 @@
  *
  */
 
-#include <asm/unistd.h>
-
 .section .selfrando.entry, "ax", @progbits
 .globl selfrando_init
 .hidden selfrando_init
@@ -15,7 +13,7 @@
 selfrando_init:
 1:
         // selfrando will patch this to the correct target
-        call .Lcall_selfrando
+        call selfrando_run_and_remove
         jmp 1b
 
 .globl selfrando_entry
@@ -24,16 +22,26 @@ selfrando_init:
 selfrando_entry:
 1:
         // selfrando will patch this to the correct target
-        call .Lcall_selfrando
+        call selfrando_run_and_remove
         jmp 1b
 
-.Lcall_selfrando:
+.globl selfrando_run_and_remove
+.hidden selfrando_run_and_remove
+.type selfrando_run_and_remove,@function
+selfrando_run_and_remove:
         push %rdx
         push %rbp
         mov %rsp, %rbp
         and $-0x10, %rsp // need to align stack to 16 bytes
 
         call selfrando_run
+
+.globl selfrando_remove_call
+.hidden selfrando_remove_call
+selfrando_remove_call:
+        // selfrando will patch this to a jump to
+        // the munmap code, if we have it
+.byte 0x0F, 0x1F, 0x44, 0x00, 0x00
 
         mov %rbp, %rsp
         pop %rbp
@@ -45,12 +53,3 @@ selfrando_entry:
 .type selfrando_return,@function
 selfrando_return:
         ret
-
-.globl selfrando_mprotect
-.hidden selfrando_mprotect
-.type selfrando_mprotect,@function
-selfrando_mprotect:
-        movl $__NR_mprotect, %eax
-        syscall
-        ret
-

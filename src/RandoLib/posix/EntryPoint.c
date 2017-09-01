@@ -23,6 +23,7 @@ extern char
     selfrando_init,
     selfrando_entry,
     selfrando_return,
+    selfrando_remove_call,
     xptramp_begin __attribute__((weak)),
     xptramp_end __attribute__((weak)),
     text_begin,
@@ -36,47 +37,33 @@ extern char
 extern char _DYNAMIC __attribute__((weak));
 #pragma GCC visibility pop
 
-extern void selfrando_mprotect(void*, size_t, int) __attribute__((section(".selfrando.entry")));
-
 void selfrando_run(void) __attribute__((section(".selfrando.entry")));
 
 void selfrando_run(void) {
-    struct TrapProgramInfoTable PIT;
+    struct TrapProgramInfoTable PIT = { };
     PIT.orig_dt_init = (uintptr_t)(&orig_init);
     PIT.orig_entry = (uintptr_t)(&orig_entry);
     PIT.selfrando_init = (uintptr_t)(&selfrando_init);
     PIT.selfrando_entry = (uintptr_t)(&selfrando_entry);
+    PIT.selfrando_remove_call = (uintptr_t)(&selfrando_remove_call);
     PIT.selfrando_return = (uintptr_t)(&selfrando_return);
     PIT.xptramp_start = (uintptr_t)(&xptramp_begin);
     PIT.xptramp_size = &xptramp_end - &xptramp_begin;
     PIT.got_start = (uintptr_t*)(&got_begin);
     PIT.got_plt_start = (uintptr_t*)(&got_plt_begin);
+    if (&trap_end_page > &trap_end) {
+        PIT.trap_end_page = (uintptr_t)(&trap_end_page);
+    }
     PIT.num_sections = 1;
     PIT.sections[0].start = (uintptr_t)(&text_begin);
     PIT.sections[0].size = &text_end - &text_begin;
     PIT.sections[0].trap = (uintptr_t)(&trap_begin);
     PIT.sections[0].trap_size = &trap_end - &trap_begin;
-    PIT.sections[1].start = 0;
-    PIT.sections[1].size = 0;
-    // FIXME: we use sections[1] to store the span of the full page-aligned
-    // section, so we can pass the limits later to mprotect()
-    PIT.sections[1].trap = (uintptr_t)(&trap_begin);
-    PIT.sections[1].trap_size = &trap_end_page - &trap_begin;
 
     struct ModuleInfo module_info;
     module_info.dynamic = (BytePointer)&_DYNAMIC;
     module_info.program_info_table = &PIT;
-
     RandoMain(&module_info);
-
-#if RANDOLIB_IS_X86 || RANDOLIB_IS_X86_64 // FIXME: other architectures too
-    // Prevent access to selfrando code and constants
-    if (&trap_end_page != NULL) {
-        selfrando_mprotect((void*)PIT.sections[1].trap,
-                                        PIT.sections[1].trap_size,
-                                        PROT_NONE);
-    }
-#endif
 }
 
 // Add a declaration for dl_phdr_info

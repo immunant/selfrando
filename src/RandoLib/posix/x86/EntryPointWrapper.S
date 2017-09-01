@@ -6,8 +6,6 @@
  *
  */
 
-#include <asm/unistd.h>
-
 .section .selfrando.entry, "ax", @progbits
 .globl selfrando_init
 .hidden selfrando_init
@@ -15,7 +13,7 @@
 selfrando_init:
 1:
         // selfrando will patch this to the correct target
-        call .Lcall_selfrando
+        call selfrando_run_and_remove
         jmp 1b
 
 .globl selfrando_entry
@@ -24,12 +22,23 @@ selfrando_init:
 selfrando_entry:
 1:
         // selfrando will patch this to the correct target
-        call .Lcall_selfrando
+        call selfrando_run_and_remove
         jmp 1b
 
-.Lcall_selfrando:
+.globl selfrando_run_and_remove
+.hidden selfrando_run_and_remove
+.type selfrando_run_and_remove,@function
+selfrando_run_and_remove:
         push %edx
         call selfrando_run
+
+.globl selfrando_remove_call
+.hidden selfrando_remove_call
+selfrando_remove_call:
+        // selfrando will patch this to a jump to
+        // the munmap code, if we have it
+.byte 0x0F, 0x1F, 0x44, 0x00, 0x00
+
         pop %edx
         ret
 
@@ -37,23 +46,6 @@ selfrando_entry:
 .hidden selfrando_return
 .type selfrando_return,@function
 selfrando_return:
-        ret
-
-.globl selfrando_mprotect
-.hidden selfrando_mprotect
-.type selfrando_mprotect,@function
-selfrando_mprotect:
-        push %ebx
-        push %ecx
-        push %edx
-        movl $__NR_mprotect, %eax
-        mov 16(%esp), %ebx
-        mov 20(%esp), %ecx
-        mov 24(%esp), %edx
-        int $0x80
-        pop %edx
-        pop %ecx
-        pop %ebx
         ret
 
 // On 32-bit x86, some versions of crti.o from glibc

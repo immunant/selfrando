@@ -42,7 +42,8 @@ static_libs.append(lib_env.Library('randoentry_so', entry_files + so_entry_files
 static_libs.append(lib_env.Library('trapheader', ['TrapHeader.S']))
 static_libs.append(lib_env.Library('trapfooter', ['TrapFooter.S']))
 static_libs.append(lib_env.Library('trapheader_page', ['TrapHeaderPage.S']))
-static_libs.append(lib_env.Library('trapfooter_page', ['TrapFooterPage.S']))
+static_libs.append(lib_env.Library('trapfooter_page', ['%s/TrapFooterFiller.S' % target,
+                                                       '%s/TrapFooterPage.S'  % target]))
 static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
 
 # Prepend _TRaP_ to all symbols

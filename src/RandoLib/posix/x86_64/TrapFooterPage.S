@@ -6,10 +6,10 @@
  *
  */
 
-.section .txtrp, "a", %progbits
+.section .txtrp, "ax", %progbits
 .p2align 12
 .globl trap_end_page
 .hidden trap_end_page
 .type trap_end_page, %object
 trap_end_page:
-
+    ret

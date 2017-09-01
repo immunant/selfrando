@@ -6,7 +6,7 @@
  *
  */
 
-extern void selfrando_run(void) __attribute__((section(".selfrando.entry")));
+extern void selfrando_run_and_remove(void) __attribute__((section(".selfrando.entry")));
 
 extern void selfrando_delete_layout_file(void);
 
@@ -15,7 +15,7 @@ extern void selfrando_delete_layout_file(void);
 void (*const selfrando_preinit_array[])(void)
     __attribute__((section(".preinit_array"), aligned(sizeof(void*)))) =
 {
-    &selfrando_run
+    &selfrando_run_and_remove
 };
 
 void (*const selfrando_fini_array[])(void)

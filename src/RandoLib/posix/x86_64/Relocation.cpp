@@ -10,6 +10,8 @@
 #include <RandoLib.h>
 #include <TrapInfo.h>
 
+#include <asm/unistd.h>
+
 #include <elf.h>
 
 namespace os {
@@ -237,7 +239,59 @@ void Module::preprocess_arch() {
     build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
 
+static const char kRemoveBytes[] =
+    "\x48\xBF\x00\x00\x00\x00\x00\x00\x00\x00" // MOV trap_start,  RDI
+    "\x48\xBE\x00\x00\x00\x00\x00\x00\x00\x00" // MOV trap_size,   RSI
+    "\xB8\x00\x00\x00\x00"                     // MOV __NR_munmap, RAX
+    "\x0F\x05";                                // SYSCALL
+
+static constexpr size_t kRemoveBytesSize = sizeof(kRemoveBytes) - 1;
+
 void Module::relocate_arch(FunctionList *functions) const {
+    if (m_module_info->program_info_table->trap_end_page != 0) {
+        // If we built with --traplinker-selfrando-txtrp-pages,
+        // putting all TRaP info and our own code together
+        // in one contiguous .txtrp section, we can remove it from memory
+        // after randomization. We do that using the munmap() syscall,
+        // but we also want the syscall itself to disappear.
+        // To do that, we put the syscall sequence at the very end of
+        // .txtrp, so that the instruction immediately after the syscall
+        // is on the next page and can execute normally after the kernel
+        // return. The instructions look something like this:
+        //    ... <rest of .txtrp>
+        //    MOV trap_start,  RDI
+        //    MOV trap_size,   RSI
+        //    MOV __NR_munmap, RAX
+        //    SYSCALL
+        //    ------- end of last .txtrp page
+        // _TRaP_trap_end_page:
+        //    RET
+        auto end_page = m_module_info->program_info_table->trap_end_page;
+        RANDO_ASSERT((end_page & (kPageSize - 1)) == 0);
+
+        auto end_page_ptr = reinterpret_cast<BytePointer>(end_page);
+        RANDO_ASSERT(end_page_ptr[0] == 0xC3);
+
+        auto remove_code = end_page_ptr - kRemoveBytesSize;
+        API::memcpy(remove_code, kRemoveBytes, kRemoveBytesSize);
+
+        // FIXME: this assumes that the start of .txtrp is always in
+        // sections[0].trap
+        auto trap_start = m_module_info->program_info_table->sections[0].trap;
+        auto trap_pages = end_page - trap_start;
+        *reinterpret_cast<uint64_t*>(remove_code +  2) = trap_start;
+        *reinterpret_cast<uint64_t*>(remove_code + 12) = trap_pages;
+        *reinterpret_cast<uint32_t*>(remove_code + 21) = __NR_munmap;
+
+        // Patch the NOP at selfrando_remove_call to call remove_code
+        auto remove_call = reinterpret_cast<BytePointer>(
+            m_module_info->program_info_table->selfrando_remove_call);
+        RANDO_ASSERT(remove_call[0] == 0x0F &&
+                     remove_call[1] == 0x1F &&
+                     remove_call[2] == 0x44);
+        remove_call[0] = 0xE8;
+        *reinterpret_cast<uint32_t*>(remove_call + 1) = (remove_code - (remove_call + 5));
+    }
 }
 
 } // namespace os

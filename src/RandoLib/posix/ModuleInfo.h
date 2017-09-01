@@ -35,6 +35,7 @@ struct TrapProgramInfoTable {
     // Locations of entry trampolines to relocate
     uintptr_t selfrando_init;
     uintptr_t selfrando_entry;
+    uintptr_t selfrando_remove_call;
     uintptr_t selfrando_return;
 
     // Location of export trampoline table
@@ -44,6 +45,9 @@ struct TrapProgramInfoTable {
     // Location of GOT
     uintptr_t *got_start;
     uintptr_t *got_plt_start;
+
+    // End of .txtrp pages
+    uintptr_t trap_end_page;
 
     // Location of linker stubs
     uintptr_t linker_stubs;

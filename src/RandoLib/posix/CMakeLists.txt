@@ -60,7 +60,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
     add_library(trapheader        STATIC TrapHeader.S)
     add_library(trapheader_page   STATIC TrapHeaderPage.S)
     add_library(trapfooter        STATIC TrapFooter.S)
-    add_library(trapfooter_page   STATIC TrapFooterPage.S)
+    add_library(trapfooter_page   STATIC
+        ${SR_ARCH}/TrapFooterFiller.S
+        ${SR_ARCH}/TrapFooterPage.S)
     add_library(trapfooter_nopage STATIC TrapFooterNoPage.S)
 
     set(static_libs
