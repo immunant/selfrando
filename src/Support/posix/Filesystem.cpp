@@ -28,7 +28,7 @@ std::string Filesystem::get_temp_dir() {
     return (tempdir == nullptr) ? "/tmp" : tempdir;
 }
 
-std::string Filesystem::get_temp_filename(std::string filename_tag) {
+std::string Filesystem::get_temp_filename(std::string filename_tag, std::string filename_end) {
     std::string temp_path = get_temp_dir() + "/" + filename_tag + "-";
 
     static std::unique_ptr<std::mt19937> rng;
@@ -51,11 +51,15 @@ std::string Filesystem::get_temp_filename(std::string filename_tag) {
         temp_path += rand_char;
     }
 
+    if (! filename_end.empty()) {
+        temp_path += "-" + filename_end.substr(filename_end.rfind('/')+1);
+    }
+
     return temp_path;
 }
 
-std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_tag) {
-    std::string temp_filename = get_temp_filename(filename_tag);
+std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_tag, std::string filename_end) {
+    std::string temp_filename = get_temp_filename(filename_tag, filename_end);
     int fd = open(temp_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1)
         Error::printf("Could not create temporary file '%s' error:%d\n",
@@ -65,12 +69,12 @@ std::pair<int, std::string> Filesystem::create_temp_file(std::string filename_ta
 }
 
 
-std::pair<int, std::string> Filesystem::copy_to_temp_file(int source, std::string filename_tag) {
+std::pair<int, std::string> Filesystem::copy_to_temp_file(int source, std::string filename_tag, std::string filename_end) {
     size_t BUFSIZE = 4096;
     char buf[BUFSIZE];
     ssize_t size;
 
-    auto temp_file = create_temp_file(filename_tag);
+    auto temp_file = create_temp_file(filename_tag, filename_end);
 
     while ((size = read(source, buf, BUFSIZE)) > 0) {
         if(write(temp_file.first, buf, size) == -1)
