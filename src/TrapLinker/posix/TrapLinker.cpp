@@ -428,7 +428,7 @@ void LinkWrapper::rewrite_file(std::string input_filename,
 
     // pair of descriptor, filename
     const char *temp_prefix = (type == STATIC_OBJECT) ? "trapobj" : "trapscript";
-    auto temp_file = Filesystem::copy_to_temp_file(fd, temp_prefix);
+    auto temp_file = Filesystem::copy_to_temp_file(fd, temp_prefix, input_filename);
     m_temp_files.push_back(temp_file.second);
     close(fd);
 

@@ -15,9 +15,9 @@
 namespace Filesystem {
 
     std::string get_temp_dir();
-    std::string get_temp_filename(std::string filename_tag);
-    std::pair<int, std::string> create_temp_file(std::string filename_tag);
-    std::pair<int, std::string> copy_to_temp_file(int source, std::string filename_tag);
+    std::string get_temp_filename(std::string filename_tag, std::string filename_end = "");
+    std::pair<int, std::string> create_temp_file(std::string filename_tag, std::string filename_end = "");
+    std::pair<int, std::string> copy_to_temp_file(int source, std::string filename_tag, std::string filename_end = "");
     bool remove(std::string filename);
 
 };
