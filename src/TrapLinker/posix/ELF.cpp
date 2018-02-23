@@ -1033,15 +1033,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     GElf_Sym new_symbol = *old_symbol;
 
     // Add new symbol by appending "$orig" to the original symbol name.
-    std::string sym_name = m_string_table->get_string(old_symbol->st_name);
-    std::string sym_name_orig(sym_name);
-    std::size_t pos = sym_name.find('@');
-    // If the symbol is versioned, insert "$orig" before the at (@) char.
-    if (pos != std::string::npos)
-      sym_name_orig.insert(pos, "$orig");
-    else
-      sym_name_orig += "$orig";
-
+    auto sym_name_orig = get_suffixed_symbol(old_symbol->st_name, "$orig");
     new_symbol.st_name = m_string_table->add_string(sym_name_orig);
     new_symbol.st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
 
@@ -1101,12 +1093,15 @@ void ElfSymbolTable::mark_symbol(std::string orig_symbol_name, std::string symbo
     }
 }
 
-ElfSymbolTable::SymbolRef ElfSymbolTable::add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
-                                                           std::string name, size_t size) {
+ElfSymbolTable::SymbolRef
+ElfSymbolTable::add_local_symbol(GElf_Addr address,
+                                 Elf_SectionIndex section_index,
+                                 const std::string &name,
+                                 uint8_t type, size_t size) {
     GElf_Sym symbol;
     uint32_t xindex;
     symbol.st_name = m_string_table->add_string(name);
-    symbol.st_info = GELF_ST_INFO(STB_LOCAL, STT_OBJECT);
+    symbol.st_info = GELF_ST_INFO(STB_LOCAL, type);
     symbol.st_other = STV_DEFAULT;
     if (section_index >= SHN_LORESERVE) {
         symbol.st_shndx = SHN_XINDEX;

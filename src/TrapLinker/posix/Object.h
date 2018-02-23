@@ -235,7 +235,7 @@ public:
             }
         }
 
-        GElf_Sym *get() {
+        GElf_Sym *get() const {
             switch (m_source) {
             case INPUT_LOCAL:
                 return &m_symtab->m_input_locals[m_index];
@@ -251,10 +251,54 @@ public:
             }
         }
 
+        // Get the section index of this symbol
+        uint32_t get_shndx() const {
+            auto *sym = get();
+            if (sym->st_shndx != SHN_XINDEX)
+                return sym->st_shndx;
+            switch (m_source) {
+            case INPUT_LOCAL:
+            case INPUT_GLOBAL:
+                return m_symtab->xindex_table().get(get_input_index());
+            case NEW_LOCAL:
+                return m_symtab->m_new_locals_xindex[m_index];
+            case NEW_GLOBAL:
+                return m_symtab->m_new_globals_xindex[m_index];
+            default:
+                assert("Invalid SymbolRef");
+                return 0;
+            }
+        }
+
         bool operator <(const SymbolRef &other) const {
             if (m_source == other.m_source)
                 return m_index < other.m_index;
             return m_source < other.m_source;
+        }
+
+        // Get a local version of this symbol
+        SymbolRef as_local() const {
+            if (m_source == INPUT_LOCAL ||
+                m_source == NEW_LOCAL)
+                return *this;
+
+            auto *glob_sym = get();
+            if (glob_sym->st_shndx == SHN_UNDEF ||
+                glob_sym->st_shndx == SHN_ABS ||
+                glob_sym->st_shndx == SHN_COMMON)
+                return *this; // This symbol is not in this file
+
+            auto it = m_symtab->m_converted_globals.find(*this);
+            if (it != m_symtab->m_converted_globals.end())
+                return it->second;
+
+            auto glob_shndx = get_shndx();
+            auto local_name = m_symtab->get_suffixed_symbol(glob_sym->st_name, "$local");
+            auto local_sym = m_symtab->add_local_symbol(glob_sym->st_value, glob_shndx,
+                                                        local_name, GELF_ST_TYPE(glob_sym->st_info),
+                                                        glob_sym->st_size);
+            m_symtab->m_converted_globals.emplace(*this, local_sym);
+            return local_sym;
         }
 
     private:
@@ -294,9 +338,21 @@ public:
     void mark_symbol(std::string symbol_name, std::string new_name);
 
     SymbolRef add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
-                               std::string name, size_t size = 0);
+                               const std::string &name, uint8_t type,
+                               size_t size = 0);
 
     SymbolRef add_section_symbol(Elf_SectionIndex section_index);
+
+    std::string get_suffixed_symbol(size_t sym_index, const std::string &suffix) {
+        std::string sym_name_suffix = m_string_table->get_string(sym_index);
+        std::size_t pos = sym_name_suffix.find('@');
+        // If the symbol is versioned, insert "$orig" before the at (@) char.
+        if (pos != std::string::npos)
+          sym_name_suffix.insert(pos, suffix);
+        else
+          sym_name_suffix += suffix;
+        return sym_name_suffix;
+    }
 
 private:
     void find_symtab();
@@ -324,6 +380,10 @@ private:
     std::vector<GElf_Sym> m_new_globals;
     std::vector<uint32_t> m_new_locals_xindex;
     std::vector<uint32_t> m_new_globals_xindex;
+
+    // Map of globals converted to locals,
+    // maintained by SymbolRef::as_local()
+    SymbolMapping m_converted_globals;
 };
 
 #pragma pack(1)
@@ -354,7 +414,7 @@ struct ElfReloc {
     ElfReloc(Elf_Offset offset, uint32_t type,
               ElfSymbolTable::SymbolRef symbol = ElfSymbolTable::SymbolRef(),
               Elf_Offset addend = 0)
-        : offset(offset), type(type), symbol(symbol), addend(addend) { }
+        : offset(offset), type(type), symbol(symbol.as_local()), addend(addend) { }
 
     bool operator <(const ElfReloc &other) const {
         return offset < other.offset;

@@ -118,7 +118,7 @@ void ARMTrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
         std::string symbol_name = (trampoline.second & 1) ? "$t" : "$a";
         m_symbol_table.add_local_symbol(trampoline.second & ~static_cast<GElf_Addr>(1),
                                         tramp_section_index, symbol_name,
-                                        sizeof(TrampolineInstruction));
+                                        STT_OBJECT, sizeof(TrampolineInstruction));
     }
 }
 
