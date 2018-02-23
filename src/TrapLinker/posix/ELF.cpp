@@ -36,7 +36,7 @@ static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
 const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTargets = {
     { EM_386, {
         .none_reloc      = R_386_NONE,
-        .symbol_reloc    = R_386_GOTOFF,
+        .symbol_reloc    = R_386_PC32,
         .copy_reloc      = R_386_COPY,
         .min_p2align     = 0,
         .padding_p2align = 0,
@@ -47,7 +47,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
     },
     { EM_X86_64, {
         .none_reloc      = R_X86_64_NONE,
-        .symbol_reloc    = R_X86_64_GOTOFF64,
+        .symbol_reloc    = R_X86_64_PC64,
         .copy_reloc      = R_X86_64_COPY,
         .min_p2align     = 0,
         .padding_p2align = 0,
