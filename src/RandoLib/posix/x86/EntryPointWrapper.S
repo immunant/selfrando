@@ -71,7 +71,7 @@ selfrando__x86.get_pc_thunk.bx.txtrp:
 1:
 // FirstSymAddr
 .int 0
-.reloc 1b, R_386_GOTOFF, selfrando__x86.get_pc_thunk.bx
+.reloc 1b, R_386_PC32, selfrando__x86.get_pc_thunk.bx
 
 // FirstSymbol
 .uleb128 00
