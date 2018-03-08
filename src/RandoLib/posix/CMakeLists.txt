@@ -157,9 +157,6 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
         # Build selfrando_txtrp.o with all the code in .txtrp
         # FIXME: is this list correct?
-        set(ALL_LDEMULS elf_i386 elf_x86_64 armelf aarch64linux)
-        list(FIND ALL_ARCHES ${SR_ARCH} arch_idx)
-        list(GET ALL_LDEMULS ${arch_idx} arch_ldemul)
         add_custom_target(selfrando_txtrp.o ALL
             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
                 libselfrando_noprefix.a

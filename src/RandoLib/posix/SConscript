@@ -141,18 +141,12 @@ lib_env.Command('libselfrando.a', 'libselfrando_noprefix.a',
                 'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET'
                 )
 
-LDEMUL = { 'x86':     'elf_i386',
-           'x86_64':  'elf_x86_64',
-           'arm':     'armelf',         # FIXME: correct???
-           'aarch64': 'aarch64linux' }  # FIXME: correct???
-
 lib_env.Command('selfrando_txtrp.o', ['rename_sections_txtrp.sh', 'libselfrando_noprefix.a'],
                 '$SOURCES $TARGET && '
                 'objcopy --prefix-symbols=_TRaP_ $TARGET && '
                 'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
                 'objcopy --redefine-sym=_TRaP_environ=environ $TARGET && '
-                'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET',
-                LDEMUL=LDEMUL[target])
+                'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET')
 
 sharedlib_env = lib_env.Clone()
 sharedlib_env.Append(CPPDEFINES = {'RANDOLIB_IS_SHARED': 1})
