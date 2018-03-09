@@ -6,9 +6,9 @@ Import('env')
 SOURCES = (['ELF.cpp', 'TrapLinker.cpp',
             #FIXME: re-enable these when they work
             #'arch/arm64/ELF.cpp',
-            'arch/arm/ELF.cpp',
             'arch/x86/ELF.cpp',
-            'arch/x86_64/ELF.cpp'])
+            'arch/x86_64/ELF.cpp',
+            'arch/arm/ELF.cpp'])
 
 traplinker_env = env.Clone()
 traplinker_env.Append(CPPPATH = ['#/src',
