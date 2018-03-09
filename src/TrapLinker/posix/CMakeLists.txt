@@ -13,8 +13,8 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         ELF.cpp
         TrapLinker.cpp
         #FIXME: add them back in when they compile
-        #arch/arm/ELF.cpp
         #arch/arm64/ELF.cpp
+        arch/arm/ELF.cpp
         arch/x86/ELF.cpp
         arch/x86_64/ELF.cpp
         LinkerOptions.inc

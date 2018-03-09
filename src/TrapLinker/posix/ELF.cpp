@@ -21,12 +21,11 @@
 
 extern TargetOps *x86_ops;
 extern TargetOps *x86_64_ops;
+extern TargetOps *arm_ops;
 #if 0
 // FIXME: disabled for now, do not compile successfully
-extern TargetOps *arm_ops;
 extern TargetOps *arm64_ops;
 #else
-static TargetOps *arm_ops = nullptr;
 static TargetOps *arm64_ops = nullptr;
 #endif
 
