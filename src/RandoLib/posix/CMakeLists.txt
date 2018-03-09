@@ -77,16 +77,16 @@ if (SR_BUILD_MODULE_RANDOLIB)
     foreach(static_lib ${static_libs})
         add_custom_command(TARGET ${static_lib}
             POST_BUILD
-            COMMAND objcopy --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
-            COMMAND objcopy --rename-section .text.selfrando__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
-            COMMAND objcopy --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
-            COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $<TARGET_FILE:${static_lib}>
-            COMMAND objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
-            COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --rename-section .text.selfrando__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $<TARGET_FILE:${static_lib}>
             # On 32-bit x86, we need __x86.get_pc_thunk.bx to be defined as the
             # compiler emits it: a single-element group section
             # FIXME: it would be nice to get rid of this
-            COMMAND objcopy --redefine-sym=_TRaP_selfrando__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_selfrando__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             VERBATIM
             )
     endforeach()
@@ -142,12 +142,12 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
         # Build libselfrando.a with .selfrando prefix prepended to all sections
         add_custom_target(libselfrando.a ALL
-            COMMAND objcopy --prefix-alloc-sections=.selfrando libselfrando_noprefix.a libselfrando.a
-            COMMAND objcopy --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
-            COMMAND objcopy --prefix-symbols=_TRaP_ libselfrando.a
-            COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ libselfrando.a
-            COMMAND objcopy --redefine-sym=_TRaP_environ=environ libselfrando.a
-            COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --prefix-alloc-sections=.selfrando libselfrando_noprefix.a libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr libselfrando.a
             VERBATIM
             )
         add_dependencies(libselfrando.a selfrando_noprefix)
@@ -158,13 +158,14 @@ if (SR_BUILD_MODULE_RANDOLIB)
         # Build selfrando_txtrp.o with all the code in .txtrp
         # FIXME: is this list correct?
         add_custom_target(selfrando_txtrp.o ALL
-            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
+            COMMAND env OBJCOPY=${CMAKE_OBJCOPY} OBJDUMP=${CMAKE_OBJDUMP}
+                ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
                 libselfrando_noprefix.a
                 selfrando_txtrp.o
-            COMMAND objcopy --prefix-symbols=_TRaP_ selfrando_txtrp.o
-            COMMAND objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ selfrando_txtrp.o
-            COMMAND objcopy --redefine-sym=_TRaP_environ=environ selfrando_txtrp.o
-            COMMAND objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr selfrando_txtrp.o
+            COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ selfrando_txtrp.o
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ selfrando_txtrp.o
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ selfrando_txtrp.o
+            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr selfrando_txtrp.o
             VERBATIM
             )
         add_dependencies(selfrando_txtrp.o selfrando_noprefix)
