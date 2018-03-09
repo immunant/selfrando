@@ -158,7 +158,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         # Build selfrando_txtrp.o with all the code in .txtrp
         # FIXME: is this list correct?
         add_custom_target(selfrando_txtrp.o ALL
-            COMMAND env OBJCOPY=${CMAKE_OBJCOPY} OBJDUMP=${CMAKE_OBJDUMP}
+            COMMAND env "OBJCOPY=${CMAKE_OBJCOPY}" "OBJDUMP=${CMAKE_OBJDUMP}"
                 ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
                 libselfrando_noprefix.a
                 selfrando_txtrp.o
