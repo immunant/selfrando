@@ -326,6 +326,7 @@ public:
 private:
     void rewrite_file(std::string input_filename,
                       bool whole_archive,
+                      bool script_in_sysroot,
                       ArgParser &Args);
 
     std::string m_temp_dir;
@@ -396,7 +397,7 @@ LinkerInvocation LinkWrapper::process(int argc, char* argv[]) {
     // rewrite all input objects
     if (Args.is_trap_enabled()) {
         for (auto input_file : Args.input_files()) {
-            rewrite_file(input_file.first, input_file.second, Args);
+            rewrite_file(input_file.first, input_file.second, false, Args);
         }
     }
 
@@ -416,6 +417,7 @@ LinkerInvocation LinkWrapper::process(int argc, char* argv[]) {
 
 void LinkWrapper::rewrite_file(std::string input_filename,
                                bool whole_archive,
+                               bool script_in_sysroot,
                                ArgParser &Args) {
     Debug::printf<1>("Processing file: %s\n", input_filename.c_str());
     if (m_rewritten_inputs.count(input_filename) != 0)
@@ -434,6 +436,13 @@ void LinkWrapper::rewrite_file(std::string input_filename,
     ObjectType type = parse_object_type(fd);
     if (type == SHARED_OBJECT || type == UNKNOWN) {
         close(fd);
+        if (script_in_sysroot) {
+            // Small hack: since we're moving the script out of
+            // the given sysroot, we need to prepend the sysroot path
+            // ourselves to every file (especially shared libraries);
+            // we do this by forcing a rewrite from the file to itself
+            m_rewritten_inputs[input_filename] = input_filename;
+        }
         return;
     }
 
@@ -465,7 +474,7 @@ void LinkWrapper::rewrite_file(std::string input_filename,
     } else if (type == LINKER_SCRIPT) {
         // Determine whether this script resides in the sysroot,
         // so we can prepend the sysroot path to all referenced files
-        bool script_in_sysroot = false;
+        script_in_sysroot = false;
         if (!Args.canonical_sysroot().empty()) {
             char *canonical_path = realpath(input_filename.c_str(), nullptr);
             if (canonical_path) {
@@ -498,15 +507,9 @@ void LinkWrapper::rewrite_file(std::string input_filename,
                     // files also need the sysroot path prepended
                     // (this is what gold does)
                     file = Args.canonical_sysroot() + file;
-
-                    // Small hack: since we're moving the script out of
-                    // the given sysroot, we need to prepend the sysroot path
-                    // ourselves to every file (especially shared libraries);
-                    // we do this by forcing a rewrite from the file to itself
-                    m_rewritten_inputs[file] = file;
                 }
             }
-            rewrite_file(file, whole_archive, Args);
+            rewrite_file(file, whole_archive, script_in_sysroot, Args);
         }
         script.rewrite(m_rewritten_inputs);
         m_rewritten_inputs[input_filename] = temp_file.second;
