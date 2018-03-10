@@ -226,7 +226,7 @@ private:
 
 class LinkerScript {
 public:
-    LinkerScript(int fd);
+    LinkerScript(int fd, bool is_in_sysroot, const std::string &canonical_sysroot);
     std::vector<std::string> referenced_files() {
         std::vector<std::string> files;
         for (auto file_pair : m_referenced_files) {
@@ -303,6 +303,8 @@ private:
     }
 
     FILE *m_file;
+    bool m_is_in_sysroot;
+    const std::string &m_canonical_sysroot;
 
     std::vector<const char*> k_ignored_tokens = {
         "(", ")", ";", "+", "-", "*", ":", "{", "}", "/"
@@ -475,7 +477,8 @@ void LinkWrapper::rewrite_file(std::string input_filename,
         }
 
         Debug::printf<2>("Parsing linker script %s\n", temp_file.second.c_str());
-        LinkerScript script(temp_file.first);
+        LinkerScript script(temp_file.first, script_in_sysroot,
+                            Args.canonical_sysroot());
         std::vector<std::string> referenced_files = script.referenced_files();
         for (auto file : referenced_files) {
             Debug::printf<2>("Found a file referenced from a linker script: %s\n", file.c_str());
@@ -495,6 +498,12 @@ void LinkWrapper::rewrite_file(std::string input_filename,
                     // files also need the sysroot path prepended
                     // (this is what gold does)
                     file = Args.canonical_sysroot() + file;
+
+                    // Small hack: since we're moving the script out of
+                    // the given sysroot, we need to prepend the sysroot path
+                    // ourselves to every file (especially shared libraries);
+                    // we do this by forcing a rewrite from the file to itself
+                    m_rewritten_inputs[file] = file;
                 }
             }
             rewrite_file(file, whole_archive, Args);
@@ -505,7 +514,8 @@ void LinkWrapper::rewrite_file(std::string input_filename,
     close(temp_file.first);
 }
 
-LinkerScript::LinkerScript(int fd) {
+LinkerScript::LinkerScript(int fd, bool is_in_sysroot, const std::string &canonical_sysroot)
+    : m_is_in_sysroot(is_in_sysroot), m_canonical_sysroot(canonical_sysroot) {
     m_file = fdopen(fd, "r+");
     parse();
 }
@@ -714,7 +724,10 @@ void LinkerScript::rewrite(const std::map<std::string, std::string>& rewritten_f
     off_t file_size = ftell(m_file);
     fseek(m_file, 0, SEEK_SET);
     for (auto file_ref : m_referenced_files) {
-        if (rewritten_files.count(file_ref.first) != 0) {
+        auto file_path = file_ref.first;
+        if (file_path[0] == '/' && m_is_in_sysroot)
+            file_path = m_canonical_sysroot + file_path;
+        if (rewritten_files.count(file_path) != 0) {
             off_t ref_offset = file_ref.second;
             off_t cur_buffer_offset = out_buffer.size();
 
@@ -729,8 +742,8 @@ void LinkerScript::rewrite(const std::map<std::string, std::string>& rewritten_f
             cur_offset += bytes_read;
 
             // Write out the new filename
-            out_buffer.insert(out_buffer.end(), rewritten_files.at(file_ref.first).begin(),
-                              rewritten_files.at(file_ref.first).end());
+            out_buffer.insert(out_buffer.end(), rewritten_files.at(file_path).begin(),
+                              rewritten_files.at(file_path).end());
 
             // Skip the old filename
             cur_offset += file_ref.first.size();
