@@ -80,9 +80,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
             COMMAND ${CMAKE_OBJCOPY} --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             COMMAND ${CMAKE_OBJCOPY} --rename-section .text.selfrando__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $<TARGET_FILE:${static_lib}>
+            COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt $<TARGET_FILE:${static_lib}>
+            # TODO: add _TRaP__DYNAMIC to non_trap_syms???
             COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $<TARGET_FILE:${static_lib}>
             # On 32-bit x86, we need __x86.get_pc_thunk.bx to be defined as the
             # compiler emits it: a single-element group section
             # FIXME: it would be nice to get rid of this
@@ -112,7 +112,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
     endif()
 
-    if("${SR_ARCH}" STREQUAL "arm")
+    if(ANDROID_NDK AND "${SR_ARCH}" STREQUAL "arm")
         target_sources(selfrando_objects PRIVATE arm/UnwindStubs.c)
     endif()
 
@@ -145,9 +145,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
             COMMAND ${CMAKE_OBJCOPY} --prefix-alloc-sections=.selfrando libselfrando_noprefix.a libselfrando.a
             COMMAND ${CMAKE_OBJCOPY} --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
             COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ libselfrando.a
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ libselfrando.a
+            COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt libselfrando.a
+            # TODO: add _TRaP_environ to non_trap_syms???
             COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ libselfrando.a
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr libselfrando.a
             VERBATIM
             )
         add_dependencies(libselfrando.a selfrando_noprefix)
@@ -163,9 +163,8 @@ if (SR_BUILD_MODULE_RANDOLIB)
                 libselfrando_noprefix.a
                 selfrando_txtrp.o
             COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ selfrando_txtrp.o
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ selfrando_txtrp.o
+            COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt selfrando_txtrp.o
             COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ selfrando_txtrp.o
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr selfrando_txtrp.o
             VERBATIM
             )
         add_dependencies(selfrando_txtrp.o selfrando_noprefix)

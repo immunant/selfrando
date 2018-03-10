@@ -1,0 +1,5 @@
+_TRaP__GLOBAL_OFFSET_TABLE_     _GLOBAL_OFFSET_TABLE_
+_TRaP_dl_iterate_phdr           dl_iterate_phdr
+_TRaP_$a                        $a
+_TRaP_$d                        $d
+_TRaP_$t                        $t
