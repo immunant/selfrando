@@ -19,6 +19,8 @@
 #include <libelf.h>
 #include <gelf.h>
 
+static const char kArPathVariable[] = "SELFRANDO_ORIGINAL_AR";
+
 extern TargetOps *x86_ops;
 extern TargetOps *x86_64_ops;
 extern TargetOps *arm_ops;
@@ -713,7 +715,11 @@ bool ElfObject::update_archive(std::vector<std::string> object_files, std::strin
     std::vector<char*> ar_invocation;
 
     // FIXME: add --traplinker-original-ar option to override name of ar
-    ar_invocation.push_back(strdup("ar"));
+    const char *ar_path;
+    if ((ar_path = getenv(kArPathVariable)) == nullptr) {
+        ar_path = "ar";
+    }
+    ar_invocation.push_back(strdup(ar_path));
     ar_invocation.push_back(strdup("r"));
     ar_invocation.push_back(strdup(archive_filename.c_str()));
 
