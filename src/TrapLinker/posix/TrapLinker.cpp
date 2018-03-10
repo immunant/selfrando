@@ -1197,14 +1197,17 @@ int ArgParser::handle_whole_archive(int i, const std::string &arg_key) {
 int ArgParser::handle_sysroot(int i, const std::string &arg_key) {
     int args_claimed = get_value(i, arg_key, m_sysroot);
     m_args.emplace_back(m_argv+i, args_claimed+1);
-
-    if (m_sysroot[0] == '=')
-        m_sysroot = m_sysroot.substr(1);
-    Debug::printf<2>("Found sysroot: '%s'\n", m_sysroot.c_str());
-    char *canonical_path = realpath(m_sysroot.c_str(), nullptr);
-    if (canonical_path) {
-        m_canonical_sysroot = std::string(canonical_path);
-        free(canonical_path);
+    if (!m_sysroot.empty()) {
+        // FIXME: get_value() should handle the '='
+        if (m_sysroot[0] == '=')
+            m_sysroot = m_sysroot.substr(1);
+        char *canonical_path = realpath(m_sysroot.c_str(), nullptr);
+        if (canonical_path) {
+            m_canonical_sysroot = std::string(canonical_path);
+            free(canonical_path);
+        }
+        Debug::printf<2>("Found sysroot: '%s'=>'%s'\n", m_sysroot.c_str(),
+                         m_canonical_sysroot.c_str());
     }
     return args_claimed;
 }
