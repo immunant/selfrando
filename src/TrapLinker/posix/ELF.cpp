@@ -182,8 +182,10 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
         m_parsed = false;
         auto archive_filename = Filesystem::get_temp_filename("traparchive");
         update_archive(object_files, archive_filename);
+#if RANDOLIB_DEBUG_LEVEL == 0
         for (auto filename : object_files)
             Filesystem::remove(filename);
+#endif
         return std::make_tuple(archive_filename, elf_machine);
     } else {
         if (create_trap_info_impl(emit_textramp)) {
