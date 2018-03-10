@@ -44,6 +44,8 @@
 -push-state     handle_push_state
 -pop-state      handle_pop_state
 
+--sysroot       handle_sysroot
+
 // these probably need to be handled
 -exclude-libs   ignore_long_arg_with_value
 -exclude-symbols ignore_long_arg_with_value
@@ -92,7 +94,6 @@
 -no-ld-generated-unwind-info ignore_arg
 
 // Options used in Android build
---sysroot       ignore_long_arg_with_value
 --fix-cortex-a53-843419 ignore_arg
 
 // Our own options

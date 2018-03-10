@@ -76,7 +76,8 @@ public:
                                         m_pic_warning(true),
                                         m_relocatable(false),
                                         m_shared(false), m_static(false),
-                                        m_whole_archive(false) {
+                                        m_whole_archive(false),
+                                        m_sysroot(), m_canonical_sysroot() {
         m_output_file = std::string("a.out");
         m_entry_point = "_start";
         m_dt_init = "_init";
@@ -98,6 +99,10 @@ public:
 
     std::string output_file() const {
         return m_output_file;
+    }
+
+    const std::string &canonical_sysroot() const {
+        return m_canonical_sysroot;
     }
 
     void change_option(std::string option, std::string value, bool single_arg);
@@ -140,6 +145,7 @@ private:
     int handle_pop_state(int i, const std::string &arg_key);
     int handle_z_keyword(int i, const std::string &arg_key);
     int handle_whole_archive(int i, const std::string &arg_key);
+    int handle_sysroot(int i, const std::string &arg_key);
 
     int handle_original_linker(int i, const std::string &arg_key);
     int handle_traplinker_disable(int i, const std::string &arg_key);
@@ -209,6 +215,9 @@ private:
     std::stack<bool> m_static_stack;
 
     bool m_whole_archive;
+
+    std::string m_sysroot;
+    std::string m_canonical_sysroot;
 
     static std::map<std::string, int (ArgParser::*)(int, const std::string&) > m_arg_table;
 };
@@ -452,6 +461,19 @@ void LinkWrapper::rewrite_file(std::string input_filename,
             }
         }
     } else if (type == LINKER_SCRIPT) {
+        // Determine whether this script resides in the sysroot,
+        // so we can prepend the sysroot path to all referenced files
+        bool script_in_sysroot = false;
+        if (!Args.canonical_sysroot().empty()) {
+            char *canonical_path = realpath(input_filename.c_str(), nullptr);
+            if (canonical_path) {
+                if (strncmp(canonical_path, Args.canonical_sysroot().c_str(),
+                            Args.canonical_sysroot().length()) == 0)
+                    script_in_sysroot = true;
+                free(canonical_path);
+            }
+        }
+
         Debug::printf<2>("Parsing linker script %s\n", temp_file.second.c_str());
         LinkerScript script(temp_file.first);
         std::vector<std::string> referenced_files = script.referenced_files();
@@ -466,6 +488,13 @@ void LinkWrapper::rewrite_file(std::string input_filename,
                     res == ArgParser::LibResult::FOUND_SHARED_LIB) {
                     Debug::printf<2>("Found actual library file: %s\n", full_path.c_str());
                     file = full_path;
+                }
+            } else if (file[0] == '/') {
+                if (script_in_sysroot) {
+                    // If the script is in the sysroot, then all referenced
+                    // files also need the sysroot path prepended
+                    // (this is what gold does)
+                    file = Args.canonical_sysroot() + file;
                 }
             }
             rewrite_file(file, whole_archive, Args);
@@ -1163,6 +1192,21 @@ int ArgParser::handle_whole_archive(int i, const std::string &arg_key) {
         m_whole_archive = false;
     }
     return 0;
+}
+
+int ArgParser::handle_sysroot(int i, const std::string &arg_key) {
+    int args_claimed = get_value(i, arg_key, m_sysroot);
+    m_args.emplace_back(m_argv+i, args_claimed+1);
+
+    if (m_sysroot[0] == '=')
+        m_sysroot = m_sysroot.substr(1);
+    Debug::printf<2>("Found sysroot: '%s'\n", m_sysroot.c_str());
+    char *canonical_path = realpath(m_sysroot.c_str(), nullptr);
+    if (canonical_path) {
+        m_canonical_sysroot = std::string(canonical_path);
+        free(canonical_path);
+    }
+    return args_claimed;
 }
 
 int ArgParser::handle_original_linker(int i, const std::string &arg_key) {
