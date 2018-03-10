@@ -36,6 +36,6 @@ script: |
   scons -Q arch=x86_64 LIBELF_PATH=$PWD/libelf/libelf-prefix FORCE_INPLACE=1 &&
   tests/posix/thttpd.sh &&
   tests/posix/lua.sh &&
-  tests/posix/nginx.sh &&
+  tests/posix/nginx.sh
 after_success:
 - bash <(curl -s https://codecov.io/bash)
