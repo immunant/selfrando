@@ -32,7 +32,7 @@ selfrando_init:
 init_begin:
     push {r1,lr}
 
-    bl selfrando_run
+    bl selfrando_run_and_remove
 
     // Restore the finalizer pointer
     pop {r1,lr}
@@ -55,13 +55,25 @@ selfrando_entry:
 entry_begin:
     push {r1,lr}
 
-    bl selfrando_run
+    bl selfrando_run_and_remove
 
     // Restore the finalizer pointer
     pop {r1,lr}
 
     // Go back and try again
     b selfrando_entry
+
+.globl  selfrando_run_and_remove, selfrando_remove_call
+.hidden selfrando_run_and_remove, selfrando_remove_call
+.type   selfrando_run_and_remove,%function
+.arm
+selfrando_run_and_remove:
+    push {lr}
+    bl selfrando_run
+    // Fall-through
+selfrando_remove_call:
+    // TODO: add sequence that calls mprotect()
+    pop {pc}
 
 .globl selfrando_return
 .hidden selfrando_return
