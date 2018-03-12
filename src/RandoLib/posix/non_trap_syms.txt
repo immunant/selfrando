@@ -4,3 +4,5 @@ _TRaP_$a                        $a
 _TRaP_$d                        $d
 _TRaP_$t                        $t
 _TRaP__TRaP_libc_memset         _TRaP_memset
+_TRaP___aeabi_unwind_cpp_pr0    __aeabi_unwind_cpp_pr0
+_TRaP___aeabi_unwind_cpp_pr1    __aeabi_unwind_cpp_pr1
