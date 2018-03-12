@@ -279,6 +279,9 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
             *reinterpret_cast<uint32_t*>(cur_address) =
                thm_movwt_set(*reinterpret_cast<uint32_t*>(cur_address), reinterpret_cast<uint32_t>(new_target) >> 16);
         break;
+    case R_ARM_GOT32:
+        // Nothing to do here, we just need this for get_got_entry()
+        break;
     default:
         RANDO_ASSERT(false);
         break;
