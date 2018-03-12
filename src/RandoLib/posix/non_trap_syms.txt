@@ -3,3 +3,4 @@ _TRaP_dl_iterate_phdr           dl_iterate_phdr
 _TRaP_$a                        $a
 _TRaP_$d                        $d
 _TRaP_$t                        $t
+_TRaP__TRaP_libc_memset         _TRaP_memset

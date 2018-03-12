@@ -52,9 +52,17 @@ if (SR_BUILD_MODULE_RANDOLIB)
     endif()
     if("${SR_ARCH}" STREQUAL "arm")
         list(APPEND entry_files arm/LinkerStubs.S)
+        # We need _TRaP_memset on ARM
+        list(APPEND entry_files bionic/arch-arm/memset.S)
     endif()
     add_library(randoentry_exec STATIC ${entry_files} EntryPointExec.c)
     add_library(randoentry_so   STATIC ${entry_files} EntryPointSO.c)
+
+    if("${SR_ARCH}" STREQUAL "arm")
+        # On ARM, memset.S requires bionic/private/bionic_asm.h
+        target_include_directories(randoentry_exec PRIVATE bionic bionic/arch-arm)
+        target_include_directories(randoentry_so   PRIVATE bionic bionic/arch-arm)
+    endif()
 
     # Build the trapheader/footer objects
     add_library(trapheader        STATIC TrapHeader.S)
