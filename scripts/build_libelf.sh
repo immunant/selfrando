@@ -13,7 +13,7 @@ OUTDIR=$1
 mkdir -p $OUTDIR
 cd $OUTDIR
 
-LIBELF_VER="0.168"
+LIBELF_VER="0.169"
 LIBELF_FILE="elfutils-$LIBELF_VER.tar.bz2"
 LIBELF_URL="https://sourceware.org/elfutils/ftp/$LIBELF_VER/$LIBELF_FILE"
 
