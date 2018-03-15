@@ -46,16 +46,16 @@ if (SR_BUILD_MODULE_TRAPLINKER)
 
     add_dependencies(traplinker randolib_support ${SR_LIBELF_TARGET})
 
-    install(TARGETS traplinker DESTINATION bin)
+    install(TARGETS traplinker DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(PROGRAMS
         ${CMAKE_CURRENT_BINARY_DIR}/ld
         ${CMAKE_CURRENT_BINARY_DIR}/ld.bfd
         ${CMAKE_CURRENT_BINARY_DIR}/ld.gold
         linker_id.sh
-        DESTINATION bin
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
     install(FILES
         linker_script.ld
-        DESTINATION bin
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
 endif()

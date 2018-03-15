@@ -11,5 +11,5 @@ if(SR_BUILD_MODULE_TRAPDUMP)
         target_link_libraries(trapdump ${SR_LIBELF_LIB} z)
     endif()
 
-    install(TARGETS trapdump DESTINATION bin)
+    install(TARGETS trapdump DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
