@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.3)
 project(selfrando LANGUAGES C CXX ASM)
 set(CMAKE_CXX_STANDARD 11)
 
+# Include CMAKE_INSTALL_*DIR variables
+include(GNUInstallDirs)
+
 set(SR_ALL_MODULES "TrapLinker;RandoLib;TrapDump")
 set(SR_BUILD_MODULES "all" CACHE STRING "Selfrando modules to build \
 (Semicolon-separated list of modules, e.g. ${SR_ALL_MODULES}, or 'all'")
