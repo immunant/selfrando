@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 LD_OUT=$(exec $1 --version)
 LINKER=$(echo $LD_OUT | grep -o "GNU.*ld")
