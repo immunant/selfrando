@@ -84,7 +84,8 @@ static void _TRaP_libc_build_trap_environ() {
                                                 PROT_READ | PROT_WRITE,
                                                 MAP_PRIVATE | MAP_ANONYMOUS,
                                                 -1, 0);
-    if ((intptr_t)_TRaP_libc_environ_buf < 0) {
+    if ((intptr_t)_TRaP_libc_environ_buf < 0 &&
+        (intptr_t)_TRaP_libc_environ_buf > -4096) {
         _TRaP_libc_environ_buf = NULL;
         _TRaP_libc_environ_buf_size = 0;
         goto exit;
