@@ -6,7 +6,6 @@ PN = "selfrando-cross-${TARGET_ARCH}"
 
 DEPENDS += "selfrando-native"
 
-deltask do_unpack
 deltask do_patch
 deltask do_configure
 deltask do_compile
