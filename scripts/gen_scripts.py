@@ -95,7 +95,7 @@ def set_env_vars(script_dir, selfrando_root):
 
     pshell_lines.append(set_env_var_ps("LIBPATH", [randolib_path, libs_path], True))
     batchs_lines.append(set_env_var_bat("LIBPATH", [randolib_path, libs_path], True))
-    cygwin_lines.append("export LIBPATH=\"%s\"\\;\"%s\";$LIBPATH" %
+    cygwin_lines.append("export LIBPATH=\"%s\"\\;\"%s\"\\;$LIBPATH" %
         (randolib_path, libs_path))
 
     # Store the set-buildvar-* scripts
