@@ -215,25 +215,37 @@ RANDO_SECTION void API::finish() {
 #undef SYS_FUNCTION
 }
 
+// Get the PEB in an OS-independent way, directly from FS:[30h] or GS:[60h]
+static RANDO_SECTION inline PEB *get_peb() {
+#if RANDOLIB_IS_X86
+    return (PEB*) __readfsdword(0x30);
+#elif RANDOLIB_IS_X86_64
+    return (PEB*) __readgsqword(0x60);
+#else
+#error Unknown Windows architecture
+#endif
+}
+
+static RANDO_SECTION inline HANDLE get_global_heap() {
+    auto *pptr = reinterpret_cast<PVOID*>(&get_peb()->Reserved4);
+    return reinterpret_cast<HANDLE>(pptr[1]);
+}
 
 RANDO_SECTION void *API::mem_alloc(size_t size, bool zeroed) {
-    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
-    return RANDO_SYS_FUNCTION(ntdll, RtlAllocateHeap, global_heap, flags, size);
+    return RANDO_SYS_FUNCTION(ntdll, RtlAllocateHeap, get_global_heap(), flags, size);
 }
 
 RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed) {
     if (old_ptr == nullptr)
         return mem_alloc(new_size, zeroed);
 
-    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
     DWORD flags = zeroed ? HEAP_ZERO_MEMORY : 0;
-    return RANDO_SYS_FUNCTION(ntdll, RtlReAllocateHeap, global_heap, flags, old_ptr, new_size);
+    return RANDO_SYS_FUNCTION(ntdll, RtlReAllocateHeap, get_global_heap(), flags, old_ptr, new_size);
 }
 
 RANDO_SECTION void API::mem_free(void *ptr) {
-    auto global_heap = NtCurrentTeb()->ProcessEnvironmentBlock->Reserved4[1];
-    RANDO_SYS_FUNCTION(ntdll, RtlFreeHeap, global_heap, 0, ptr);
+    RANDO_SYS_FUNCTION(ntdll, RtlFreeHeap, get_global_heap(), 0, ptr);
 }
 
 // WARNING!!!: should be in the same order as the PagePermissions entries
@@ -471,8 +483,7 @@ RANDO_SECTION Module::Module(Handle info, UNICODE_STRING *name) : m_info(info), 
     RANDO_ASSERT(info != nullptr);
     if ((info->file_header_characteristics & IMAGE_FILE_DLL) == 0) {
         // We can't trust info->module, so get the module from the OS
-        PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
-        m_handle = peb->Reserved3[1];
+        m_handle = get_peb()->Reserved3[1];
     } else {
         m_handle = info->module;
     }
@@ -656,7 +667,7 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
 
 RANDO_SECTION void Module::for_all_modules(ModuleCallback callback, void *callback_arg) {
 #if 0
-    PEB *peb = NtCurrentTeb()->ProcessEnvironmentBlock;
+    PEB *peb = get_peb();
     // Reserved3[1] == ImageBaseAddress
     for (LIST_ENTRY *mod_ptr = peb->Ldr->InMemoryOrderModuleList.Flink; mod_ptr;) {
         LDR_DATA_TABLE_ENTRY *mod_entry = CONTAINING_RECORD(mod_ptr, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
