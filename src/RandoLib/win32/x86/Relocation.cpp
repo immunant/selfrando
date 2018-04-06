@@ -76,6 +76,72 @@ static RANDO_SECTION int compare_first_dword(const void *pa, const void *pb) {
 }
 
 void os::Module::fixup_target_relocations(FunctionList *functions) const {
+    for (size_t i = 0; i < functions->num_elems; i++) {
+        auto &func = functions->elems[i];
+        if (func.from_trap)
+            continue;
+        RANDO_ASSERT(func.is_gap); // Functions should either be from TRaP info or gaps
+
+        auto div_ptr = func.div_start;
+        auto undiv_ptr = func.undiv_start;
+        // Look for PC-relative indirect branches
+        // FIXME: we do this to find the 6-byte import trampolines
+        // inserted by the linker; they're not in TRaP info, so
+        // we need to scan for them manually.
+        // WARNING!!!: we may get false positives
+        for (;;) {
+            while (div_ptr < func.div_end() &&
+                (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
+                div_ptr++, undiv_ptr++;
+            if (div_ptr + 6 <= func.div_end() &&
+                div_ptr[0] == 0xFF && div_ptr[1] == 0x25) {
+                os::API::debug_printf<10>("Found import trampoline @%p/%p\n",
+                                          undiv_ptr, div_ptr);
+                // Absolute address, no REL32 relocation here,
+                // but we do need to skip over it
+                div_ptr += 6;
+                undiv_ptr += 6;
+                continue;
+            }
+            if (div_ptr + 10 <= func.div_end() &&
+                div_ptr[0] == 0xB8 && div_ptr[5] == 0xE9) {
+                // Delay-loading trampoline with contents:
+                //   B8 nn nn nn nn         MOV EAX, [nnnnnnnn]
+                //   E9 nn nn nn nn         JMP __tailMerge_NNN_dll
+                os::API::debug_printf<10>("Found delay-loading import trampoline @%p/%p\n",
+                                          undiv_ptr, div_ptr);
+                os::Module::Relocation reloc(*this, undiv_ptr + 6, IMAGE_REL_I386_REL32);
+                functions->adjust_relocation(&reloc);
+                div_ptr += 10;
+                undiv_ptr += 10;
+                continue;
+            }
+            if (div_ptr + 17 <= func.div_end() &&
+                div_ptr[0] == 0x51 && div_ptr[1] == 0x52 &&
+                div_ptr[2] == 0x50 && div_ptr[3] == 0x68 &&
+                div_ptr[8] == 0xE8 && div_ptr[13] == 0x5A &&
+                div_ptr[14] == 0x59 && div_ptr[15] == 0xFF &&
+                div_ptr[16] == 0xE0) {
+                // __tailMerge_NNN_dll import trampoline with contents:
+                //   51                     PUSH ECX
+                //   52                     PUSH EDX
+                //   50                     PUSH EAX
+                //   68 nn nn nn nn         PUSH [nnnnnnnn]
+                //   E8 nn nn nn nn         CALL __delayLoadHelper2@8
+                //   5A                     POP EDX
+                //   59                     POP ECX
+                //   FF E0                  JMP EAX
+                os::API::debug_printf<10>("Found __tailMerge import trampoline @%p/%p\n",
+                                          undiv_ptr, div_ptr);
+                os::Module::Relocation reloc(*this, undiv_ptr + 9, IMAGE_REL_I386_REL32);
+                functions->adjust_relocation(&reloc);
+                div_ptr += 17;
+                undiv_ptr += 17;
+                continue;
+            }
+            break;
+        }
+    }
     // Fix up exception handler table
     // FIXME: this seems to fix the Firefox SAFESEH-related crashes, but only partially
     // It is possible that the Windows loader makes a copy of this table at startup,
