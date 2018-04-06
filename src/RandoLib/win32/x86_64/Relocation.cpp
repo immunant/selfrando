@@ -198,7 +198,7 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
                 (div_ptr[0] == 0xCC || div_ptr[0] == 0x90))
                 div_ptr++, undiv_ptr++;
             if (div_ptr + 6 <= func.div_end() &&
-                div_ptr[0] == 0xFF || div_ptr[1] == 0x25) {
+                div_ptr[0] == 0xFF && div_ptr[1] == 0x25) {
                 os::API::debug_printf<10>("Found import trampoline @%p/%p\n",
                                           undiv_ptr, div_ptr);
                 os::Module::Relocation reloc(*this, undiv_ptr + 2, IMAGE_REL_AMD64_REL32);
