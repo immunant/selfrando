@@ -69,6 +69,12 @@ void os::Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
 void os::Module::arch_init() {
 }
 
+static RANDO_SECTION int compare_first_dword(const void *pa, const void *pb) {
+    auto *fa = reinterpret_cast<const DWORD*>(pa);
+    auto *fb = reinterpret_cast<const DWORD*>(pb);
+    return (fa[0] < fb[0]) ? -1 : 1;
+}
+
 void os::Module::fixup_target_relocations(FunctionList *functions) const {
     // Fix up exception handler table
     // FIXME: this seems to fix the Firefox SAFESEH-related crashes, but only partially
@@ -81,8 +87,12 @@ void os::Module::fixup_target_relocations(FunctionList *functions) const {
             auto *seh_table = reinterpret_cast<BytePointer*>(load_config->SEHandlerTable);
             if (seh_table != nullptr && load_config->SEHandlerCount > 0) {
                 auto table_size = load_config->SEHandlerCount * sizeof(BytePointer);
-                for (size_t i = 0; i < load_config->SEHandlerCount; i++)
+                for (size_t i = 0; i < load_config->SEHandlerCount; i++) {
                     relocate_rva(&seh_table[i], functions, false);
+                }
+                // Re-sort the SEH table
+                os::API::qsort(seh_table, load_config->SEHandlerCount,
+                               sizeof(BytePointer), compare_first_dword);
             }
         }
     }
