@@ -66,13 +66,6 @@ void _TRaP_qsort(void *, size_t, size_t,
 // Base class for APIImpl subclasses to inherit from
 class RANDO_SECTION APIBase {
 public:
-    template<typename To, typename From>
-    static inline RANDO_SECTION To assert_cast(From x) {
-        RANDO_ASSERT(static_cast<From>(static_cast<To>(x)) == x &&
-                     "Value for cast does not fit in target type");
-        return static_cast<To>(x);
-    }
-
     // C library functions
     static inline void qsort(void* base, size_t num, size_t size,
                              int(*cmp)(const void*, const void*)) {
@@ -119,6 +112,13 @@ public:
         // FIXME: this should use std::forward, but can we pull in <utility>???
         if (level <= debug_level)
             debug_printf_impl(args...);
+    }
+
+    template<typename To, typename From>
+    static inline RANDO_SECTION To assert_cast(From x) {
+        RANDO_ASSERT(static_cast<From>(static_cast<To>(x)) == x &&
+                     "Value for cast does not fit in target type");
+        return static_cast<To>(x);
     }
 
     // Explicitly list functions inherited from APIImpl, so compilation fails if they're missing
@@ -260,12 +260,12 @@ protected:
         // Helper functions for the arch-specific code
         template<typename T>
         void set_u32(T x) {
-            *reinterpret_cast<uint32_t*>(m_src_ptr) = assert_cast<uint32_t>(x);
+            *reinterpret_cast<uint32_t*>(m_src_ptr) = API::assert_cast<uint32_t>(x);
         }
 
         template<typename T>
         void set_u64(T x) {
-            *reinterpret_cast<uint64_t*>(m_src_ptr) = assert_cast<uint64_t>(x);
+            *reinterpret_cast<uint64_t*>(m_src_ptr) = API::assert_cast<uint64_t>(x);
         }
 
         template<typename T>
