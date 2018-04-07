@@ -112,7 +112,7 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         break;
     case R_X86_64_GOT64:
     case R_X86_64_GOTOFF64:
-        set_u64(new_target - m_module.get_got_ptr());
+        set_i64(new_target - m_module.get_got_ptr());
         break;
     case R_X86_64_GOTPCREL:
     case 41: // R_X86_64_GOTPCRELX
@@ -128,12 +128,12 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         if (is_patched_tls_get_addr_call(m_src_ptr))
             break;
     pcrel_reloc:
-        set_u32(new_target + m_addend - m_src_ptr);
+        set_i32(new_target + m_addend - m_src_ptr);
         break;
     case R_X86_64_PC64:
     case R_X86_64_GOTPCREL64:
     case R_X86_64_GOTPC64:
-        set_u64(new_target + m_addend - m_src_ptr);
+        set_i64(new_target + m_addend - m_src_ptr);
         break;
     case R_X86_64_TLSGD:
     case R_X86_64_TLSLD:

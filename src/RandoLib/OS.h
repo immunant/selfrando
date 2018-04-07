@@ -259,6 +259,16 @@ protected:
 
         // Helper functions for the arch-specific code
         template<typename T>
+        void set_i32(T x) {
+            *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(x);
+        }
+
+        template<typename T>
+        void set_i64(T x) {
+            *reinterpret_cast<int64_t*>(m_src_ptr) = API::assert_cast<int64_t>(x);
+        }
+
+        template<typename T>
         void set_u32(T x) {
             *reinterpret_cast<uint32_t*>(m_src_ptr) = API::assert_cast<uint32_t>(x);
         }
