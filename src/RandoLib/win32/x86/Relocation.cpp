@@ -30,10 +30,10 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     switch(m_type) {
     case IMAGE_REL_I386_DIR32:
     case IMAGE_REL_I386_DIR32NB:
-        *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        set_p32(new_target);
         break;
     case IMAGE_REL_I386_REL32:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t)));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t)));
         break;
     default:
         RANDO_ASSERT(false);

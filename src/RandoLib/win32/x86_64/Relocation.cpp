@@ -40,28 +40,28 @@ os::BytePointer os::Module::Relocation::get_target_ptr() const {
 void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
     switch (m_type) {
     case IMAGE_REL_AMD64_ADDR64:
-        *reinterpret_cast<uint64_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
+        set_p64(new_target);
         break;
     case IMAGE_REL_AMD64_ADDR32NB:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - reinterpret_cast<os::BytePointer>(m_module.m_handle));
+        set_i32(new_target - reinterpret_cast<os::BytePointer>(m_module.m_handle));
         break;
     case IMAGE_REL_AMD64_REL32:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t)));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t)));
         break;
     case IMAGE_REL_AMD64_REL32_1:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t) + 1));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t) + 1));
         break;
     case IMAGE_REL_AMD64_REL32_2:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t) + 2));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t) + 2));
         break;
     case IMAGE_REL_AMD64_REL32_3:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t) + 3));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t) + 3));
         break;
     case IMAGE_REL_AMD64_REL32_4:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t) + 4));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t) + 4));
         break;
     case IMAGE_REL_AMD64_REL32_5:
-        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t) + 5));
+        set_i32(new_target - (m_src_ptr + sizeof(int32_t) + 5));
         break;
     default:
         RANDO_ASSERT(false);
