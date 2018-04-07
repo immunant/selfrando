@@ -33,8 +33,7 @@ void os::Module::Relocation::set_target_ptr(os::BytePointer new_target) {
         *reinterpret_cast<uint32_t*>(m_src_ptr) = reinterpret_cast<uintptr_t>(new_target);
         break;
     case IMAGE_REL_I386_REL32:
-        // FIXME: check for overflow here???
-        *reinterpret_cast<int32_t*>(m_src_ptr) = static_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t)));
+        *reinterpret_cast<int32_t*>(m_src_ptr) = API::assert_cast<int32_t>(new_target - (m_src_ptr + sizeof(int32_t)));
         break;
     default:
         RANDO_ASSERT(false);

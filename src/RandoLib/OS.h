@@ -66,6 +66,13 @@ void _TRaP_qsort(void *, size_t, size_t,
 // Base class for APIImpl subclasses to inherit from
 class RANDO_SECTION APIBase {
 public:
+    template<typename To, typename From>
+    static inline RANDO_SECTION To assert_cast(From x) {
+        RANDO_ASSERT(static_cast<From>(static_cast<To>(x)) == x &&
+                     "Value for cast does not fit in target type");
+        return static_cast<To>(x);
+    }
+
     // C library functions
     static inline void qsort(void* base, size_t num, size_t size,
                              int(*cmp)(const void*, const void*)) {
@@ -203,9 +210,11 @@ protected:
                           other.template to_ptr<uintptr_t>();
         }
 
+        // FIXME: we should use trap_address_t here, but it's not available
+        template<typename TrapAddress>
         static inline RANDO_SECTION
-        Address from_trap(const Module &mod, uintptr_t addr) {
-            return Address(mod, addr, AddressSpace::TRAP);
+        Address from_trap(const Module &mod, TrapAddress addr) {
+            return Address(mod, API::assert_cast<uintptr_t>(addr), AddressSpace::TRAP);
         }
 
     protected:
@@ -251,13 +260,12 @@ protected:
         // Helper functions for the arch-specific code
         template<typename T>
         void set_u32(T x) {
-            // FIXME: check for overflow in narrowing static_cast
-            *reinterpret_cast<uint32_t*>(m_src_ptr) = static_cast<uint32_t>(x);
+            *reinterpret_cast<uint32_t*>(m_src_ptr) = assert_cast<uint32_t>(x);
         }
 
         template<typename T>
         void set_u64(T x) {
-            *reinterpret_cast<uint64_t*>(m_src_ptr) = static_cast<uint64_t>(x);
+            *reinterpret_cast<uint64_t*>(m_src_ptr) = assert_cast<uint64_t>(x);
         }
 
         template<typename T>

@@ -540,7 +540,7 @@ RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {
     auto old_perms = API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), PagePermissions::RW);
     // FIXME: it would be nice if we had somewhere else to put this, to avoid the copy-on-write
     // LoaderFlags works for now, because it's an obsolete flag (always set to zero)
-    m_nt_hdr->OptionalHeader.LoaderFlags = static_cast<DWORD>(state);
+    m_nt_hdr->OptionalHeader.LoaderFlags = API::assert_cast<DWORD>(state);
     API::mprotect(m_nt_hdr, sizeof(*m_nt_hdr), old_perms);
 }
 
@@ -693,8 +693,8 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     // Patch the entry loop jump
     // FIXME: this is x86-specific
     relocate_rva(&m_info->original_entry_rva, functions, false);
-    BytePointer new_entry = RVA2Address(m_info->original_entry_rva).to_ptr();
-    *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = new_entry - (m_info->entry_loop + 5);
+    BytePointer new_entry = RVA2Address(API::assert_cast<DWORD>(m_info->original_entry_rva)).to_ptr();
+    *reinterpret_cast<int32_t*>(m_info->entry_loop + 1) = API::assert_cast<int32_t>(new_entry - (m_info->entry_loop + 5));
     API::debug_printf<1>("New program entry:%p\n", new_entry);
 
     // Fix up relocations

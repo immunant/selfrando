@@ -94,7 +94,8 @@ public:
         }
 
         Relocation(const os::Module &mod, const trap_reloc_t &reloc)
-            : RelocationBase(mod, Address::from_trap(mod, reloc.address).to_ptr(), reloc.type) {
+            : RelocationBase(mod, Address::from_trap(mod, reloc.address).to_ptr(),
+                             API::assert_cast<DWORD>(reloc.type)) {
         }
 
         BytePointer get_target_ptr() const;
@@ -129,8 +130,7 @@ public:
             full_addr++;
 
         auto new_rva = full_addr - reinterpret_cast<uintptr_t>(m_handle);
-        RANDO_ASSERT(static_cast<T>(new_rva) == new_rva);
-        *rva = static_cast<T>(new_rva);
+        *rva = API::assert_cast<T>(new_rva);
     }
 
     class RANDO_SECTION Section : public SectionBase<Address> {

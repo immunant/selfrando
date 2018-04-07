@@ -225,7 +225,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                 if (m_trap_info.header()->has_symbol_size()) {
                     RANDO_ASSERT(sym.size > 0);
                     new_func.has_size = true;
-                    new_func.size = sym.size;
+                    new_func.size = os::API::assert_cast<size_t>(sym.size);
 
                     // Add a gap function for what comes after this sized symbol
                     Function gap_func = {};
@@ -249,7 +249,7 @@ void ExecSectionProcessor::IterateTrapFunctions(FunctionPredicate pred) {
                     os::Module::Address::from_trap(m_module, trap_entry.padding_address()).to_ptr();
                 new_func.undiv_p2align = 0;
                 new_func.has_size = true;
-                new_func.size = trap_entry.padding_size;
+                new_func.size = os::API::assert_cast<size_t>(trap_entry.padding_size);
                 pred(new_func);
 
                 // Add a gap function for what comes after the padding
@@ -370,7 +370,7 @@ static inline RANDO_SECTION void patch_trampoline(os::BytePointer at, os::BytePo
     *at++ = 0xFF;
     *at++ = 0xE9; // JMP <pcrel>
     auto call_delta_ptr = reinterpret_cast<int32_t*>(at);
-    *call_delta_ptr = static_cast<int32_t>(to - (at + 4));
+    *call_delta_ptr = os::API::assert_cast<int32_t>(to - (at + 4));
 }
 
 void ExecSectionProcessor::layout_code() {
