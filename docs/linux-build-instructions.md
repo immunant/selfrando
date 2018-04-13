@@ -37,7 +37,7 @@ $ cd $PATH_TO_SELFRANDO_SRC
 $ export SR_ARCH=`uname -m | sed s/i686/x86/`
 $ cmake . -DBUILD_SHARED_LIBS=1 \
   -DSR_DEBUG_LEVEL=env -DCMAKE_BUILD_TYPE=Release -DSR_BUILD_LIBELF=1 \
-  -DSR_ARCH=$SR_ARCH -DSR_LOG=console -DSR_RNG=rand_r \
+  -DSR_ARCH=$SR_ARCH -DSR_LOG=console \
   -DSR_FORCE_INPLACE=1 -G "Unix Makefiles" \
   -DCMAKE_INSTALL_PREFIX:PATH=$PWD/out/$SR_ARCH
 $ make -j`nprocs --all`
