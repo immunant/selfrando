@@ -4,6 +4,11 @@
 TrappedMSVCLibs/
 libelf
 
+## build artefacts
+**/CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+
 # Machine-specific files
 scripts/set-buildvars*
 scripts/Traplinker*.props
