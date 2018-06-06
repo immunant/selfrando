@@ -54,7 +54,10 @@
 -dT             ignore_long_arg_with_value
 -default-script ignore_long_arg_with_value
 
-
+--help           ignore_arg_disable_rando
+--target-help    ignore_arg_disable_rando
+--version        ignore_arg_disable_rando
+// TODO: also disable randomization on -V???
 
 // Gold specific options
 -debug          ignore_long_arg_with_value

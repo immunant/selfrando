@@ -162,6 +162,10 @@ private:
     int ignore_long_arg_with_value(int i, const std::string &arg_key);
     int ignore_arg_with_optional_value(int i, const std::string &arg_key);
 
+    // Argument to pass to linker, but that also disables randomization,
+    // e.g., --help or --version
+    int ignore_arg_disable_rando(int i, const std::string &arg_key);
+
     int m_argc;
     char **m_argv;
 
@@ -1311,6 +1315,12 @@ int ArgParser::ignore_arg_with_optional_value(int i, const std::string &arg_key)
             return 1;
         }
     }
+}
+
+int ArgParser::ignore_arg_disable_rando(int i, const std::string &arg_key) {
+    m_args.emplace_back(m_argv+i, 1);
+    m_enabled = false;
+    return 0;
 }
 
 ArgParser::LibResult ArgParser::find_library(std::string &lib_name, std::string &full_path) {

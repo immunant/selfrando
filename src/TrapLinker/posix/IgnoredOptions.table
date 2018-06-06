@@ -6,7 +6,6 @@
 -O ignore_short_arg_with_value
 -I ignore_short_arg_with_value
 -no-add-needed ignore_arg
--target-help ignore_arg
 -V ignore_arg
 -S ignore_arg
 -R ignore_short_arg_with_value
@@ -90,7 +89,6 @@
 -section-start ignore_long_arg_with_value
 -mri-script ignore_long_arg_with_value
 -strip-debug ignore_arg
--version ignore_arg
 -add-needed ignore_arg
 -sysroot ignore_long_arg_with_value
 -discard-none ignore_arg
@@ -124,7 +122,6 @@
 -default-symver ignore_arg
 -Bsymbolic ignore_arg
 -dynamic-list ignore_long_arg_with_value
--help ignore_arg
 -Qy ignore_arg
 -discard-all ignore_arg
 -soname ignore_long_arg_with_value
