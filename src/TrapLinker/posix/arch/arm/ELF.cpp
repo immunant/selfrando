@@ -99,6 +99,14 @@ ElfObject::DataBuffer ARMTrampolineBuilder::create_trampoline_data(
     return ElfObject::DataBuffer(tramp_data, 4);
 }
 
+// Older versions of elf.h do not have these
+#ifndef R_ARM_JUMP24
+#define R_ARM_JUMP24        29
+#endif
+#ifndef R_ARM_THM_JUMP24
+#define R_ARM_THM_JUMP24    30
+#endif
+
 void ARMTrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
                                      GElf_Addr trampoline_offset) {
     if (trampoline_offset & 1) {
@@ -186,54 +194,54 @@ Elf_Offset ARMTargetOps::read_reloc(char* data, ElfReloc &reloc) {
 
     switch (reloc.type) {
     // Static 32-bit data relocs
-    case R_ARM_ABS32:
-    case R_ARM_REL32:
-    case R_ARM_SBREL32:
-    case R_ARM_AMP_VCALL9: // aka R_ARM_BREL_ADJ
-    case R_ARM_TLS_DESC:
-    case R_ARM_TLS_DTPMOD32:
-    case R_ARM_TLS_DTPOFF32:
-    case R_ARM_TLS_TPOFF32:
-    case R_ARM_GLOB_DAT:
-    case R_ARM_JUMP_SLOT:
-    case R_ARM_RELATIVE:
-    case R_ARM_GOTOFF: // aka R_ARM_GOTOFF32
-    case R_ARM_GOTPC: // aka R_ARM_BASE_PREL
-    case R_ARM_BASE_ABS:
-    case R_ARM_ABS32_NOI:
-    case R_ARM_REL32_NOI:
-    case R_ARM_TLS_GOTDESC:
-    case R_ARM_PLT32_ABS:
-    case R_ARM_GOT_ABS:
-    case R_ARM_GOT_PREL:
-    case R_ARM_GNU_VTENTRY:
-    case R_ARM_GNU_VTINHERIT:
-    case R_ARM_TLS_GD32:
-    case R_ARM_TLS_LDM32:
-    case R_ARM_TLS_LDO32:
-    case R_ARM_TLS_IE32:
-    case R_ARM_TLS_LE32:
-    case R_ARM_TARGET1:
-    case R_ARM_TARGET2:
+    case   2: // R_ARM_ABS32
+    case   3: // R_ARM_REL32
+    case   9: // R_ARM_SBREL32
+    case  12: // R_ARM_AMP_VCALL9 // aka R_ARM_BREL_ADJ
+    case  13: // R_ARM_TLS_DESC
+    case  17: // R_ARM_TLS_DTPMOD32
+    case  18: // R_ARM_TLS_DTPOFF32
+    case  19: // R_ARM_TLS_TPOFF32
+    case  21: // R_ARM_GLOB_DAT
+    case  22: // R_ARM_JUMP_SLOT
+    case  23: // R_ARM_RELATIVE
+    case  24: // R_ARM_GOTOFF // aka R_ARM_GOTOFF32
+    case  25: // R_ARM_GOTPC // aka R_ARM_BASE_PREL
+    case  31: // R_ARM_BASE_ABS
+    case  38: // R_ARM_TARGET1
+    case  41: // R_ARM_TARGET2
+    case  55: // R_ARM_ABS32_NOI
+    case  56: // R_ARM_REL32_NOI
+    case  90: // R_ARM_TLS_GOTDESC
+    case  94: // R_ARM_PLT32_ABS
+    case  95: // R_ARM_GOT_ABS
+    case  96: // R_ARM_GOT_PREL
+    case 100: // R_ARM_GNU_VTENTRY
+    case 101: // R_ARM_GNU_VTINHERIT
+    case 104: // R_ARM_TLS_GD32
+    case 105: // R_ARM_TLS_LDM32
+    case 106: // R_ARM_TLS_LDO32
+    case 107: // R_ARM_TLS_IE32
+    case 108: // R_ARM_TLS_LE32
         return *reinterpret_cast<int32_t*>(data);
 
      // Other data relocs
-    case R_ARM_ABS16:
+    case 5:   // R_ARM_ABS16
         return *reinterpret_cast<int16_t*>(data);
-    case R_ARM_ABS8:
+    case 8:   // R_ARM_ABS8
         return *reinterpret_cast<int8_t*>(data);
-    case R_ARM_PREL31:
+    case 42:  // R_ARM_PREL31
         return signextend<Elf_Offset, 31>(*reinterpret_cast<uint32_t*>(data));
 
     // Some code relocs that need an addend
-    case R_ARM_MOVW_ABS_NC:
-    case R_ARM_MOVT_ABS:
+    case 43:  // R_ARM_MOVW_ABS_NC
+    case 44:  // R_ARM_MOVT_ABS
         return signextend<Elf_Offset, 16>(
             ((value >> 4) & 0xf000) |
             (value & 0xfff));
 
-    case R_ARM_THM_MOVW_ABS_NC:
-    case R_ARM_THM_MOVT_ABS:
+    case 47:  // R_ARM_THM_MOVW_ABS_NC
+    case 48:  // R_ARM_THM_MOVT_ABS
         return signextend<Elf_Offset, 16>(
             ((value << 12) & 0xf000) |
             ((value << 1) & 0x800) |
