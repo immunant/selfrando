@@ -10,19 +10,26 @@ EXTRA_OECMAKE = " \
     -DSR_LOG=console \
 "
 
+def map_selfrando_arch(bb, d, arch_var):
+    a = d.getVar(arch_var)
+    if a.startswith("aarch64"):
+        return "arm64"
+    else:
+        return a
+
 EXTRA_OECMAKE_append_class-native = " \
     -DSR_BUILD_MODULES="TrapLinker;TrapDump" \
-    -DSR_ARCH=${BUILD_ARCH} \
+    -DSR_ARCH=${@map_selfrando_arch(bb, d, "BUILD_ARCH")} \
 "
 
 EXTRA_OECMAKE_append_class-nativesdk = " \
     -DSR_BUILD_MODULES="TrapLinker;TrapDump" \
-    -DSR_ARCH=${BUILD_ARCH} \
+    -DSR_ARCH=${@map_selfrando_arch(bb, d, "BUILD_ARCH")} \
 "
 
 EXTRA_OECMAKE_append_class-target = " \
     -DSR_BUILD_MODULES="TrapLinker;TrapDump;RandoLib" \
-    -DSR_ARCH=${TARGET_ARCH} \
+    -DSR_ARCH=${@map_selfrando_arch(bb, d, "TARGET_ARCH")} \
     -DBUILD_SHARED_LIBS=1 \
 "
 
