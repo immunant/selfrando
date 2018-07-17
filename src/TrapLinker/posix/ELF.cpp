@@ -24,12 +24,7 @@ static const char kArPathVariable[] = "SELFRANDO_ORIGINAL_AR";
 extern TargetOps *x86_ops;
 extern TargetOps *x86_64_ops;
 extern TargetOps *arm_ops;
-#if 0
-// FIXME: disabled for now, do not compile successfully
 extern TargetOps *arm64_ops;
-#else
-static TargetOps *arm64_ops = nullptr;
-#endif
 
 #ifdef EM_AARCH64
 static_assert(EM_AARCH64 == 183, "Invalid value for EM_AARCH64");
@@ -68,7 +63,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
         .ops             = arm_ops,
         }
     },
-    // AArch4 information
+    // AArch64 information
     // we encode the values numerically here, since
     // old versions of elf.h don't have the #define's
     { 183, {                                 // EM_AARCH64

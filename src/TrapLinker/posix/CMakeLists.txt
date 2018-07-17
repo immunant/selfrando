@@ -12,11 +12,10 @@ if (SR_BUILD_MODULE_TRAPLINKER)
     add_executable(traplinker
         ELF.cpp
         TrapLinker.cpp
-        #FIXME: add them back in when they compile
-        #arch/arm64/ELF.cpp
         arch/x86/ELF.cpp
         arch/x86_64/ELF.cpp
         arch/arm/ELF.cpp
+        arch/arm64/ELF.cpp
         LinkerOptions.inc
         )
 

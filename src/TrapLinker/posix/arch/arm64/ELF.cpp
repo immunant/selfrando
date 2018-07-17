@@ -77,19 +77,19 @@ static TrampolineInstruction kJumpInstruction = {0x14000000};
 ElfObject::DataBuffer ARM64TrampolineBuilder::create_trampoline_data(
     const EntrySymbols &entry_symbols) {
     std::vector<TrampolineInstruction> tramp_data;
-    for (auto &sym_pair : entry_symbols) {
-        auto sym_index = sym_pair.first;
-        m_trampoline_offsets[sym_index] = tramp_data.size()*sizeof(TrampolineInstruction);
+    for (auto &sym : entry_symbols) {
+        m_trampoline_offsets[sym] = tramp_data.size()*sizeof(TrampolineInstruction);
         tramp_data.push_back(kJumpInstruction);
     }
 
     return ElfObject::DataBuffer(tramp_data, 4);
 }
 
-void ARM64TrampolineBuilder::add_reloc(uint32_t symbol_index, GElf_Addr trampoline_offset) {
-    arm64_ops->add_reloc_to_buffer(m_trampoline_relocs,
-                                   trampoline_offset,
-                                   ELF64_R_INFO(symbol_index, R_AARCH64_JUMP26), nullptr);
+void ARM64TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
+                                       GElf_Addr trampoline_offset) {
+    ElfReloc reloc(trampoline_offset, R_AARCH64_JUMP26, symbol_index, 0);
+    arm64_ops->add_reloc_to_buffer(m_trampoline_relocs, &reloc);
+    assert(reloc.addend == 0 && "Invalid trampoline addend");
 }
 
 size_t ARM64TrampolineBuilder::trampoline_size() const {
@@ -105,10 +105,21 @@ ARM64TargetOps::get_trampoline_builder(ElfObject &object,
     return std::unique_ptr<TrampolineBuilder>{new ARM64TrampolineBuilder(object, symbol_table)};
 }
 
+static std::vector<Elf64_Rela> build_relas(const Elf_RelocBuffer &relocs) {
+    std::vector<Elf64_Rela> relas;
+    for (auto &reloc : relocs) {
+        uint64_t rela_info = ELF64_R_INFO(reloc.symbol.get_final_index(), reloc.type);
+        assert(reloc.offset >= 0 && "Casting negative value to unsigned int");
+        relas.push_back({ static_cast<GElf_Addr>(reloc.offset), rela_info, reloc.addend });
+    }
+    return relas;
+}
+
 Elf_SectionIndex ARM64TargetOps::create_reloc_section(ElfObject &object,
                                                       const std::string &section_name,
                                                       Elf_SectionIndex shndx,
-                                                      Elf_SectionIndex symtab_shndx) {
+                                                      Elf_SectionIndex symtab_shndx,
+                                                      const Elf_RelocBuffer &relocs) {
     // Create a new reloc section
     GElf_Shdr rel_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     rel_header.sh_type = SHT_RELA;
@@ -117,28 +128,23 @@ Elf_SectionIndex ARM64TargetOps::create_reloc_section(ElfObject &object,
     rel_header.sh_link = symtab_shndx;
     rel_header.sh_info = shndx;
     rel_header.sh_addralign = sizeof(uint64_t);
+    std::vector<Elf64_Rela> relas = build_relas(relocs);
     return object.add_section(".rela" + section_name, &rel_header,
-                              ElfObject::DataBuffer::get_empty_buffer(),
+                              ElfObject::DataBuffer(relas, sizeof(uint64_t)),
                               ELF_T_RELA);
 }
 
-void ARM64TargetOps::add_reloc_to_buffer(Elf_RelocBuffer &buffer,
-                                         GElf_Addr r_offset, GElf_Addr r_info, Elf_Offset *r_addend) {
-    Elf64_Rela reloc = {r_offset, r_info, 0};
-    if (r_addend != nullptr) {
-        reloc.r_addend = *r_addend;
-        *r_addend = 0;
-    }
-    buffer.insert(buffer.end(),
-                  reinterpret_cast<char*>(&reloc),
-                  reinterpret_cast<char*>(&reloc) + sizeof(reloc));
+void ARM64TargetOps::add_reloc_to_buffer(Elf_RelocBuffer &buffer, ElfReloc *reloc) {
+    buffer.push_back(*reloc);
+    reloc->addend = 0;
 }
 
 
-void ARM64TargetOps::add_reloc_buffer_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
-                                                 const Elf_RelocBuffer &relocs) {
-    object.add_data(reloc_shndx, const_cast<char*>(relocs.data()),
-                    relocs.size(), sizeof(uint64_t), ELF_T_RELA);
+void ARM64TargetOps::add_relocs_to_section(ElfObject &object, Elf_SectionIndex reloc_shndx,
+                                           const Elf_RelocBuffer &relocs) {
+    std::vector<Elf64_Rela> relas = build_relas(relocs);
+    object.add_data(reloc_shndx, reinterpret_cast<char*>(relas.data()),
+                    relas.size() * sizeof(Elf64_Rela), sizeof(uint64_t), ELF_T_RELA);
 }
 
 bool ARM64TargetOps::check_rel_for_stubs(ElfObject &object, GElf_Rel *relocation, ptrdiff_t addend,
@@ -155,8 +161,8 @@ bool ARM64TargetOps::check_rela_for_stubs(ElfObject &object, GElf_Rela *relocati
         auto r_sym = GELF_R_SYM(relocation->r_info);
         auto old_r_offset = relocation->r_offset;
         // TODO: we can optimize size here by de-duplicating stubs
-        TargetOff stub_offset = object.add_data(shndx, reinterpret_cast<void*>(&kJumpInstruction),
-                                                sizeof(kJumpInstruction), 4);
+        auto stub_offset = object.add_data(shndx, reinterpret_cast<void*>(&kJumpInstruction),
+                                           sizeof(kJumpInstruction), 4);
         relocation->r_offset = stub_offset;
         relocation->r_info = ELF64_R_INFO(r_sym, R_AARCH64_JUMP26);
 
@@ -175,6 +181,6 @@ bool ARM64TargetOps::check_rela_for_stubs(ElfObject &object, GElf_Rela *relocati
 }
 
 // TODO: Implement any weird code relocs
-Elf_Offset ARM64TargetOps::read_reloc(char* data, TrapReloc &reloc) {
+Elf_Offset ARM64TargetOps::read_reloc(char* data, ElfReloc &reloc) {
   return *reinterpret_cast<Elf_Offset*>(data);
 }
