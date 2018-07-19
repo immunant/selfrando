@@ -17,6 +17,8 @@ struct Function;
 #ifdef __cplusplus
 #include <utility>
 
+#include "util/hashmap.h"
+
 namespace os {
 
 extern "C" {
@@ -199,7 +201,7 @@ private:
     bool m_dynamic_has_base;
 
     Vector<ArchReloc> m_arch_relocs;
-    Vector<BytePointer> m_got_entries;
+    hashmap::HashMap<hashmap::PointerEntry<BytePointer>> m_got_entries;
     size_t m_linker_stubs;
 };
 

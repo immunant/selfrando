@@ -430,6 +430,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
 
 RANDO_SECTION Module::~Module() {
     m_arch_relocs.free();
+    m_got_entries.clear();
 }
 
 RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {
@@ -576,9 +577,9 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     }
 
     // Apply relocations to known GOT entries
-    for (size_t i = 0; i < m_got_entries.num_elems; i++) {
-        API::debug_printf<5>("GOT entry@%p\n", m_got_entries.elems[i]);
-        Relocation reloc(*this, m_got_entries.elems[i],
+    for (auto &ge : m_got_entries) {
+        API::debug_printf<5>("GOT entry@%p\n", ge.key());
+        Relocation reloc(*this, ge.key(),
                          Relocation::get_pointer_reloc_type());
         functions->adjust_relocation(&reloc);
     }
@@ -682,30 +683,14 @@ RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(BytePointer address_ptr
 }
 
 RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
-    if (m_got_entries.num_elems > 0)
-        m_got_entries.free();
-
     trap_info->for_all_relocations([this] (const trap_reloc_t &trap_reloc) {
         auto reloc = os::Module::Relocation(*this, trap_reloc);
         auto got_entry = reloc.get_got_entry();
         if (got_entry != nullptr)
-            m_got_entries.append(got_entry);
+            m_got_entries.insert(got_entry);
     });
-    os::API::debug_printf<1>("GOT relocations found: %d\n", m_got_entries.num_elems);
-    if (m_got_entries.num_elems == 0)
-        return;
-
-    // Sort and eliminate duplicates
-    m_got_entries.sort([] (const void *pa, const void *pb) {
-        auto *a = reinterpret_cast<const BytePointer*>(pa);
-        auto *b = reinterpret_cast<const BytePointer*>(pb);
-        return (*a < *b) ? -1 : ((*a == *b) ? 0 : 1);
-    });
-    m_got_entries.remove_if([this] (size_t idx) {
-        return idx > 0 && m_got_entries.elems[idx] == m_got_entries.elems[idx - 1];
-    });
-    os::API::debug_printf<1>("Final GOT relocations: %d\n",
-                             m_got_entries.num_elems);
+    os::API::debug_printf<1>("GOT relocations found: %d\n",
+                             m_got_entries.elements());
 }
 
 }
