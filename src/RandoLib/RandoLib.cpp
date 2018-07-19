@@ -353,11 +353,9 @@ void ExecSectionProcessor::shuffle_functions() {
     for (size_t i = 0; i < m_functions.num_elems - 1; i++) {
         // Pick shuffled_order[i] at random from the remaining elements
         auto j = skip_shuffle ? 0 : os::API::random(m_functions.num_elems - i);
-        if (j == 0) {
-            continue;
+        if (j > 0) {
+            os::API::swap(m_shuffled_order[i], m_shuffled_order[i + j]);
         }
-        // Swap [i] with [i + j]
-        os::API::swap(m_shuffled_order[i], m_shuffled_order[i + j]);
     }
 }
 
