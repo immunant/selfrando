@@ -133,7 +133,7 @@ public:
         }
 
         bool operator==(const Iterator &other) {
-            return &map == &other.map && idx == other.idx;
+            return &map.elems[idx] == &other.map.elems[other.idx];
         }
 
         bool operator!=(const Iterator &other) {
