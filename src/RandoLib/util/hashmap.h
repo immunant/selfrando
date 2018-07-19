@@ -41,6 +41,8 @@ public:
 
     void clear() {
         if (elems != nullptr) {
+            for (size_t i = 0; i < capacity(); i++)
+                elems[i].~T(); // Call the destructor for each element
             os::API::mem_free(elems);
             elems = nullptr;
         }

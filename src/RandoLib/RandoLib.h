@@ -103,8 +103,11 @@ struct RANDO_SECTION Vector {
     Vector &operator=(const Vector&&) = delete;
 
     void clear() {
-        if (elems != nullptr)
+        if (elems != nullptr) {
+            for (size_t i = 0; i < num_elems; i++)
+                elems[i].~T(); // Call the destructor for each initialized element
             os::API::mem_free(elems);
+        }
         elems = nullptr;
         num_elems = 0;
         capacity = 0;
