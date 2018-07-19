@@ -166,7 +166,7 @@ private:
 
     size_t elem_distance(size_t idx) const {
         auto elem_pos = T::key_hash(elems[idx].key()) & cap_mask;
-        return (idx + cap_mask - elem_pos) & cap_mask;
+        return (idx + capacity() - elem_pos) & cap_mask;
     }
 
     static constexpr size_t DEFAULT_CAPACITY = 16;
