@@ -71,6 +71,18 @@ public:
                              int(*cmp)(const void*, const void*)) {
         _TRaP_qsort(base, num, size, cmp);
     }
+
+    // Our own implementation of std::swap() that does basically the same
+    // thing, without relying on C++ headers
+    template<typename T>
+    static inline void swap(T &a, T &b) {
+        // We can't use std::move(), so we manually do what it does internally
+        // FIXME: if our compiler is too old and doesn't do rvalue-references,
+        // fall back to regular assigment
+        T tmp = static_cast<T&&>(a);
+        a = static_cast<T&&>(b);
+        b = static_cast<T&&>(tmp);
+    }
 };
 
 }

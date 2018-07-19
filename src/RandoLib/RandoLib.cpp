@@ -357,9 +357,7 @@ void ExecSectionProcessor::shuffle_functions() {
             continue;
         }
         // Swap [i] with [i + j]
-        auto t = m_shuffled_order[i + j];
-        m_shuffled_order[i + j] = m_shuffled_order[i];
-        m_shuffled_order[i] = t; // Past this point, t stays in shuffled_order[i]
+        os::API::swap(m_shuffled_order[i], m_shuffled_order[i + j]);
     }
 }
 
