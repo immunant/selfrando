@@ -102,7 +102,7 @@ struct RANDO_SECTION Vector {
     Vector &operator=(const Vector&) = delete;
     Vector &operator=(const Vector&&) = delete;
 
-    void free() {
+    void clear() {
         if (elems != nullptr)
             os::API::mem_free(elems);
         elems = nullptr;

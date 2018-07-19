@@ -163,7 +163,7 @@ public:
         }
         if (m_shuffled_order != nullptr)
             os::API::mem_free(m_shuffled_order);
-        m_functions.free();
+        m_functions.clear();
     }
 
 private:

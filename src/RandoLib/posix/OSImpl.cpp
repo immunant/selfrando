@@ -429,7 +429,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
 }
 
 RANDO_SECTION Module::~Module() {
-    m_arch_relocs.free();
+    m_arch_relocs.clear();
     m_got_entries.clear();
 }
 
