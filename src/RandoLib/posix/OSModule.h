@@ -203,6 +203,83 @@ private:
     Vector<ArchReloc> m_arch_relocs;
     hashmap::HashMap<hashmap::PointerEntry<BytePointer>> m_got_entries;
     size_t m_linker_stubs;
+
+#ifdef RANDOLIB_IS_ARM64
+    // Things are tricky on ARM64: we have a bunch of relocations that
+    // only give us part of the address of each GOT entry,
+    // e.g., R_AARCH64_ADR_GOT_PAGE, so we need to incrementally build
+    // the full GOT entry addresses from the components. We keep the
+    // partial components in this structure, which is a HashMap entry
+    // keyed by the address S of the symbol, and is used to build the
+    // corresponding G(GDAT(S+A)) value.
+    class ARM64GOTEntry : public hashmap::PointerEntry<BytePointer> {
+    private:
+        enum Flags {
+            FLAG_EMITTED       = 0x01,
+            FLAG_HAS_G0        = 0x02,
+            FLAG_HAS_G1        = 0x04,
+            FLAG_HAS_G2        = 0x08,
+            FLAG_HAS_G3        = 0x10,
+            FLAG_HAS_PAGE_HI21 = 0x20,
+            FLAG_HAS_PAGE_LO12 = 0x40,
+
+            FLAG_HAS_ALL_GROUPS = FLAG_HAS_G0 | FLAG_HAS_G1 |
+                                  FLAG_HAS_G2 | FLAG_HAS_G3,
+            FLAG_HAS_ALL_PAGE   = FLAG_HAS_PAGE_HI21 | FLAG_HAS_PAGE_LO12,
+        };
+
+        uint64_t m_got_group_x = 0;
+        int64_t m_got_page_x = 0;
+        uint8_t m_flags = 0;
+
+    public:
+        ARM64GOTEntry()
+            : hashmap::PointerEntry<BytePointer>() { }
+        ARM64GOTEntry(BytePointer key)
+            : hashmap::PointerEntry<BytePointer>(key) { }
+
+        bool emitted() const {
+            return (m_flags & FLAG_EMITTED) != 0;
+        }
+
+        void set_emitted() {
+            m_flags |= FLAG_EMITTED;
+        }
+
+        bool has_all_groups() {
+            return (m_flags & FLAG_HAS_ALL_GROUPS) == FLAG_HAS_ALL_GROUPS;
+        }
+
+        bool has_all_page() {
+            return (m_flags & FLAG_HAS_ALL_PAGE) == FLAG_HAS_ALL_PAGE;
+        }
+
+        uint64_t got_group_x() const {
+            return m_got_group_x;
+        }
+
+        int64_t got_page_x() const {
+            return m_got_page_x;
+        }
+
+        void set_group(uint64_t grp, size_t idx) {
+            RANDO_ASSERT(idx < 4);
+            m_got_group_x |= (grp & 0xffff) << (16 * idx);
+            m_flags |= (FLAG_HAS_G0 << idx);
+        }
+
+        void set_page_hi(int32_t hi) {
+            m_got_page_x |= (hi << 12);
+            m_flags |= FLAG_HAS_PAGE_HI21;
+        }
+
+        void set_page_lo(int32_t lo) {
+            m_got_page_x |= (lo & 0xfff);
+            m_flags |= FLAG_HAS_PAGE_LO12;
+        }
+    };
+    mutable hashmap::HashMap<ARM64GOTEntry> m_arm64_got_entries;
+#endif
 };
 
 } // namespace os

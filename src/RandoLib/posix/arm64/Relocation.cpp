@@ -345,13 +345,95 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     }
 }
 
+// See discussion in OSModule.h
 BytePointer Module::Relocation::get_got_entry() const {
     auto at_ptr = m_src_ptr;
+    hashmap::HashMap<os::Module::ARM64GOTEntry>::InsertResult ir;
     switch(m_type) {
-    // TODO: handle arch GOT relocations
+    case R_AARCH64_MOVW_GOTOFF_G0:
+    case R_AARCH64_MOVW_GOTOFF_G0_NC:
+    case R_AARCH64_MOVW_GOTOFF_G1:
+    case R_AARCH64_MOVW_GOTOFF_G1_NC:
+    case R_AARCH64_MOVW_GOTOFF_G2:
+    case R_AARCH64_MOVW_GOTOFF_G2_NC:
+    case R_AARCH64_MOVW_GOTOFF_G3:
+    case R_AARCH64_GOT_LD_PREL19:
+    case R_AARCH64_LD64_GOTOFF_LO15:
+    case R_AARCH64_ADR_GOT_PAGE:
+    case R_AARCH64_LD64_GOT_LO12_NC:
+    case R_AARCH64_LD64_GOTPAGE_LO15:
+        RANDO_ASSERT(m_has_symbol_ptr);
+        ir = m_module.m_arm64_got_entries.insert(ARM64GOTEntry(m_symbol_ptr));
+        break;
+
     default:
         return nullptr;
     }
+
+    RANDO_ASSERT(ir.at != nullptr);
+    if (ir.at->emitted())
+        return nullptr;
+
+    switch(m_type) {
+    case R_AARCH64_MOVW_GOTOFF_G0:
+    case R_AARCH64_MOVW_GOTOFF_G0_NC:
+        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 0);
+        break;
+
+    case R_AARCH64_MOVW_GOTOFF_G1:
+    case R_AARCH64_MOVW_GOTOFF_G1_NC:
+        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 1);
+        break;
+
+    case R_AARCH64_MOVW_GOTOFF_G2:
+    case R_AARCH64_MOVW_GOTOFF_G2_NC:
+        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 2);
+        break;
+
+    case R_AARCH64_MOVW_GOTOFF_G3:
+        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 3);
+        break;
+
+    case R_AARCH64_GOT_LD_PREL19:
+        ir.at->set_emitted();
+        return m_orig_src_ptr +
+            sign_extend<21>(read_insn_operand(at_ptr, Instruction::LDLIT) << 2);
+
+    case R_AARCH64_LD64_GOTOFF_LO15:
+        ir.at->set_emitted();
+        return m_module.get_got_ptr() +
+            (read_insn_operand(at_ptr, Instruction::LDST) << 3);
+
+    case R_AARCH64_ADR_GOT_PAGE: {
+        auto delta = sign_extend<21>(read_insn_operand(at_ptr, Instruction::ADR));
+        ir.at->set_page_hi(delta);
+        break;
+    }
+
+    case R_AARCH64_LD64_GOT_LO12_NC: {
+        auto delta = read_insn_operand(at_ptr, Instruction::LDST) << 3;
+        RANDO_ASSERT(delta < (1 << 12));
+        ir.at->set_page_lo(delta);
+        break;
+    }
+
+    case R_AARCH64_LD64_GOTPAGE_LO15: {
+        auto delta = read_insn_operand(at_ptr, Instruction::LDST) << 3;
+        auto addr = page_address(m_module.get_got_ptr()) + delta;
+        ir.at->set_emitted();
+        return reinterpret_cast<BytePointer>(addr);
+    }
+    }
+    if (ir.at->has_all_page()) {
+        ir.at->set_emitted();
+        auto addr = page_address(m_module.get_got_ptr()) + ir.at->got_page_x();
+        return reinterpret_cast<BytePointer>(addr);
+    }
+    if (ir.at->has_all_groups()) {
+        ir.at->set_emitted();
+        return m_module.get_got_ptr() + ir.at->got_group_x();
+    }
+    return nullptr;
 }
 
 Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {

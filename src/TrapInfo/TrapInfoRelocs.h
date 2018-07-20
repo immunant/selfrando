@@ -128,8 +128,11 @@ uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
         case 304: // R_AARCH64_MOVW_GOTOFF_G2
         case 305: // R_AARCH64_MOVW_GOTOFF_G2_N
         case 306: // R_AARCH64_MOVW_GOTOFF_G3
+        case 309: // R_AARCH64_GOT_LD_PREL19
+        case 310: // R_AARCH64_LD64_GOTOFF_LO15
         case 311: // R_AARCH64_ADR_GOT_PAGE
         case 312: // R_AARCH64_LD64_GOT_LO12_NC
+        case 313: // R_AARCH64_LD64_GOTPAGE_LO15
             return TRAP_RELOC_SYMBOL;
         };
         return TRAP_RELOC_NONE;
