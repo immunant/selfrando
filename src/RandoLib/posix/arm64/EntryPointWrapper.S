@@ -39,16 +39,16 @@ selfrando_entry:
 
     b selfrando_entry
 
-.globl  selfrando_selfrando_run_and_remove
-.hidden selfrando_selfrando_run_and_remove
-.type   selfrando_selfrando_run_and_remove,%function
+.globl  selfrando_run_and_remove
+.hidden selfrando_run_and_remove
+.type   selfrando_run_and_remove,%function
 selfrando_run_and_remove:
     stp x0, x30, [sp, #-16]!
     bl selfrando_run
     // Fall-through
-.globl  selfrando_selfrando_remove_call
-.hidden selfrando_selfrando_remove_call
-.type   selfrando_selfrando_remove_call,%function
+.globl  selfrando_remove_call
+.hidden selfrando_remove_call
+.type   selfrando_remove_call,%function
 selfrando_remove_call:
     ldp x0, x30, [sp], #16
     ret
