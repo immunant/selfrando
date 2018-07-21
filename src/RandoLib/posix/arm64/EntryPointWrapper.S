@@ -7,9 +7,9 @@
  */
 
 .section .selfrando.entry, "ax", %progbits
-.globl selfrando_init
+.globl  selfrando_init
 .hidden selfrando_init
-.type selfrando_init,%function
+.type   selfrando_init,%function
 selfrando_init:
     // selfrando will patch this to the correct target
     .long 0x14000001
@@ -23,9 +23,9 @@ selfrando_init:
 
     b selfrando_init
 
-.globl selfrando_entry
+.globl  selfrando_entry
 .hidden selfrando_entry
-.type selfrando_entry,%function
+.type   selfrando_entry,%function
 selfrando_entry:
     // selfrando will patch this to the correct target
     .long 0x14000001
@@ -39,9 +39,23 @@ selfrando_entry:
 
     b selfrando_entry
 
-.globl selfrando_return
+.globl  selfrando_selfrando_run_and_remove
+.hidden selfrando_selfrando_run_and_remove
+.type   selfrando_selfrando_run_and_remove,%function
+selfrando_run_and_remove:
+    stp x0, x30, [sp, #-16]!
+    bl selfrando_run
+    // Fall-through
+.globl  selfrando_selfrando_remove_call
+.hidden selfrando_selfrando_remove_call
+.type   selfrando_selfrando_remove_call,%function
+selfrando_remove_call:
+    ldp x0, x30, [sp], #16
+    ret
+
+.globl  selfrando_return
 .hidden selfrando_return
-.type selfrando_return,%function
+.type   selfrando_return,%function
 selfrando_return:
     ret
 
