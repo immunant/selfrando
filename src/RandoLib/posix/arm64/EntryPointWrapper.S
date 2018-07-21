@@ -39,17 +39,15 @@ selfrando_entry:
 
     b selfrando_entry
 
-.globl  selfrando_run_and_remove
-.hidden selfrando_run_and_remove
+.globl  selfrando_run_and_remove, selfrando_remove_call
+.hidden selfrando_run_and_remove, selfrando_remove_call
 .type   selfrando_run_and_remove,%function
 selfrando_run_and_remove:
     stp x0, x30, [sp, #-16]!
     bl selfrando_run
     // Fall-through
-.globl  selfrando_remove_call
-.hidden selfrando_remove_call
-.type   selfrando_remove_call,%function
 selfrando_remove_call:
+    // TODO: add sequence that calls mprotect()
     ldp x0, x30, [sp], #16
     ret
 
