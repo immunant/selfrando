@@ -108,6 +108,13 @@ uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
         case 261: // R_AARCH64_PREL32
             return TRAP_RELOC_ADDEND;
 
+        case 263: // R_AARCH64_MOVW_UABS_G0
+        case 264: // R_AARCH64_MOVW_UABS_G0_NC
+        case 265: // R_AARCH64_MOVW_UABS_G1
+        case 266: // R_AARCH64_MOVW_UABS_G1_NC
+        case 267: // R_AARCH64_MOVW_UABS_G2
+        case 268: // R_AARCH64_MOVW_UABS_G2_NC
+        case 269: // R_AARCH64_MOVW_UABS_G3
         case 275: // R_AARCH64_ADR_PREL_PG_HI21
         case 276: // R_AARCH64_ADR_PREL_PG_HI21_NC
         case 277: // R_AARCH64_ADD_ABS_LO12_NC

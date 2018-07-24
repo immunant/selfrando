@@ -22,6 +22,7 @@ uintptr_t page_address(Value val) {
 
 enum class Instruction : uint32_t {
     MOVW = 0,
+    MOVNZ,
     ADR,
     LDST,
     ADD,
@@ -37,6 +38,10 @@ uint32_t read_insn_operand(BytePointer at_ptr, Instruction insn) {
     switch (insn) {
     case Instruction::MOVW:
         return (insn_value & 0x1fffe0) >> 5;  // 16/5
+    case Instruction::MOVNZ:
+        // TODO: implement
+        RANDO_ASSERT(false);
+        return nullptr;
     case Instruction::ADR:
         // ADR is really weird: the lowest two bits of the result
         // are encoded in bits 29-30 of the instruction
@@ -102,6 +107,13 @@ BytePointer Module::Relocation::get_target_ptr() const {
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_AARCH64_PREL64:
         return at_ptr + *reinterpret_cast<int64_t*>(at_ptr) - m_addend;
+    case R_AARCH64_MOVW_UABS_G0:
+    case R_AARCH64_MOVW_UABS_G0_NC:
+    case R_AARCH64_MOVW_UABS_G1:
+    case R_AARCH64_MOVW_UABS_G1_NC:
+    case R_AARCH64_MOVW_UABS_G2:
+    case R_AARCH64_MOVW_UABS_G2_NC:
+    case R_AARCH64_MOVW_UABS_G3:
     case R_AARCH64_ADR_PREL_PG_HI21:
     case R_AARCH64_ADR_PREL_PG_HI21_NC:
     case R_AARCH64_ADD_ABS_LO12_NC:
@@ -186,7 +198,10 @@ void write_insn_operand(BytePointer at_ptr, Instruction insn,
     new_value >>= shift;
     switch(insn) {
     case Instruction::MOVW:
-        RANDO_ASSERT(false);
+        *insn_ptr &= ~0x1fffe0;
+        *insn_ptr |= (new_value & 0xffff) << 5;
+        break;
+    case Instruction::MOVNZ:
 #if 0 // FIXME: implement this correctly
         *insn_ptr &= ~0x601fffe0;
         if (new_value < 0) {
@@ -197,8 +212,10 @@ void write_insn_operand(BytePointer at_ptr, Instruction insn,
           *insn_ptr |= (0x2 << 29);
         }
         *insn_ptr |= ((new_value >> shift) & 0xffff) << 5;
-        break;
+#else
+	RANDO_ASSERT(false);
 #endif
+        break;
     case Instruction::ADR:
         RANDO_ASSERT_DELTA_SIZE(21, new_value);
         *insn_ptr &= ~0x60ffffe0;
@@ -259,6 +276,21 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         break;
     case R_AARCH64_PREL64:
         *reinterpret_cast<int64_t*>(at_ptr) = static_cast<int64_t>(addend_pcrel_delta);
+        break;
+    case R_AARCH64_MOVW_UABS_G0:
+    case R_AARCH64_MOVW_UABS_G0_NC:
+        write_insn_operand(at_ptr, Instruction::MOVW, reinterpret_cast<uint64_t>(new_target), 0);
+        break;
+    case R_AARCH64_MOVW_UABS_G1:
+    case R_AARCH64_MOVW_UABS_G1_NC:
+        write_insn_operand(at_ptr, Instruction::MOVW, reinterpret_cast<uint64_t>(new_target), 16);
+        break;
+    case R_AARCH64_MOVW_UABS_G2:
+    case R_AARCH64_MOVW_UABS_G2_NC:
+        write_insn_operand(at_ptr, Instruction::MOVW, reinterpret_cast<uint64_t>(new_target), 32);
+        break;
+    case R_AARCH64_MOVW_UABS_G3:
+        write_insn_operand(at_ptr, Instruction::MOVW, reinterpret_cast<uint64_t>(new_target), 48);
         break;
     case R_AARCH64_LD_PREL_LO19:
     case R_AARCH64_GOT_LD_PREL19:
