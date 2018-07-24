@@ -153,6 +153,18 @@ BytePointer Module::Relocation::get_target_ptr() const {
             }
             return reinterpret_cast<BytePointer>(base + delta);
         }
+    // We don't care about these here, but we need them for the GOT
+    case R_AARCH64_MOVW_GOTOFF_G0:
+    case R_AARCH64_MOVW_GOTOFF_G0_NC:
+    case R_AARCH64_MOVW_GOTOFF_G1:
+    case R_AARCH64_MOVW_GOTOFF_G1_NC:
+    case R_AARCH64_MOVW_GOTOFF_G2:
+    case R_AARCH64_MOVW_GOTOFF_G2_NC:
+    case R_AARCH64_MOVW_GOTOFF_G3:
+    case R_AARCH64_LD64_GOTOFF_LO15:
+    case R_AARCH64_LD64_GOT_LO12_NC:
+    case R_AARCH64_LD64_GOTPAGE_LO15:
+        return nullptr;
     default:
         RANDO_ASSERT(false);
         return nullptr;
