@@ -41,7 +41,7 @@ uint32_t read_insn_operand(BytePointer at_ptr, Instruction insn) {
     case Instruction::MOVNZ:
         // TODO: implement
         RANDO_ASSERT(false);
-        return nullptr;
+        return 0;
     case Instruction::ADR:
         // ADR is really weird: the lowest two bits of the result
         // are encoded in bits 29-30 of the instruction
