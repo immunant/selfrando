@@ -405,14 +405,21 @@ BytePointer Module::Relocation::get_got_entry() const {
             (read_insn_operand(at_ptr, Instruction::LDST) << 3);
 
     case R_AARCH64_ADR_GOT_PAGE: {
+        // We have to account for bfd&gold's fixes for erratum 843419:
+        // when an ADRP instruction falls on the last few bytes of a page,
+        // the linker replaces it with an ADR
+        auto base = reinterpret_cast<uintptr_t>(m_orig_src_ptr);
         auto delta = sign_extend<21>(read_insn_operand(at_ptr, Instruction::ADR));
-        ir.at->set_page_hi(delta);
+        if (insn_is_adrp(*reinterpret_cast<uint32_t*>(at_ptr))) {
+            base = page_address(base);
+            delta <<= 12;
+        }
+        ir.at->set_page_hi(base + delta);
         break;
     }
 
     case R_AARCH64_LD64_GOT_LO12_NC: {
         auto delta = read_insn_operand(at_ptr, Instruction::LDST) << 3;
-        RANDO_ASSERT(delta < (1 << 12));
         ir.at->set_page_lo(delta);
         break;
     }
@@ -426,8 +433,7 @@ BytePointer Module::Relocation::get_got_entry() const {
     }
     if (ir.at->has_all_page()) {
         ir.at->set_emitted();
-        auto addr = page_address(m_module.get_got_ptr()) + ir.at->got_page_x();
-        return reinterpret_cast<BytePointer>(addr);
+        return reinterpret_cast<BytePointer>(ir.at->got_page_x());
     }
     if (ir.at->has_all_groups()) {
         ir.at->set_emitted();

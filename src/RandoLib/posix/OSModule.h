@@ -220,16 +220,16 @@ private:
             FLAG_HAS_G1        = 0x04,
             FLAG_HAS_G2        = 0x08,
             FLAG_HAS_G3        = 0x10,
-            FLAG_HAS_PAGE_HI21 = 0x20,
+            FLAG_HAS_PAGE_HI52 = 0x20,
             FLAG_HAS_PAGE_LO12 = 0x40,
 
             FLAG_HAS_ALL_GROUPS = FLAG_HAS_G0 | FLAG_HAS_G1 |
                                   FLAG_HAS_G2 | FLAG_HAS_G3,
-            FLAG_HAS_ALL_PAGE   = FLAG_HAS_PAGE_HI21 | FLAG_HAS_PAGE_LO12,
+            FLAG_HAS_ALL_PAGE   = FLAG_HAS_PAGE_HI52 | FLAG_HAS_PAGE_LO12,
         };
 
         uint64_t m_got_group_x = 0;
-        int64_t m_got_page_x = 0;
+        uint64_t m_got_page_x = 0;
         uint8_t m_flags = 0;
 
     public:
@@ -268,12 +268,14 @@ private:
             m_flags |= (FLAG_HAS_G0 << idx);
         }
 
-        void set_page_hi(int32_t hi) {
-            m_got_page_x |= (hi << 12);
-            m_flags |= FLAG_HAS_PAGE_HI21;
+        void set_page_hi(uint64_t hi) {
+            RANDO_ASSERT((hi & 0xfff) == 0);
+            m_got_page_x |= hi;
+            m_flags |= FLAG_HAS_PAGE_HI52;
         }
 
-        void set_page_lo(int32_t lo) {
+        void set_page_lo(uint64_t lo) {
+            RANDO_ASSERT((lo >> 12) == 0);
             m_got_page_x |= (lo & 0xfff);
             m_flags |= FLAG_HAS_PAGE_LO12;
         }
