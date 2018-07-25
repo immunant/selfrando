@@ -383,6 +383,11 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
         RANDO_ASSERT(insn_is_adrp(*reinterpret_cast<uint32_t*>(at_ptr)));
         RANDO_ASSERT(pcrel_page_delta == (sign_extend<21>(read_insn_operand(at_ptr, Instruction::ADR)) << 12));
         break;
+    case R_AARCH64_LD64_GOTOFF_LO15:
+    case R_AARCH64_LD64_GOT_LO12_NC:
+    case R_AARCH64_LD64_GOTPAGE_LO15:
+        // These are safe to ignore
+        break;
     default:
         RANDO_ASSERT(false);
         break;
