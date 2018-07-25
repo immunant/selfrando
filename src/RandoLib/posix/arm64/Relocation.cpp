@@ -411,7 +411,12 @@ BytePointer Module::Relocation::get_got_entry() const {
     case R_AARCH64_ADR_GOT_PAGE:
     case R_AARCH64_LD64_GOT_LO12_NC:
     case R_AARCH64_LD64_GOTPAGE_LO15:
-        RANDO_ASSERT(m_has_symbol_ptr);
+        if (!m_has_symbol_ptr) {
+            // This symbol has no in-binary address, which probably means
+            // it's a weak symbol imported from a library (if at all)
+            // FIXME: are there any other cases???
+            return nullptr;
+        }
         ir = m_module.m_arm64_got_entries.insert(ARM64GOTEntry(m_symbol_ptr));
         break;
 
