@@ -318,6 +318,13 @@ int trap_read_reloc(const struct trap_header_t *header,
             curr_symbol = trap_read_address(header, trap_ptr);
         if ((extra_info & TRAP_RELOC_ADDEND) != 0)
             curr_addend = trap_read_sleb128(trap_ptr);
+        if ((extra_info & TRAP_RELOC_ARM64_GOT_PAGE) != 0) {
+            // HACK: store the ARM64 instruction in curr_symbol,
+            // since we should never have both TRAP_RELOC_SYMBOL
+            // along with this one
+            curr_symbol = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
+            *trap_ptr += sizeof(uint32_t);
+        }
     }
 
     *address += curr_delta;

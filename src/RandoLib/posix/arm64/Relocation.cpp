@@ -399,6 +399,26 @@ BytePointer Module::Relocation::get_got_entry() const {
     auto at_ptr = m_src_ptr;
     hashmap::HashMap<os::Module::ARM64GOTEntry>::InsertResult ir;
     switch(m_type) {
+    case R_AARCH64_ADR_GOT_PAGE: {
+        RANDO_ASSERT(m_has_symbol_ptr);
+        // We have to account for bfd&gold's fixes for erratum 843419:
+        // when an ADRP instruction falls on the last few bytes of a page,
+        // the linker replaces it with an ADR
+        auto base = reinterpret_cast<uintptr_t>(m_orig_src_ptr);
+        auto delta = sign_extend<21>(read_insn_operand(at_ptr, Instruction::ADR));
+        if (insn_is_adrp(*reinterpret_cast<uint32_t*>(at_ptr))) {
+            base = page_address(base);
+            delta <<= 12;
+        }
+        RANDO_ASSERT(((base + delta) & 0xfff) == 0);
+        auto lo_ptr = reinterpret_cast<const uint8_t*>(&m_symbol_ptr);
+        delta += read_insn_operand(const_cast<BytePointer>(lo_ptr), Instruction::LDST) << 3;
+        return reinterpret_cast<BytePointer>(base + delta);
+    }
+
+    case R_AARCH64_LD64_GOT_LO12_NC:
+        return nullptr;
+
     case R_AARCH64_MOVW_GOTOFF_G0:
     case R_AARCH64_MOVW_GOTOFF_G0_NC:
     case R_AARCH64_MOVW_GOTOFF_G1:
@@ -408,8 +428,6 @@ BytePointer Module::Relocation::get_got_entry() const {
     case R_AARCH64_MOVW_GOTOFF_G3:
     case R_AARCH64_GOT_LD_PREL19:
     case R_AARCH64_LD64_GOTOFF_LO15:
-    case R_AARCH64_ADR_GOT_PAGE:
-    case R_AARCH64_LD64_GOT_LO12_NC:
     case R_AARCH64_LD64_GOTPAGE_LO15:
         if (!m_has_symbol_ptr) {
             // This symbol has no in-binary address, which probably means
@@ -458,36 +476,12 @@ BytePointer Module::Relocation::get_got_entry() const {
         return m_module.get_got_ptr() +
             (read_insn_operand(at_ptr, Instruction::LDST) << 3);
 
-    case R_AARCH64_ADR_GOT_PAGE: {
-        // We have to account for bfd&gold's fixes for erratum 843419:
-        // when an ADRP instruction falls on the last few bytes of a page,
-        // the linker replaces it with an ADR
-        auto base = reinterpret_cast<uintptr_t>(m_orig_src_ptr);
-        auto delta = sign_extend<21>(read_insn_operand(at_ptr, Instruction::ADR));
-        if (insn_is_adrp(*reinterpret_cast<uint32_t*>(at_ptr))) {
-            base = page_address(base);
-            delta <<= 12;
-        }
-        ir.at->set_page_hi(base + delta);
-        break;
-    }
-
-    case R_AARCH64_LD64_GOT_LO12_NC: {
-        auto delta = read_insn_operand(at_ptr, Instruction::LDST) << 3;
-        ir.at->set_page_lo(delta);
-        break;
-    }
-
     case R_AARCH64_LD64_GOTPAGE_LO15: {
         auto delta = read_insn_operand(at_ptr, Instruction::LDST) << 3;
         auto addr = page_address(m_module.get_got_ptr()) + delta;
         ir.at->set_emitted();
         return reinterpret_cast<BytePointer>(addr);
     }
-    }
-    if (ir.at->has_all_page()) {
-        ir.at->set_emitted();
-        return reinterpret_cast<BytePointer>(ir.at->got_page_x());
     }
     if (ir.at->has_all_groups()) {
         ir.at->set_emitted();

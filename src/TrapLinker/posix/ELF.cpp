@@ -1531,6 +1531,24 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
         // Addend
         push_back_sleb128(trap_addend);
     }
+    if (extra_info & TRAP_RELOC_ARM64_GOT_PAGE) {
+        // We have a special case on ARM64 for a pair of instruction
+        // relocations: R_AARCH64_ADR_GOT_PAGE and R_AARCH64_LD64_GOT_LO12_NC
+        // which are used together to build the address of a symbol's GOT entry
+        // in the following way: R_AARCH64_ADR_GOT_PAGE stores bits 63:12 of
+        // the entry in a register, then R_AARCH64_LD64_GOT_LO12_NC adds bits
+        // 11:0 (the page offset) to that register and uses the resulting
+        // address to load the entry. Whenever RandoLib encounters one of these
+        // relocations, it also needs the other one, so we store the
+        // R_AARCH64_ADR_GOT_PAGE relocation's pair as an instruction embedded
+        // directly inside TRaP info as a 32-bit word.
+        assert((extra_info & TRAP_RELOC_SYMBOL) == 0 && "Bad Trap relocation info");
+        assert(reloc.type == R_AARCH64_ADR_GOT_PAGE);
+        ElfReloc trap_reloc(m_data.size(), R_AARCH64_LD64_GOT_LO12_NC,
+                            reloc.symbol, reloc.addend);
+        m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &trap_reloc);
+        push_back_int(0xf9400000, 4); // LDR x0, [x0]
+    }
 }
 
 void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
