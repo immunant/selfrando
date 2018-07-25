@@ -163,7 +163,7 @@ private:
 
 private:
     size_t capacity() const {
-        return cap_mask + 1;
+        return cap_mask == 0 ? 0 : (cap_mask + 1);
     }
 
     size_t elem_distance(size_t idx) const {
