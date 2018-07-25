@@ -129,11 +129,11 @@ uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
         // of this symbol's GOT entry; we collect all such relocations
         // for each symbol, and merge them together to obtain the full address
         case 300: // R_AARCH64_MOVW_GOTOFF_G0
-        case 301: // R_AARCH64_MOVW_GOTOFF_G0_N
+        case 301: // R_AARCH64_MOVW_GOTOFF_G0_NC
         case 302: // R_AARCH64_MOVW_GOTOFF_G1
-        case 303: // R_AARCH64_MOVW_GOTOFF_G1_N
+        case 303: // R_AARCH64_MOVW_GOTOFF_G1_NC
         case 304: // R_AARCH64_MOVW_GOTOFF_G2
-        case 305: // R_AARCH64_MOVW_GOTOFF_G2_N
+        case 305: // R_AARCH64_MOVW_GOTOFF_G2_NC
         case 306: // R_AARCH64_MOVW_GOTOFF_G3
         case 309: // R_AARCH64_GOT_LD_PREL19
         case 310: // R_AARCH64_LD64_GOTOFF_LO15
