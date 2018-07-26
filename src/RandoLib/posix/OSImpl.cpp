@@ -431,9 +431,6 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
 RANDO_SECTION Module::~Module() {
     m_arch_relocs.clear();
     m_got_entries.clear();
-#if RANDOLIB_IS_ARM64
-    m_arm64_got_entries.clear();
-#endif
 }
 
 RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {

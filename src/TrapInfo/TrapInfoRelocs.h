@@ -17,7 +17,8 @@ typedef enum {
     TRAP_RELOC_IGNORE = 0x4, // Ignore this relocation
 
     // ARM64-specific relocs
-    TRAP_RELOC_ARM64_GOT_PAGE = 0x10000,
+    TRAP_RELOC_ARM64_GOT_PAGE  = 0x10000,
+    TRAP_RELOC_ARM64_GOT_GROUP = 0x20000,
 } trap_reloc_info_t;
 
 #ifndef RANDO_SECTION
@@ -133,15 +134,7 @@ uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
         // for each symbol, and merge them together to obtain the full address
         case 300: // R_AARCH64_MOVW_GOTOFF_G0
         case 301: // R_AARCH64_MOVW_GOTOFF_G0_NC
-        case 302: // R_AARCH64_MOVW_GOTOFF_G1
-        case 303: // R_AARCH64_MOVW_GOTOFF_G1_NC
-        case 304: // R_AARCH64_MOVW_GOTOFF_G2
-        case 305: // R_AARCH64_MOVW_GOTOFF_G2_NC
-        case 306: // R_AARCH64_MOVW_GOTOFF_G3
-        case 309: // R_AARCH64_GOT_LD_PREL19
-        case 310: // R_AARCH64_LD64_GOTOFF_LO15
-        case 313: // R_AARCH64_LD64_GOTPAGE_LO15
-            return TRAP_RELOC_SYMBOL;
+            return TRAP_RELOC_ARM64_GOT_GROUP;
 
         case 311: // R_AARCH64_ADR_GOT_PAGE
             return TRAP_RELOC_ARM64_GOT_PAGE;
@@ -149,7 +142,15 @@ uint64_t trap_reloc_info(uint64_t type, trap_platform_t platform) {
         // This one doesn't need any extra information,
         // since we store everything we need in
         // the corresponding R_AARCH64_ADR_GOT_PAGE's entry
+        case 302: // R_AARCH64_MOVW_GOTOFF_G1
+        case 303: // R_AARCH64_MOVW_GOTOFF_G1_NC
+        case 304: // R_AARCH64_MOVW_GOTOFF_G2
+        case 305: // R_AARCH64_MOVW_GOTOFF_G2_NC
+        case 306: // R_AARCH64_MOVW_GOTOFF_G3
+        case 309: // R_AARCH64_GOT_LD_PREL19
+        case 310: // R_AARCH64_LD64_GOTOFF_LO15
         case 312: // R_AARCH64_LD64_GOT_LO12_NC
+        case 313: // R_AARCH64_LD64_GOTPAGE_LO15
             return TRAP_RELOC_NONE;
         };
         return TRAP_RELOC_NONE;

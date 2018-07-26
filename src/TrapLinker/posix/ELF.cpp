@@ -1549,6 +1549,29 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
         m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &trap_reloc);
         push_back_int(0xf9400000, 4); // LDR x0, [x0]
     }
+    if (extra_info & TRAP_RELOC_ARM64_GOT_GROUP) {
+        // Similar handling of GOT group relocations: for every G0 relocation,
+        // we add the G1-G3 relocations inline inside Trap info
+        assert((extra_info & TRAP_RELOC_SYMBOL) == 0 && "Bad Trap relocation info");
+        assert((extra_info & TRAP_RELOC_ADDEND) == 0 && "Bad Trap relocation info");
+        assert(reloc.type == R_AARCH64_MOVW_GOTOFF_G0 ||
+               reloc.type == R_AARCH64_MOVW_GOTOFF_G0_NC);
+        // G1 reloc
+        ElfReloc trap_reloc1(m_data.size(), R_AARCH64_MOVW_GOTOFF_G1_NC,
+                             reloc.symbol, reloc.addend);
+        m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &trap_reloc1);
+        push_back_int(0xf2a00000, 4); // MOVK x0, 0, lsl #16
+        // G2 reloc
+        ElfReloc trap_reloc2(m_data.size(), R_AARCH64_MOVW_GOTOFF_G2_NC,
+                             reloc.symbol, reloc.addend);
+        m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &trap_reloc2);
+        push_back_int(0xf2c00000, 4); // MOVK x0, 0, lsl #32
+        // G3 reloc
+        ElfReloc trap_reloc3(m_data.size(), R_AARCH64_MOVW_GOTOFF_G3,
+                             reloc.symbol, reloc.addend);
+        m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &trap_reloc3);
+        push_back_int(0xd2e00000, 4); // MOVZ x0, 0, lsl #48
+    }
 }
 
 void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {

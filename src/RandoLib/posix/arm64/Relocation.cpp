@@ -32,9 +32,10 @@ enum class Instruction : uint32_t {
     JUMPCALL,
 };
 
+template<typename T>
 static inline RANDO_SECTION
-uint32_t read_insn_operand(BytePointer at_ptr, Instruction insn) {
-    auto insn_value = *reinterpret_cast<uint32_t*>(at_ptr);
+uint32_t read_insn_operand(T *at_ptr, Instruction insn) {
+    auto insn_value = *reinterpret_cast<const uint32_t*>(at_ptr);
     switch (insn) {
     case Instruction::MOVW:
         return (insn_value & 0x1fffe0) >> 5;  // 16/5
@@ -397,7 +398,6 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
 // See discussion in OSModule.h
 BytePointer Module::Relocation::get_got_entry() const {
     auto at_ptr = m_src_ptr;
-    hashmap::HashMap<os::Module::ARM64GOTEntry>::InsertResult ir;
     switch(m_type) {
     case R_AARCH64_ADR_GOT_PAGE: {
         RANDO_ASSERT(m_has_symbol_ptr);
@@ -411,83 +411,53 @@ BytePointer Module::Relocation::get_got_entry() const {
             delta <<= 12;
         }
         RANDO_ASSERT(((base + delta) & 0xfff) == 0);
-        auto lo_ptr = reinterpret_cast<const uint8_t*>(&m_symbol_ptr);
-        delta += read_insn_operand(const_cast<BytePointer>(lo_ptr), Instruction::LDST) << 3;
+        // FIXME: assumes little-endian
+        delta += read_insn_operand(&m_symbol_ptr, Instruction::LDST) << 3;
         return reinterpret_cast<BytePointer>(base + delta);
     }
 
-    case R_AARCH64_LD64_GOT_LO12_NC:
-        return nullptr;
-
     case R_AARCH64_MOVW_GOTOFF_G0:
-    case R_AARCH64_MOVW_GOTOFF_G0_NC:
-    case R_AARCH64_MOVW_GOTOFF_G1:
-    case R_AARCH64_MOVW_GOTOFF_G1_NC:
-    case R_AARCH64_MOVW_GOTOFF_G2:
-    case R_AARCH64_MOVW_GOTOFF_G2_NC:
-    case R_AARCH64_MOVW_GOTOFF_G3:
-    case R_AARCH64_GOT_LD_PREL19:
-    case R_AARCH64_LD64_GOTOFF_LO15:
-    case R_AARCH64_LD64_GOTPAGE_LO15:
-        if (!m_has_symbol_ptr) {
-            // This symbol has no in-binary address, which probably means
-            // it's a weak symbol imported from a library (if at all)
-            // FIXME: are there any other cases???
-            return nullptr;
-        }
-        ir = m_module.m_arm64_got_entries.insert(ARM64GOTEntry(m_symbol_ptr));
-        break;
-
-    default:
-        return nullptr;
+    case R_AARCH64_MOVW_GOTOFF_G0_NC: {
+        RANDO_ASSERT(m_has_symbol_ptr);
+        // Decode the GOT entry from the G0 encoded inside this instruction,
+        // plus the G1-G3 values encoded inside Trap info
+        uint64_t g0 = read_insn_operand(at_ptr, Instruction::MOVW);
+        // G1 is encoded inside m_symbol_ptr
+        // FIXME: assumes little-endian
+        uint64_t g1 = read_insn_operand(&m_symbol_ptr, Instruction::MOVW);
+        // G2 and G3 are encoded inside m_addend as 2 32-bit values
+        uint32_t g2_insn = static_cast<uint32_t>(m_addend & 0xffffffff);
+        uint64_t g2 = read_insn_operand(&g2_insn, Instruction::MOVW);
+        uint32_t g3_insn = static_cast<uint32_t>(m_addend >> 32);
+        uint64_t g3 = read_insn_operand(&g3_insn, Instruction::MOVW);
+        return reinterpret_cast<BytePointer>(g0 | (g1 << 16) | (g2 << 32) | (g3 << 48));
     }
 
-    RANDO_ASSERT(ir.at != nullptr);
-    if (ir.at->emitted())
-        return nullptr;
-
-    switch(m_type) {
-    case R_AARCH64_MOVW_GOTOFF_G0:
-    case R_AARCH64_MOVW_GOTOFF_G0_NC:
-        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 0);
-        break;
-
+    case R_AARCH64_LD64_GOT_LO12_NC:
     case R_AARCH64_MOVW_GOTOFF_G1:
     case R_AARCH64_MOVW_GOTOFF_G1_NC:
-        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 1);
-        break;
-
     case R_AARCH64_MOVW_GOTOFF_G2:
     case R_AARCH64_MOVW_GOTOFF_G2_NC:
-        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 2);
-        break;
-
     case R_AARCH64_MOVW_GOTOFF_G3:
-        ir.at->set_group(read_insn_operand(at_ptr, Instruction::MOVW), 3);
-        break;
+        return nullptr;
 
     case R_AARCH64_GOT_LD_PREL19:
-        ir.at->set_emitted();
         return m_orig_src_ptr +
             sign_extend<21>(read_insn_operand(at_ptr, Instruction::LDLIT) << 2);
 
     case R_AARCH64_LD64_GOTOFF_LO15:
-        ir.at->set_emitted();
         return m_module.get_got_ptr() +
             (read_insn_operand(at_ptr, Instruction::LDST) << 3);
 
     case R_AARCH64_LD64_GOTPAGE_LO15: {
         auto delta = read_insn_operand(at_ptr, Instruction::LDST) << 3;
         auto addr = page_address(m_module.get_got_ptr()) + delta;
-        ir.at->set_emitted();
         return reinterpret_cast<BytePointer>(addr);
     }
+
+    default:
+        return nullptr;
     }
-    if (ir.at->has_all_groups()) {
-        ir.at->set_emitted();
-        return m_module.get_got_ptr() + ir.at->got_group_x();
-    }
-    return nullptr;
 }
 
 Module::Relocation::Type Module::Relocation::get_pointer_reloc_type() {

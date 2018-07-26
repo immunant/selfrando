@@ -325,6 +325,16 @@ int trap_read_reloc(const struct trap_header_t *header,
             curr_symbol = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
             *trap_ptr += sizeof(uint32_t);
         }
+        if ((extra_info & TRAP_RELOC_ARM64_GOT_GROUP) != 0) {
+            // 3x bigger HACK: we have 3 32-bit values, so we store the first
+            // one in curr_symbol and the other 2 inside addend
+            curr_symbol = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
+            *trap_ptr += sizeof(uint32_t);
+            curr_addend = SCAST(int64_t, *RCAST(uint32_t*, *trap_ptr));
+            *trap_ptr += sizeof(uint32_t);
+            curr_addend |= SCAST(int64_t, *RCAST(uint32_t*, *trap_ptr)) << 32;
+            *trap_ptr += sizeof(uint32_t);
+        }
     }
 
     *address += curr_delta;
