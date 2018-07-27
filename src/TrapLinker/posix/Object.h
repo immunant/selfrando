@@ -414,7 +414,7 @@ struct ElfReloc {
     ElfReloc(Elf_Offset offset, uint32_t type,
               ElfSymbolTable::SymbolRef symbol = ElfSymbolTable::SymbolRef(),
               Elf_Offset addend = 0)
-        : offset(offset), type(type), symbol(symbol.as_local()), addend(addend) { }
+        : offset(offset), type(type), symbol(symbol), addend(addend) { }
 
     bool operator <(const ElfReloc &other) const {
         return offset < other.offset;

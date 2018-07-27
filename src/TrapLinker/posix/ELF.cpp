@@ -1517,7 +1517,7 @@ void TrapRecordBuilder::write_reloc(const ElfReloc &reloc, Elf_Offset prev_offse
         // Symbol
         ElfReloc sym_addr_reloc(m_data.size(),
                                 m_object->get_target_info()->symbol_reloc,
-                                reloc.symbol, 0);
+                                reloc.symbol.as_local(), 0);
         if (trap_addend > 0) {
             // Hack for the addend ambiguity: roll positive addends into the symbol
             // address, but put negative ones in TRaP info (gold does something similar)
@@ -1589,7 +1589,7 @@ void TrapRecordBuilder::build_trap_data(const ElfSymbolTable &symbol_table) {
     m_data.insert(m_data.end(), m_object->get_target_info()->addr_size / 8, 0);
     ElfReloc symbol_reloc(0,
                           m_object->get_target_info()->symbol_reloc,
-                          m_symbols[0].symbol, 0);
+                          m_symbols[0].symbol.as_local(), 0);
     m_object->get_target_info()->ops->add_reloc_to_buffer(m_reloc_data, &symbol_reloc);
 
     // FirstSymOffset

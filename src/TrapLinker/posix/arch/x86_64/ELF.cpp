@@ -97,7 +97,7 @@ ElfObject::DataBuffer X8664TrampolineBuilder::create_trampoline_data(
 
 void X8664TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
                                        GElf_Addr trampoline_offset) {
-    ElfReloc reloc(trampoline_offset+1, R_X86_64_PC32, symbol_index, -4);
+    ElfReloc reloc(trampoline_offset+1, R_X86_64_PC32, symbol_index.as_local(), -4);
     x86_64_ops->add_reloc_to_buffer(m_trampoline_relocs, &reloc);
     assert(reloc.addend == 0 && "Invalid trampoline addend");
 }

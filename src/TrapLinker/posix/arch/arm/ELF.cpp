@@ -110,7 +110,7 @@ ElfObject::DataBuffer ARMTrampolineBuilder::create_trampoline_data(
 void ARMTrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
                                      GElf_Addr trampoline_offset) {
     if (trampoline_offset & 1) {
-        ElfReloc reloc(trampoline_offset - 1, R_ARM_THM_JUMP24, symbol_index, 0);
+        ElfReloc reloc(trampoline_offset - 1, R_ARM_THM_JUMP24, symbol_index.as_local(), 0);
         arm_ops->add_reloc_to_buffer(m_trampoline_relocs, &reloc);
     } else {
         ElfReloc reloc(trampoline_offset, R_ARM_JUMP24, symbol_index, 0);
