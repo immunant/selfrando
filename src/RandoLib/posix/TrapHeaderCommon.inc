@@ -8,14 +8,14 @@
 
 #include "TrapCommon.h"
 
-#if RANDOLIB_IS_ARM64 || RANDOLIB_IS_X86 || RANDOLIB_IS_X86_64
-// On ARM64, we encode addresses as PC-relative offsets
-#define ARCH_PCREL_FLAG     0x80
-#define ARCH_BASEREL_FLAG   0x00
-#else
-// On all other architectures, we encode addresses as base-rel
+#if RANDOLIB_IS_ARM
+// On ARM, we encode addresses as base-rel
 #define ARCH_PCREL_FLAG     0x00
 #define ARCH_BASEREL_FLAG   0x04
+#else
+// On all other architectures, we encode addresses as PC-relative offsets
+#define ARCH_PCREL_FLAG     0x80
+#define ARCH_BASEREL_FLAG   0x00
 #endif
 
 .section .txtrp, "a", %progbits
