@@ -1,4 +1,7 @@
 
+set(TRAPLINKER_INSTALL_LD ON CACHE BOOL
+    "Install ld replacement links")
+
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
@@ -33,23 +36,10 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         COMMENT "Generate linker options table"
         )
 
-    add_custom_command(TARGET traplinker
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld
-        COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld.bfd
-        COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld.gold
-        BYPRODUCTS ld ld.bfd ld.gold
-        VERBATIM
-        COMMENT "Creating ld symlinks"
-        )
-
     add_dependencies(traplinker randolib_support ${SR_LIBELF_TARGET})
 
     install(TARGETS traplinker DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(PROGRAMS
-        ${CMAKE_CURRENT_BINARY_DIR}/ld
-        ${CMAKE_CURRENT_BINARY_DIR}/ld.bfd
-        ${CMAKE_CURRENT_BINARY_DIR}/ld.gold
         linker_id.sh
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
@@ -57,4 +47,23 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         linker_script.ld
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
+
+    if (SR_TRAPLINKER_INSTALL_LD)
+        add_custom_command(TARGET traplinker
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld
+            COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld.bfd
+            COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld.gold
+            BYPRODUCTS ld ld.bfd ld.gold
+            VERBATIM
+            COMMENT "Creating ld symlinks"
+            )
+
+        install(PROGRAMS
+            ${CMAKE_CURRENT_BINARY_DIR}/ld
+            ${CMAKE_CURRENT_BINARY_DIR}/ld.bfd
+            ${CMAKE_CURRENT_BINARY_DIR}/ld.gold
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+            )
+    endif()
 endif()
