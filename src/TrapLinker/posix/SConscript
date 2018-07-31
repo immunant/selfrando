@@ -41,6 +41,6 @@ traplinker_env.Command('ld.bfd', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
 traplinker_env.Command('ld.gold', 'traplinker', 'ln -s ${SOURCE.file} $TARGET')
 
 files = [Glob('traplinker'), Glob('ld'), Glob('ld.bfd'), Glob('ld.gold'),
-         Glob('linker_script.ld'), Glob('linker_id.sh')]
+         Glob('traplinker_script.ld'), Glob('traplinker_id.sh')]
 
 Return('files')

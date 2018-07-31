@@ -42,11 +42,11 @@ static const char kLinkerWrapperName[] = "traplinker";
 static const char kLinkerPathVariable[] = "SELFRANDO_ORIGINAL_LINKER";
 
 // Path to script that identifies the linker type (BFD or GOLD)
-static char kLinkerIdScript[] = "/linker_id.sh";
+static char kLinkerIdScript[] = "/traplinker_id.sh";
 
 // FOR TESTING! TODO: figure out a better way to find this path
 static char kSelfrandoObject[] = "/selfrando_txtrp.o";
-static char kTrapScript[] = "/linker_script.ld";
+static char kTrapScript[] = "/traplinker_script.ld";
 #if 0 // FIXME: put this back in when we need it
 static const char *kExecSections[][2] = {
     { ".text", ".txtrp" }, // FIXME: ".trap.text" would be nicer

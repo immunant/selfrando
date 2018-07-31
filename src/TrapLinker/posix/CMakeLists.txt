@@ -40,11 +40,11 @@ if (SR_BUILD_MODULE_TRAPLINKER)
 
     install(TARGETS traplinker DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(PROGRAMS
-        linker_id.sh
+        traplinker_id.sh
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
     install(FILES
-        linker_script.ld
+        traplinker_script.ld
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
 
