@@ -79,7 +79,7 @@ static_libs.append(lib_env.Library('trapfooter_page', ['%s/TrapFooterFiller.S' %
                                                        '%s/TrapFooterPage.S'  % target]))
 static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
 
-files += Glob('libtrapheader.a')
+files  = Glob('libtrapheader.a')
 files += Glob('libtrapheader_page.a')
 files += Glob('libtrapfooter.a')
 files += Glob('libtrapfooter_page.a')
