@@ -1,0 +1,89 @@
+Import('env')
+
+target = env['TARGET_ARCH']
+
+lib_env = env.Clone()
+
+# Build flags start here
+# We need to pass -fPIC to the assembler separately
+lib_env.Append(ASFLAGS = '-fPIC')
+lib_env.Append(CCFLAGS = '-fPIC')
+
+# Don't export anything from the library
+lib_env.Append(ASFLAGS='-fvisibility=hidden')
+lib_env.Append(CCFLAGS='-fvisibility=hidden')
+lib_env.Append(CXXFLAGS='-fvisibility-inlines-hidden')
+
+if target in ['x86', 'x86_64']:
+    lib_env.Append(CCFLAGS = '-minline-all-stringops')
+
+if target == 'x86':
+    # TODO: it would be nice to have a "is 32 bit" variable
+    # and check that instead
+    lib_env.Append(ASFLAGS = '-m32')
+    lib_env.Append(CCFLAGS = '-m32')
+    lib_env.Append(LINKFLAGS = '-m32')
+elif target == 'arm':
+    # FIXME: we need this for Android/armel systems, but not for armhf
+    # so we should make it into a scons option
+    lib_env.Append(CCFLAGS   = ['-msoft-float', '-mthumb-interwork',
+                                '-march=armv7-a', '-mfloat-abi=softfp'])
+    lib_env.Append(LINKFLAGS = ['-msoft-float', '-mthumb-interwork',
+                                '-march=armv7-a', '-mfloat-abi=softfp'])
+    lib_env.Append(LINKFLAGS = ['-Wl,--hash-style=sysv'])
+    lib_env.Append(CPPFLAGS = ['-fno-stack-protector'])
+
+if 'ANDROID_NDK' in env:
+    CC_PATH_PREFIX = { 'arm':    'arm-linux-androideabi',
+                       'arm64':  'aarch64-linux-android',
+                       'x86':    'x86',
+                       'x86_64': 'x86_64'  }
+    CC_PREFIX =      { 'arm':    'arm-linux-androideabi-',
+                       'arm64':  'aarch64-linux-android-',
+                       'x86':    'i686-linux-android-',
+                       'x86_64': 'x86_64-linux-android-'  }
+    CXX_LIB_PATH =   { 'arm':    'armeabi-v7a',
+                       'arm64':  'arm64-v8a',
+                       'x86':    'x86',
+                       'x86_64': 'x86_64' }
+
+    ndk_path = env['ANDROID_NDK']
+    cc_path = '%s/toolchains/%s-4.9/prebuilt/linux-x86_64/bin' % (ndk_path, CC_PATH_PREFIX[target])
+    lib_env['CC'] = '%s/%sgcc' % (cc_path, CC_PREFIX[target])
+    lib_env['CXX'] = '%s/%sg++' % (cc_path, CC_PREFIX[target])
+
+    sysroot_path = '%s/platforms/android-21/arch-%s' % (ndk_path, target)
+    sysroot_arg = '--sysroot=%s' % sysroot_path
+    lib_env.Append(CCFLAGS = sysroot_arg)
+    lib_env.Append(LINKFLAGS = sysroot_arg)
+    #lib_env.Append(LIBS = ['gcc', 'log', 'gnustl_shared', 'c', 'm', 'supc++'])
+
+    lib_env.Append(CPPPATH = ['%s/sources/cxx-stl/gnu-libstdc++/4.9/include' % ndk_path,
+                              '%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/include' % (ndk_path, CXX_LIB_PATH[target])])
+    lib_env.Append(LIBPATH = ['%s/usr/lib' % sysroot_path,
+                              '%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s' % (ndk_path, CXX_LIB_PATH[target])])
+
+    if target == 'arm':
+        lib_env.Append(CCFLAGS = '-march=armv7-a')
+        lib_env.Append(LINKFLAGS = '-Wl,--fix-cortex-a8')
+    elif target == 'arm64':
+        lib_env.Append(LINKFLAGS = '-Wl,-maarch64linux')
+        lib_env.Append(LINKFLAGS = '-Wl,--hash-style=gnu')
+        lib_env.Append(LINKFLAGS = '-Wl,--fix-cortex-a53-843419')
+
+static_libs = []
+static_libs.append(lib_env.Library('trapheader', ['TrapHeader.S']))
+static_libs.append(lib_env.Library('trapfooter', ['TrapFooter.S']))
+static_libs.append(lib_env.Library('trapheader_page', ['TrapHeaderPage.S']))
+static_libs.append(lib_env.Library('trapfooter_page', ['%s/TrapFooterFiller.S' % target,
+                                                       '%s/TrapFooterPage.S'  % target]))
+static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
+
+files += Glob('libtrapheader.a')
+files += Glob('libtrapheader_page.a')
+files += Glob('libtrapfooter.a')
+files += Glob('libtrapfooter_page.a')
+files += Glob('libtrapfooter_nopage.a')
+
+Return('files')
+

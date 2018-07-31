@@ -1,4 +1,5 @@
 add_subdirectory(RandoLib)
 add_subdirectory(Support)
 add_subdirectory(TrapInfo)
+add_subdirectory(TrapLibs)
 add_subdirectory(TrapLinker)

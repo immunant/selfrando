@@ -8,9 +8,9 @@
 
 .section .txtrp, "ax", %progbits
 .p2align 12
-.globl trap_end_page
-.hidden trap_end_page
-.type trap_end_page, %object
-trap_end_page:
+.globl  _TRaP_trap_end_page
+.hidden _TRaP_trap_end_page
+.type   _TRaP_trap_end_page, %object
+_TRaP_trap_end_page:
     // FIXME: implement this
     nop

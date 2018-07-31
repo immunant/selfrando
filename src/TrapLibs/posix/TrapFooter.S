@@ -8,5 +8,5 @@
 
 #include "TrapCommon.h"
 
-DEFINE_SECTION_SYMBOL(trap_end,    .txtrp,    "a",  %progbits)
-DEFINE_SECTION_SYMBOL(xptramp_end, .textramp, "ax", %progbits)
+DEFINE_SECTION_SYMBOL(_TRaP_trap_end,    .txtrp,    "a",  %progbits)
+DEFINE_SECTION_SYMBOL(_TRaP_xptramp_end, .textramp, "ax", %progbits)

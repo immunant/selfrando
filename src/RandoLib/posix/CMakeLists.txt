@@ -64,23 +64,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
         target_include_directories(randoentry_so   PRIVATE bionic bionic/arch-arm)
     endif()
 
-    # Build the trapheader/footer objects
-    add_library(trapheader        STATIC TrapHeader.S)
-    add_library(trapheader_page   STATIC TrapHeaderPage.S)
-    add_library(trapfooter        STATIC TrapFooter.S)
-    add_library(trapfooter_page   STATIC
-        ${SR_ARCH}/TrapFooterFiller.S
-        ${SR_ARCH}/TrapFooterPage.S)
-    add_library(trapfooter_nopage STATIC TrapFooterNoPage.S)
-
     set(static_libs
         randoentry_exec
         randoentry_so
-        trapheader
-        trapheader_page
-        trapfooter
-        trapfooter_page
-        trapfooter_nopage
         )
     foreach(static_lib ${static_libs})
         add_custom_command(TARGET ${static_lib}

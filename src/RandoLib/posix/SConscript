@@ -39,12 +39,6 @@ if target == 'arm':
 static_libs = []
 static_libs.append(lib_env.Library('randoentry_exec', entry_files + exec_entry_files))
 static_libs.append(lib_env.Library('randoentry_so', entry_files + so_entry_files))
-static_libs.append(lib_env.Library('trapheader', ['TrapHeader.S']))
-static_libs.append(lib_env.Library('trapfooter', ['TrapFooter.S']))
-static_libs.append(lib_env.Library('trapheader_page', ['TrapHeaderPage.S']))
-static_libs.append(lib_env.Library('trapfooter_page', ['%s/TrapFooterFiller.S' % target,
-                                                       '%s/TrapFooterPage.S'  % target]))
-static_libs.append(lib_env.Library('trapfooter_nopage', ['TrapFooterNoPage.S']))
 
 # Prepend _TRaP_ to all symbols
 for lib in static_libs:
@@ -160,11 +154,6 @@ files  = Glob('libselfrando.so')
 files += Glob('libselfrando.a')
 files += Glob('librandoentry_exec.a')
 files += Glob('librandoentry_so.a')
-files += Glob('libtrapheader.a')
-files += Glob('libtrapheader_page.a')
-files += Glob('libtrapfooter.a')
-files += Glob('libtrapfooter_page.a')
-files += Glob('libtrapfooter_nopage.a')
 files += Glob('selfrando_txtrp.o')
 
 Return('files')
