@@ -20,6 +20,6 @@ endif()
 if(TRAPINFO_INSTALL_HEADERS)
     install(FILES
         TrapInfo.h TrapInfoRelocs.h TrapPlatform.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/selfrando
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         )
 endif()
