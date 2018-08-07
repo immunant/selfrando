@@ -48,7 +48,7 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
 
-    if (SR_TRAPLINKER_INSTALL_LD)
+    if (TRAPLINKER_INSTALL_LD)
         add_custom_command(TARGET traplinker
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink traplinker ld
