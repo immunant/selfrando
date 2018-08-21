@@ -588,7 +588,7 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     if (m_eh_frame_hdr != nullptr) {
         uint32_t *ptr = reinterpret_cast<uint32_t*>(m_eh_frame_hdr);
         if (ptr[0] != 0x3b031b01) {
-            API::debug_printf<1>("Unknown .eh_frame_hdr encoding: %08x\n", ptr[0]);
+            API::debug_printf<1>("Unknown .eh_frame_hdr encoding: %x\n", ptr[0]);
         } else {
             uint32_t num_entries = ptr[2];
             API::debug_printf<1>(".eh_frame_hdr found %d entries\n", num_entries);
