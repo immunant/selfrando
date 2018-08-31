@@ -68,8 +68,6 @@ RANDO_SECTION void FunctionList::adjust_relocation(os::Module::Relocation *reloc
         source_ptr = source_func->post_div_address(source_ptr);
         reloc->set_source_ptr(source_ptr);
     }
-    if (reloc->already_applied())
-        return;
 
     // Get target address
     os::BytePointer target_ptr = reloc->get_target_ptr();
@@ -89,7 +87,6 @@ RANDO_SECTION void FunctionList::adjust_relocation(os::Module::Relocation *reloc
     // Update the relocation entry
     os::API::debug_printf<6>("  setting => %p\n", target_ptr);
     reloc->set_target_ptr(target_ptr);
-    reloc->mark_applied();
 }
 
 #if RANDOLIB_MEASURE_TIME

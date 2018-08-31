@@ -429,7 +429,6 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
 }
 
 RANDO_SECTION Module::~Module() {
-    m_arch_relocs.clear();
     m_got_entries.clear();
 }
 
@@ -567,14 +566,6 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     API::debug_printf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 
     relocate_arch(functions);
-    if (m_arch_relocs.elems != nullptr) {
-        for (size_t i = 0; i < m_arch_relocs.num_elems; i++)
-            if (!m_arch_relocs[i].applied) {
-                Relocation reloc(*this, m_arch_relocs[i].address,
-                                 m_arch_relocs[i].type);
-                functions->adjust_relocation(&reloc);
-            }
-    }
 
     // Apply relocations to known GOT entries
     for (auto &ge : m_got_entries) {
@@ -604,82 +595,6 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
                        compare_eh_frame_entries);
         }
     }
-}
-
-template<typename DynType, typename RelType,
-         size_t dt_relocs, size_t dt_relocs_size>
-RANDO_SECTION void Module::build_arch_relocs() {
-#if 0 // Disabled since they overlap with the GOT relocs
-    os::BytePointer dyn_rels = nullptr;
-    size_t dyn_rel_size = 0;
-    auto dyn = reinterpret_cast<DynType*>(m_module_info->dynamic);
-    for (; dyn->d_tag != DT_NULL; dyn++) {
-        if (dyn->d_tag == dt_relocs) {
-            if (m_dynamic_has_base) {
-                dyn_rels = reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr);
-            } else {
-                dyn_rels = m_image_base + dyn->d_un.d_ptr;
-            }
-        }
-        if (dyn->d_tag == dt_relocs_size)
-            dyn_rel_size = dyn->d_un.d_val;
-    }
-
-    if (dyn_rels != nullptr && dyn_rel_size != 0) {
-        auto dyn_rel_end = dyn_rels + dyn_rel_size;
-        for (auto rel = reinterpret_cast<Elf64_Rela*>(dyn_rels);
-                  rel < reinterpret_cast<Elf64_Rela*>(dyn_rel_end); rel++) {
-            auto rel_type = arch_reloc_type(rel);
-            if (rel_type) {
-                ArchReloc arch_reloc;
-                arch_reloc.address = RVA2Address(rel->r_offset).to_ptr();
-                arch_reloc.type = rel_type;
-                arch_reloc.applied = false;
-                m_arch_relocs.append(arch_reloc);
-            }
-        }
-        m_arch_relocs.sort(ArchReloc::sort_compare);
-    }
-#endif
-}
-
-// Instantiate build_arch_relocs() for the most common cases
-#if RANDOLIB_ARCH_SIZE == 32
-template
-RANDO_SECTION void Module::build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
-#endif
-
-#if RANDOLIB_ARCH_SIZE == 64
-template
-RANDO_SECTION void Module::build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
-#endif
-
-RANDO_SECTION Module::ArchReloc *Module::find_arch_reloc(BytePointer address_ptr) const {
-    // Given a memory address, find the ArchReloc that covers that address
-    // using binary search (assuming the architecture code pre-sorted them)
-    if (m_arch_relocs.elems == nullptr) {
-        RANDO_ASSERT(m_arch_relocs.num_elems == 0);
-        return nullptr;
-    }
-
-    // return null if no function contains addr
-    if (address_ptr < m_arch_relocs[0].address ||
-        address_ptr > m_arch_relocs[m_arch_relocs.num_elems - 1].address)
-        return nullptr;
-    size_t lo = 0, hi = m_arch_relocs.num_elems - 1;
-    while (lo < hi) {
-        auto mid = lo + ((hi - lo) >> 1);
-        if (address_ptr == m_arch_relocs[mid].address) {
-            return const_cast<ArchReloc*>(&m_arch_relocs[mid]);
-        } else if (address_ptr > m_arch_relocs[mid].address) {
-            lo = mid + 1;
-        } else {
-            hi = mid - 1;
-        }
-    }
-    return address_ptr == m_arch_relocs[lo].address
-           ? const_cast<ArchReloc*>(&m_arch_relocs[lo])
-           : nullptr;
 }
 
 RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {

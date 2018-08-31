@@ -87,17 +87,6 @@ public:
             return m_addend;
         }
 
-        bool already_applied() const {
-            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_ptr);
-            return arch_reloc != nullptr && arch_reloc->applied;
-        }
-
-        void mark_applied() {
-            auto *arch_reloc = m_module.find_arch_reloc(m_orig_src_ptr);
-            if (arch_reloc != nullptr)
-                arch_reloc->applied = true;
-        }
-
         BytePointer get_got_entry() const;
 
     private:
@@ -115,21 +104,6 @@ public:
         RANDO_SECTION void flush_icache();
     };
 
-    struct ArchReloc {
-        // Cannot use Address here because we run into trouble with
-        // Address's copy-assignment and move-assignment operators
-        os::BytePointer address;
-        Relocation::Type type;
-        bool applied;
-
-        static int sort_compare(const void *pa, const void *pb) {
-            auto ra = reinterpret_cast<const os::Module::ArchReloc*>(pa);
-            auto rb = reinterpret_cast<const os::Module::ArchReloc*>(pb);
-            return  (ra->address <  rb->address) ? -1 :
-                   ((ra->address == rb->address) ?  0 : 1);
-        }
-    };
-
 public:
     // FIXME: TrapInfo could be pre-computed, and accessed via a function
     typedef void(*ExecSectionCallback)(const Module&, const Section&, ::TrapInfo&, bool, void*);
@@ -139,13 +113,6 @@ public:
     static RANDO_SECTION void for_all_modules(ModuleCallback, void*);
 
     RANDO_SECTION void for_all_relocations(FunctionList *functions) const;
-
-    template<typename RelType>
-    RANDO_SECTION Relocation::Type arch_reloc_type(const RelType *dyn_reloc);
-
-    template<typename DynType, typename RelType,
-             size_t dt_relocs, size_t dt_relocs_size>
-    RANDO_SECTION void build_arch_relocs();
 
     RANDO_SECTION void preprocess_arch();
     RANDO_SECTION void relocate_arch(FunctionList *functions) const;
@@ -162,8 +129,6 @@ public:
     inline RANDO_SECTION const char *get_module_name() const {
         return m_phdr_info.dlpi_name;
     }
-
-    RANDO_SECTION ArchReloc *find_arch_reloc(BytePointer address_ptr) const;
 
 #if RANDOLIB_WRITE_LAYOUTS
     void write_layout_file(FunctionList *functions,
@@ -200,7 +165,6 @@ private:
     // We set this flag if the addresses have the base.
     bool m_dynamic_has_base;
 
-    Vector<ArchReloc> m_arch_relocs;
     hashmap::HashMap<hashmap::PointerEntry<BytePointer>> m_got_entries;
     size_t m_linker_stubs;
 };

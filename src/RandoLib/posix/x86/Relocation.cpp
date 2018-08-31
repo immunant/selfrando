@@ -155,20 +155,8 @@ void Module::Relocation::fixup_entry_point(const Module &module,
     reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 }
 
-template<>
-size_t Module::arch_reloc_type<Elf32_Rel>(const Elf32_Rel *rel) {
-    auto rel_type = ELF32_R_TYPE(rel->r_info);
-    if (rel_type == R_386_RELATIVE ||
-        rel_type == R_386_GLOB_DAT ||
-        rel_type == R_386_32) {
-        return R_386_32;
-    }
-    return 0;
-}
-
 void Module::preprocess_arch() {
     m_linker_stubs = 0;
-    build_arch_relocs<Elf32_Dyn, Elf32_Rel, DT_REL, DT_RELSZ>();
 }
 
 static const char kRemoveBytes[] =

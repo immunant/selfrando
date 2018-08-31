@@ -495,20 +495,8 @@ void Module::Relocation::fixup_entry_point(const Module &module,
     reloc_section.flush_icache();
 }
 
-template<>
-size_t Module::arch_reloc_type<Elf64_Rela>(const Elf64_Rela *rel) {
-    auto rel_type = ELF64_R_TYPE(rel->r_info);
-    if (rel_type == R_AARCH64_RELATIVE ||
-        rel_type == R_AARCH64_GLOB_DAT ||
-        rel_type == R_AARCH64_ABS64) {
-        return R_AARCH64_ABS64;
-    }
-    return 0;
-}
-
 void Module::preprocess_arch() {
     m_linker_stubs = 0;
-    build_arch_relocs<Elf64_Dyn, Elf64_Rela, DT_RELA, DT_RELASZ>();
 }
 
 void Module::relocate_arch(FunctionList *functions) const {
