@@ -106,12 +106,6 @@ public:
         static Type type_from_based(Type based_type);
 
         static void fixup_export_trampoline(BytePointer*, const Module&, FunctionList*);
-
-        bool already_applied() const {
-            return false;
-        }
-
-        void mark_applied() {}
     };
 
     template<typename T>
