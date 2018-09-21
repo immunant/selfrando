@@ -76,7 +76,7 @@ public:
         bool inserted;
     };
 
-    InsertResult insert(const T &&x) {
+    InsertResult insert(T &&x) {
         // Store a function-local copy of the inserted element,
         // but move `x` into it
         T lx = x;
