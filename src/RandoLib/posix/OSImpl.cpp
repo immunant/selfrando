@@ -43,7 +43,9 @@ void _TRaP_rand_close_fd(void);
 
 namespace os {
 
+#if RANDOLIB_RNG_IS_RAND_R
 uint32_t APIImpl::rand_seed[RANDOLIB_SEED_WORDS] = {0};
+#endif
 
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
 int APIImpl::log_fd = -1;
@@ -138,8 +140,10 @@ RANDO_SECTION void API::finish() {
     _TRaP_rand_close_fd();
 #endif
 
+#if RANDOLIB_RNG_IS_RAND_R
     for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
         rand_seed[i] = 0;
+#endif
 }
 
 

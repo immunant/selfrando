@@ -137,7 +137,9 @@ protected:
     static void debug_printf_impl(const char *fmt, ...);
 
 protected:
+#if RANDOLIB_RNG_IS_RAND_R
     static uint32_t rand_seed[RANDOLIB_SEED_WORDS];
+#endif
 
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
     static int log_fd;
