@@ -40,7 +40,6 @@ public:
 
         template<typename T = BytePointer>
         inline RANDO_SECTION T to_ptr() const {
-		//assert((sizeof(uintptr_t)==1));
             switch (m_space) {
             case AddressSpace::MEMORY:
             case AddressSpace::TRAP:
