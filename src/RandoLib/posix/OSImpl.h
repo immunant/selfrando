@@ -21,7 +21,6 @@
 #include <link.h>
 
 #ifdef __cplusplus
-// Found in posix/qsort.c
 extern "C" {
 time_t _TRaP_libc_time(time_t*);
 extern void *_TRaP_libc_memcpy(void *__restrict, const void *__restrict, size_t);
