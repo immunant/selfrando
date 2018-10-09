@@ -176,11 +176,11 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
 #if RANDOLIB_NO_MREMAP
     if (new_size < old_size) {
         // We're shrinking the region
-        auto new_end = reinterpret_cast<BytePointer>(old_ptr) + new_size;
+        auto new_end = reinterpret_cast<BytePointer>(old_size_ptr) + new_size;
         _TRaP_syscall_munmap(new_end, old_size - new_size);
         if (new_size > 0) {
             *old_size_ptr = new_size;
-            return reinterpret_cast<void*>(old_size_ptr);
+            return reinterpret_cast<void*>(old_size_ptr + 1);
         }
         return nullptr;
     } else {
@@ -189,7 +189,7 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
         // First, try to just mmap in the extra pages at the end
         // We're going to try to mmap() some pages at the end of
         // the old region, and see if the kernel gives them to us
-        auto old_end = reinterpret_cast<BytePointer>(old_ptr) + old_size;
+        auto old_end = reinterpret_cast<BytePointer>(old_size_ptr) + old_size;
         auto size_delta = new_size - old_size;
         res = _TRaP_syscall_mmap(old_end, size_delta,
                                  PROT_READ | PROT_WRITE,
@@ -198,7 +198,7 @@ RANDO_SECTION void *API::mem_realloc(void *old_ptr, size_t new_size, bool zeroed
         if (!APIImpl::syscall_retval_is_err(res)) {
             if (res == old_end) {
                 *old_size_ptr = new_size;
-                return reinterpret_cast<void*>(old_size_ptr);
+                return reinterpret_cast<void*>(old_size_ptr + 1);
             } else {
                 // We got a valid mapping, but at the wrong address
                 // Unmap it before proceeding
