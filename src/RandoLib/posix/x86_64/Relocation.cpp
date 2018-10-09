@@ -227,15 +227,8 @@ void Module::preprocess_arch() {
     m_linker_stubs = 0;
 }
 
-static const char kRemoveBytes[] =
-    "\x48\xBF\x00\x00\x00\x00\x00\x00\x00\x00" // MOV trap_start,  RDI
-    "\x48\xBE\x00\x00\x00\x00\x00\x00\x00\x00" // MOV trap_size,   RSI
-    "\xB8\x00\x00\x00\x00"                     // MOV __NR_munmap, RAX
-    "\x0F\x05";                                // SYSCALL
-
-static constexpr size_t kRemoveBytesSize = sizeof(kRemoveBytes) - 1;
-
 void Module::relocate_arch(FunctionList *functions) const {
+#if RANDOLIB_IS_POSIX
     if (m_module_info->program_info_table->trap_end_page != 0) {
         // If we built with --traplinker-selfrando-txtrp-pages,
         // putting all TRaP info and our own code together
@@ -260,6 +253,12 @@ void Module::relocate_arch(FunctionList *functions) const {
         auto end_page_ptr = reinterpret_cast<BytePointer>(end_page);
         RANDO_ASSERT(end_page_ptr[0] == 0xC3);
 
+        static const char kRemoveBytes[] =
+            "\x48\xBF\x00\x00\x00\x00\x00\x00\x00\x00" // MOV trap_start,  RDI
+            "\x48\xBE\x00\x00\x00\x00\x00\x00\x00\x00" // MOV trap_size,   RSI
+            "\xB8\x00\x00\x00\x00"                     // MOV __NR_munmap, RAX
+            "\x0F\x05";                                // SYSCALL
+        static constexpr size_t kRemoveBytesSize = sizeof(kRemoveBytes) - 1;
         auto remove_code = end_page_ptr - kRemoveBytesSize;
         API::memcpy(remove_code, kRemoveBytes, kRemoveBytesSize);
 
@@ -280,6 +279,7 @@ void Module::relocate_arch(FunctionList *functions) const {
         remove_call[0] = 0xE8;
         *reinterpret_cast<uint32_t*>(remove_call + 1) = (remove_code - (remove_call + 5));
     }
+#endif
 }
 
 } // namespace os
