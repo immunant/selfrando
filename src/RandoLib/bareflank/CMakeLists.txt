@@ -45,19 +45,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
     endif()
 
-    add_library(selfrando_noprefix STATIC $<TARGET_OBJECTS:selfrando_objects>)
-
-    # Build libselfrando.a with .selfrando prefix prepended to all sections
-    add_custom_target(libselfrando.a ALL
-        COMMAND ${CMAKE_OBJCOPY} --prefix-alloc-sections=.selfrando libselfrando_noprefix.a libselfrando.a
-        COMMAND ${CMAKE_OBJCOPY} --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
-        COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ libselfrando.a
-        COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt libselfrando.a
-        # TODO: add _TRaP_environ to non_trap_syms???
-        COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ libselfrando.a
-        VERBATIM
-        )
-    add_dependencies(libselfrando.a selfrando_noprefix)
+    add_library(selfrando STATIC $<TARGET_OBJECTS:selfrando_objects>)
     install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/libselfrando.a
         DESTINATION bin/${SR_ARCH})
