@@ -63,6 +63,12 @@ if(EXISTS ${BAREFLANK_DIR})
         -DNEED_GSL_LITE
         -DBF_INSIDE_SELFRANDO
         )
+
+    find_library(SR_LIBELF_LIB
+        libelf.a
+        HINTS "${LIBELF_PATH}"
+        PATH_SUFFIXES bin lib
+        )
 elseif(WIN32)
     set(SR_PLATFORM win32)
     # TODO: add win32 options
