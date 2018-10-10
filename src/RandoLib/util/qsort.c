@@ -31,7 +31,7 @@
 
 #include <stddef.h>
 
-#if RANDOLIB_IS_POSIX
+#if RANDOLIB_IS_POSIX || RANDOLIB_IS_BAREFLANK
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #endif

@@ -17,6 +17,8 @@
 #include "win32/OSDefs.h"
 #elif RANDOLIB_IS_POSIX
 #include "posix/OSDefs.h"
+#elif RANDOLIB_IS_BAREFLANK
+#include "bareflank/OSDefs.h"
 #else
 #error "Unrecognized OS"
 #endif
@@ -92,6 +94,8 @@ public:
 #include "win32/OSImpl.h"
 #elif RANDOLIB_IS_POSIX
 #include "posix/OSImpl.h"
+#elif RANDOLIB_IS_BAREFLANK
+#include "bareflank/OSImpl.h"
 #else
 #error "Unrecognized OS"
 #endif
@@ -368,6 +372,8 @@ private:
 #include "win32/OSModule.h"
 #elif RANDOLIB_IS_POSIX
 #include "posix/OSModule.h"
+#elif RANDOLIB_IS_BAREFLANK
+#include "bareflank/OSModule.h"
 #else
 #error "Unrecognized OS"
 #endif

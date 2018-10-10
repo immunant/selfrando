@@ -134,7 +134,7 @@ int _TRaP_vsnprintf(char *buf, size_t bufsize,
                 PRINT_CHAR('0');
             } else {
                 // Skip the leading zero digits
-#if RANDOLIB_IS_POSIX
+#if RANDOLIB_IS_POSIX || RANDOLIB_IS_BAREFLANK
                 ival = (sizeof(uintptr_t) == 8) ? __builtin_clzll(pval) : __builtin_clz(pval);
 #elif RANDOLIB_IS_WIN32
                 DWORD clz = 0;

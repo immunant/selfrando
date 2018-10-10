@@ -15,6 +15,8 @@ set(ANDROID_NDK "" CACHE PATH "Android NDK directory (build libs for Android)")
 set(LIBELF_PATH "" CACHE PATH "Path to directory containing libelf.so (if not using system libelf)")
 set(SR_BUILD_LIBELF OFF CACHE BOOL "Build our own libelf as part of the build process")
 
+set(BAREFLANK_DIR "" CACHE PATH "Path to bareflank hypervisor repository")
+
 if("${SR_BUILD_MODULES}" STREQUAL "all")
     set(SR_BUILD_MODULES ${SR_ALL_MODULES})
 endif()
@@ -40,7 +42,28 @@ else()
     set(SR_DEBUG_LEVEL_IS_ENV 0)
 endif()
 
-if(WIN32)
+if(EXISTS ${BAREFLANK_DIR})
+    set(SR_PLATFORM bareflank)
+    add_compile_options(
+        -fno-omit-frame-pointer
+        -Wall
+        -Wextra
+        -Wno-unused-parameter
+        -Wpointer-arith
+        )
+
+    set(CMAKE_CXX_STANDARD 17)
+
+    include_directories(
+        ${BAREFLANK_DIR}/bfsdk/include
+        ${BAREFLANK_DIR}/bfelf_loader/include
+        )
+
+    add_definitions(
+        -DNEED_GSL_LITE
+        -DBF_INSIDE_SELFRANDO
+        )
+elseif(WIN32)
     set(SR_PLATFORM win32)
     # TODO: add win32 options
 elseif(UNIX)

@@ -85,7 +85,7 @@ RANDO_SECTION uint32_t _TRaP_chacha_random(uint32_t max) {
     if (max == 0)
         return 0;
 
-#if RANDOLIB_IS_POSIX
+#if RANDOLIB_IS_POSIX || RANDOLIB_IS_BAREFLANK
     auto clz = __builtin_clz(max);
 #elif RANDOLIB_IS_WIN32
     DWORD clz = 0;
