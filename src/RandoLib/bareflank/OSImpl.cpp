@@ -206,6 +206,7 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
             return;
         // FIXME: for now, exec_addr == exec_virt so this magically works
         // however, our whole relocation algorithm breaks if they're not equal
+        RANDO_ASSERT(m_bfelf_file->exec_virt == m_bfelf_file->exec_addr);
         auto addr = m_bfelf_file->exec_virt + *rva;
         Relocation reloc(*this, &addr, Relocation::get_pointer_reloc_type());
         functions->adjust_relocation(&reloc);
