@@ -30,6 +30,9 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <Windows.h>
 #include <winternl.h>
 

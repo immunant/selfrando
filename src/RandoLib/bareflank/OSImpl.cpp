@@ -12,8 +12,8 @@
 
 #include <bfdebug.h>
 #include <bfplatform.h>
+#include <bftypes.h>
 
-#include <stdint.h>
 #include <stdarg.h>
 
 #include <type_traits>

@@ -10,12 +10,6 @@
 #define __RANDOLIB_OSLINUX_H
 #pragma once
 
-#include <assert.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #ifdef __cplusplus
 extern "C" {
 void *platform_memset(void*, char, uint64_t);
@@ -27,7 +21,7 @@ void *platform_memcpy(void*, const void*, uint64_t);
 namespace os {
 
 typedef uint8_t *BytePointer;
-typedef time_t Time;
+typedef uint64_t Time;
 typedef int File;
 typedef int Pid;
 

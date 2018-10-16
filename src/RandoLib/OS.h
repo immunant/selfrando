@@ -10,9 +10,6 @@
 #define __RANDOLIB_OS_H
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
-
 #if RANDOLIB_IS_WIN32
 #include "win32/OSDefs.h"
 #elif RANDOLIB_IS_POSIX

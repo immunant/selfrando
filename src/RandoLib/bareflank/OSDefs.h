@@ -8,12 +8,10 @@
 
 #pragma once
 
-#include <assert.h>
 #include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <sys/types.h>
+
+#include <bftypes.h>
 
 // FIXME: gcc doesn't support assigning an entire class to a section
 // so we'll either have to solve this using linker scripts
