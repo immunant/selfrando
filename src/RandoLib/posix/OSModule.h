@@ -16,6 +16,7 @@ struct Function;
 
 #ifdef __cplusplus
 #include <utility>
+#include <new>
 
 #include "util/hashmap.h"
 

@@ -2,8 +2,6 @@
 #define __HASH_MAP_H
 #pragma once
 
-#include <new>
-
 #include <OS.h>
 
 namespace hashmap {
