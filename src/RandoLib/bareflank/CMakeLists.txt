@@ -70,7 +70,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -m32")
     endif()
 
-    add_library(selfrando OBJECT
+    add_library(selfrando_objects OBJECT
         ../RandoLib.cpp
         OSImpl.cpp
         ../util/hash_32a.c
@@ -85,12 +85,12 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     # Add dependency on libelf since we import ELF headers
     if (SR_LIBELF_TARGET)
-        add_dependencies(selfrando ${SR_LIBELF_TARGET})
+        add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
     endif()
 
-    add_custom_target(selfrando_object ALL
-        COMMAND ld -r $<TARGET_OBJECTS:selfrando> -o selfrando.o
-        DEPENDS $<TARGET_OBJECTS:selfrando>
+    add_custom_target(selfrando ALL
+        COMMAND ld -r $<TARGET_OBJECTS:selfrando_objects> -o selfrando.o
+        DEPENDS $<TARGET_OBJECTS:selfrando_objects>
         BYPRODUCTS selfrando.o
         COMMAND_EXPAND_LISTS
         VERBATIM
@@ -98,4 +98,5 @@ if (SR_BUILD_MODULE_RANDOLIB)
     install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/selfrando.o
         DESTINATION bin/${SR_ARCH})
+
 endif()
