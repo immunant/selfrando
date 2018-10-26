@@ -76,8 +76,6 @@
 #if !defined(__FNV_H__)
 #define __FNV_H__
 
-#include <stdint.h>
-
 #include <OS.h>
 
 #define FNV_VERSION "5.0.2"	/* @(#) FNV Version */
