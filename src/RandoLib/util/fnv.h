@@ -77,7 +77,6 @@
 #define __FNV_H__
 
 #include <stdint.h>
-#include <stdlib.h>
 
 #include <OS.h>
 
