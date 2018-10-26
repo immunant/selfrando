@@ -9,6 +9,8 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
+
 #include <sys/types.h>
 
 #include <bftypes.h>
@@ -18,22 +20,15 @@
 // or include RandoLib as an external shared library
 #define RANDO_SECTION
 
-#if RANDOLIB_IS_SHARED
-#define RANDO_PUBLIC  __attribute__((visibility("default")))
+#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
 #define RANDO_PUBLIC_FUNCTION(name, return_type, ...)   \
     extern "C" RANDO_PUBLIC RANDO_SECTION               \
     return_type _TRaP_##name(__VA_ARGS__)
 
-#else // RANDOLIB_IS_SHARED
-#define RANDO_PUBLIC  __attribute__((visibility("hidden")))
-// We don't need the _TRaP_ prefix for public functions, since objcopy adds it
-#define RANDO_PUBLIC_FUNCTION(name, return_type, ...)   \
-    extern "C" RANDO_PUBLIC RANDO_SECTION               \
-    return_type name(__VA_ARGS__)
-#endif // RANDOLIB_IS_SHARED
-
 #define RANDO_MAIN_FUNCTION()   RANDO_PUBLIC_FUNCTION(RandoMain, void, os::Module::Handle asm_module)
 
+// linux/compiler-gcc.h from the kernel #define's inline
+#undef inline
 #define RANDO_ALWAYS_INLINE __attribute__((always_inline)) inline
 
 // TODO

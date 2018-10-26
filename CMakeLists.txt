@@ -52,18 +52,6 @@ if(EXISTS ${BAREFLANK_DIR})
         -Wpointer-arith
         )
 
-    set(CMAKE_CXX_STANDARD 17)
-
-    include_directories(
-        ${BAREFLANK_DIR}/bfsdk/include
-        ${BAREFLANK_DIR}/bfelf_loader/include
-        )
-
-    add_definitions(
-        -DNEED_GSL_LITE
-        -DBF_INSIDE_SELFRANDO
-        )
-
     find_library(SR_LIBELF_LIB
         libelf.a
         HINTS "${LIBELF_PATH}"

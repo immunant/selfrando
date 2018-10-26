@@ -31,7 +31,7 @@ class APIImpl : public APIBase {
 public:
     template<typename... Args>
     static void SystemMessage(const char *fmt, Args... args) {
-        BFDEBUG(fmt, args...);
+        _TRaP_bfdebug(fmt, args...);
     }
 
 

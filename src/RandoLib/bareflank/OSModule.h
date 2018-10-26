@@ -17,7 +17,12 @@ struct FunctionList;
 struct Function;
 
 #ifdef __cplusplus
-#include <utility>
+
+// We can't #include <new> on bareflank due to compiler errors (FIXME),
+// so we just reimplement placement new ourselves
+inline void *operator new(size_t s, void *p) throw() {
+    return p;
+}
 
 #include "util/hashmap.h"
 
@@ -64,11 +69,9 @@ public:
             : RelocationBase(mod, ptr, type),
               m_has_symbol_ptr(false), m_symbol_ptr(nullptr), m_addend(addend) { }
 
-        Relocation(const Module &mod, const trap_reloc_t &reloc)
-            : RelocationBase(mod, Address::from_trap(mod, reloc.address).to_ptr(), reloc.type),
-              m_symbol_ptr(Address::from_trap(mod, reloc.symbol).to_ptr()), m_addend(reloc.addend) {
-            m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
-        }
+        // Unlike the posix version, this can't be inlined here
+        // because that causes a linking error due to `-mfentry`
+        Relocation(const Module &mod, const trap_reloc_t &reloc);
 
         // TODO: would be nice to move these into RelocationBase
         BytePointer get_target_ptr() const;

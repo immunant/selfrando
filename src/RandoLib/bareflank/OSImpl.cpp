@@ -12,14 +12,12 @@
 
 #include <bfdebug.h>
 #include <bfplatform.h>
-#include <bftypes.h>
 
 #include <stdarg.h>
 
-#include <type_traits>
-
 extern "C" {
 int _TRaP_vsnprintf(char*, size_t, const char*, va_list);
+void _TRaP_bfdebug(const char*);
 }
 
 namespace os {
@@ -38,7 +36,7 @@ RANDO_SECTION void APIImpl::debug_printf_impl(const char *fmt, ...) {
     va_start(args, fmt);
     _TRaP_vsnprintf(tmp, 255, fmt, args);
     va_end(args);
-    BFDEBUG("%s", tmp);
+    _TRaP_bfdebug(tmp);
 }
 
 RANDO_SECTION void API::init() {
@@ -153,6 +151,12 @@ RANDO_SECTION void API::close_file(File file) {
 
 RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermissions perms) const {
     return PagePermissions::UNKNOWN;
+}
+
+RANDO_SECTION Module::Relocation::Relocation(const Module &mod, const trap_reloc_t &reloc)
+    : RelocationBase(mod, Address::from_trap(mod, reloc.address).to_ptr(), reloc.type),
+      m_symbol_ptr(Address::from_trap(mod, reloc.symbol).to_ptr()), m_addend(reloc.addend) {
+    m_has_symbol_ptr = (reloc.symbol != 0); // FIXME: what if zero addresses are legit???
 }
 
 RANDO_SECTION Module::Module(Handle bfelf_file)
