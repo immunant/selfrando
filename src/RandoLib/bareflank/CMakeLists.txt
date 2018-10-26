@@ -73,7 +73,6 @@ if (SR_BUILD_MODULE_RANDOLIB)
     add_library(selfrando_objects OBJECT
         ../RandoLib.cpp
         OSImpl.cpp
-        ../util/hash_32a.c
         ../util/strtol.c
         ../util/qsort.c
         ../util/printf.cpp
