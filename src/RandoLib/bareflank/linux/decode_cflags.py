@@ -22,6 +22,8 @@ PREFIX_BLACKLIST = [
 
 ARGUMENT_BLACKLIST = {
     "-E",
+    "-c",
+    "-o",
     "-pipe",
     # We really need some system headers, like `stdint.h` and `utility`
     "-nostdinc",
