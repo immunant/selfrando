@@ -39,6 +39,9 @@
 // Binary search function that finds function containing given address
 // TODO: move this to a separate .cpp file???
 Function *FunctionList::find_function(os::BytePointer addr) const {
+    if (num_elems == 0)
+        return nullptr;
+
     size_t lo = 0, hi = num_elems - 1;
     // return null if no function contains addr
     if (addr <  elems[lo].undiv_start ||
