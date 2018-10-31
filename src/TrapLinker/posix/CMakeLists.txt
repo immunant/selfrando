@@ -1,6 +1,8 @@
 
 set(TRAPLINKER_INSTALL_LD ON CACHE BOOL
     "Install ld replacement links")
+set(TRAPLINKER_KEEP_FILES OFF CACHE BOOL
+    "Keep temporary files produced by TrapLinker")
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -21,6 +23,10 @@ if (SR_BUILD_MODULE_TRAPLINKER)
         arch/arm64/ELF.cpp
         LinkerOptions.inc
         )
+
+    if (TRAPLINKER_KEEP_FILES)
+        add_definitions(-DTRAPLINKER_KEEP_FILES)
+    endif()
 
     target_link_libraries(traplinker ${SR_LIBELF_LIB} z randolib_support)
     target_compile_options(traplinker PRIVATE -static)

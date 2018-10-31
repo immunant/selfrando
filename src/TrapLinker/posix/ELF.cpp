@@ -179,7 +179,7 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
         m_parsed = false;
         auto archive_filename = Filesystem::get_temp_filename("traparchive");
         update_archive(object_files, archive_filename);
-#if RANDOLIB_DEBUG_LEVEL == 0
+#ifndef TRAPLINKER_KEEP_FILES
         for (auto filename : object_files)
             Filesystem::remove(filename);
 #endif
@@ -501,7 +501,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
         GElf_Shdr trap_section_header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         trap_section_header.sh_type = SHT_PROGBITS;
         trap_section_header.sh_flags = SHF_ALLOC;
-#if RANDOLIB_DEBUG_LEVEL > 0
+#if 0 // Disabled for now (breaks build)
         trap_section_header.sh_flags |= SHF_INFO_LINK;
         trap_section_header.sh_info = section_ndx; // For debugging
 #endif

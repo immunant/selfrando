@@ -376,7 +376,7 @@ int main(int argc, char* argv[]) {
 }
 
 LinkWrapper::~LinkWrapper() {
-#if RANDOLIB_DEBUG_LEVEL == 0
+#ifndef TRAPLINKER_KEEP_FILES
     for (auto filename : m_temp_files)
         Filesystem::remove(filename);
 #endif
