@@ -52,7 +52,7 @@ public:
 
     static inline size_t random(size_t max) {
         // TODO: call platform_random()
-        return 0x1337;
+        return 0x1337 % max;
     }
 
     static inline Time time() {
