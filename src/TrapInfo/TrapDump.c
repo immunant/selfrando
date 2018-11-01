@@ -31,6 +31,12 @@ int main(int argc, const char *argv[]) {
         errx(EXIT_FAILURE, "File does not contain any TRaP data: %s", argv[1]);
     printf("Read TRaP data bytes: %zd\n", data.size);
 
+    // Delta to add to all addresses to obtain .txtrp-relative values
+    int64_t address_delta = 0;
+    if (data.trap_platform != TRAP_PLATFORM_POSIX_ARM) {
+        address_delta = (intptr_t)data.txtrp_address - (intptr_t)data.data;
+    }
+
     struct trap_header_t header = {};
     uint8_t *trap_ptr = data.data;
     trap_read_header(&header, &trap_ptr,
@@ -46,7 +52,7 @@ int main(int argc, const char *argv[]) {
         while (trap_read_reloc(&header, &trap_ptr, &rel_addr, &reloc)) {
             assert(rel_addr == reloc.address);
             printf("Rel[%" PRId64 "]@%" PRIx64 "=%" PRIx64 "+%" PRId64 "\n",
-                   reloc.type, reloc.address,
+                   reloc.type, reloc.address + address_delta,
                    reloc.symbol, reloc.addend);
         }
     }
@@ -58,7 +64,7 @@ int main(int argc, const char *argv[]) {
         trap_read_record(&header, &trap_ptr, NULL, &record);
         size_t first_ofs = record.first_symbol.address - record.address;
         printf("Record@%" PRIx64 "(sec+%zd)\n",
-               record.address, first_ofs);
+               record.address + address_delta, first_ofs);
 
         struct trap_symbol_t symbol;
         uint8_t *sym_ptr = record.symbol_start;
@@ -68,7 +74,7 @@ int main(int argc, const char *argv[]) {
             assert(sym_addr == symbol.address);
             printf("  Sym@%" PRIx64 "/%" PRIx64 "[%" PRIx64 "] align:%ld\n",
                    symbol.address - record.address,
-                   symbol.address,
+                   symbol.address + address_delta,
                    symbol.size,
                    (1L << symbol.p2align));
             num_symbols++;
@@ -82,7 +88,7 @@ int main(int argc, const char *argv[]) {
                    trap_read_reloc(&header, &rel_ptr, &rel_addr, &reloc)) {
                 assert(rel_addr == reloc.address);
                 printf("  Rel[%" PRId64 "]@%" PRIx64 "=%" PRIx64 "+%" PRId64 "\n",
-                       reloc.type, reloc.address,
+                       reloc.type, reloc.address + address_delta,
                        reloc.symbol, reloc.addend);
             }
         }
@@ -91,7 +97,7 @@ int main(int argc, const char *argv[]) {
             printf("  Padding[%" PRId64 "]@%" PRIx64 "/%" PRIx64 "\n",
                    record.padding_size,
                    record.padding_ofs,
-                   record.padding_ofs + record.address);
+                   record.padding_ofs + record.address + address_delta);
         }
         num_records++;
     }

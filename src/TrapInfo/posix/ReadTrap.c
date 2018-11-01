@@ -73,6 +73,11 @@ struct trap_data_t read_trap_data(struct trap_file_t *file) {
     if (txtrp_scn == NULL)
         return res;
 
+    GElf_Shdr shdr;
+    if (gelf_getshdr(txtrp_scn, &shdr) == NULL)
+        errx(EXIT_FAILURE, "Cannot get section header");
+    res.txtrp_address = shdr.sh_addr;
+
     // Get the platform
     GElf_Ehdr ehdr;
     if (gelf_getehdr(file->elf, &ehdr) == NULL)
@@ -105,7 +110,6 @@ struct trap_data_t read_trap_data(struct trap_file_t *file) {
     //  but not on other architectures)
     Elf_Scn *got_plt_scn = find_section(file->elf, ".got.plt");
     if (got_plt_scn != NULL) {
-        GElf_Shdr shdr;
         if (gelf_getshdr(got_plt_scn, &shdr) == NULL)
             errx(EXIT_FAILURE, "Cannot get section header");
 

@@ -17,6 +17,8 @@ struct trap_file_t;
 
 struct trap_data_t {
     trap_platform_t trap_platform;
+    // Virtual address of .txtrp section
+    uintptr_t txtrp_address;
     uintptr_t base_address;
     uint8_t *data;
     size_t size;
