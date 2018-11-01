@@ -216,10 +216,12 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
         functions->adjust_relocation(&reloc);
         *rva = addr - m_bfelf_file->exec_virt;
     };
+    API::debug_printf<5>("Relocating entry point(s)\n");
     fixup_rva(&m_bfelf_file->entry);
     fixup_rva(&m_bfelf_file->init);
     fixup_rva(&m_bfelf_file->fini);
     // init_array, fini_array and eh_frame should have relocations in TRaP info
+    API::debug_printf<5>("Relocating symbols\n");
     for (size_t i = 0; i < m_bfelf_file->symnum; i++) {
         auto *sym = const_cast<bfelf_sym*>(&m_bfelf_file->symtab[i]);
         fixup_rva(&sym->st_value);
@@ -229,12 +231,14 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     relocate_arch(functions);
 
     // Apply relocations to known GOT entries
+    API::debug_printf<5>("Relocating GOT\n");
     for (auto &ge : m_got_entries) {
         API::debug_printf<5>("GOT entry@%p\n", ge.key());
         Relocation reloc(*this, ge.key(),
                          Relocation::get_pointer_reloc_type());
         functions->adjust_relocation(&reloc);
     }
+    API::debug_printf<5>("Finished ELF-specific relocations\n");
 }
 
 RANDO_SECTION void Module::read_got_relocations(const TrapInfo *trap_info) {
