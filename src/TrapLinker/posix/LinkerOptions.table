@@ -108,3 +108,4 @@
 --traplinker-no-libs            handle_traplinker_no_libs
 --traplinker-no-textramp        handle_traplinker_no_textramp
 --traplinker-no-pic-warning     handle_traplinker_no_pic_warning
+--traplinker-emit-eh-txtrp      handle_traplinker_emit_eh_txtrp

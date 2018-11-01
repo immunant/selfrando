@@ -133,7 +133,8 @@ bool ElfObject::parse() {
     return true;
 }
 
-std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp) {
+std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp,
+                                                              bool emit_eh_txtrp) {
     if (!parse())
         Error::printf("Could not parse ELF file %s\n", m_filename.c_str());
 
@@ -162,7 +163,7 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
                 m_elf = write_new_file(temp_file.first);
                 if (!parse())
                     Error::printf("Could not parse ELF archive %s\n", m_filename.c_str());
-                if (create_trap_info_impl(emit_textramp)) {
+                if (create_trap_info_impl(emit_textramp, emit_eh_txtrp)) {
                     update_file();
                 }
                 elf_end(m_elf);
@@ -185,7 +186,7 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
 #endif
         return std::make_tuple(archive_filename, elf_machine);
     } else {
-        if (create_trap_info_impl(emit_textramp)) {
+        if (create_trap_info_impl(emit_textramp, emit_eh_txtrp)) {
             update_file();
         }
         return std::make_tuple(m_filename, m_ehdr.e_machine);
@@ -364,7 +365,8 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
     return section_builders;
 }
 
-void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_builders) {
+void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_builders,
+                                       bool emit_eh_txtrp) {
     // Iterate over the section builders to eliminate the builders
     // that aren't getting trap info.
     for (auto I = section_builders->begin(), E = section_builders->end();
@@ -390,7 +392,7 @@ void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_bui
             continue;
         }
         auto section_name = m_section_header_strings->get_string(header.sh_name);
-        if (section_name == ".eh_frame") {
+        if (section_name == ".eh_frame" && !emit_eh_txtrp) {
             // Ignore .eh_frame section (for now), since it contains relocs
             // that point into potentially discarded sections, which the linker
             // doesn't like
@@ -399,7 +401,7 @@ void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_bui
             I = section_builders->erase(I);
             continue;
         }
-        if (header.sh_type == SHT_ARM_EXIDX) {
+        if (header.sh_type == SHT_ARM_EXIDX && !emit_eh_txtrp) {
             Debug::printf<10>("Skipping .ARM.exidx section %d\n", section_ndx);
             I = section_builders->erase(I);
             continue;
@@ -415,7 +417,7 @@ void ElfObject::prune_section_builders(ElfObject::SectionBuilderMap *section_bui
     }
 }
 
-bool ElfObject::create_trap_info_impl(bool emit_textramp) {
+bool ElfObject::create_trap_info_impl(bool emit_textramp, bool emit_eh_txtrp) {
     Debug::printf<5>("Creating trap info\n");
 
     ElfSymbolTable symbol_table(m_elf, *this);
@@ -425,7 +427,7 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp) {
     }
 
     auto section_builders = create_section_builders(&symbol_table);
-    prune_section_builders(&section_builders);
+    prune_section_builders(&section_builders, emit_eh_txtrp);
     if (section_builders.empty()) {
         Debug::printf<2>("Did not find any interesting sections, quitting early\n");
         return false;

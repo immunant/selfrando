@@ -487,7 +487,8 @@ public:
         return m_num_sections;
     }
 
-    std::tuple<std::string, uint16_t> create_trap_info(bool emit_textramp);
+    std::tuple<std::string, uint16_t> create_trap_info(bool emit_textramp,
+                                                       bool emit_eh_txtrp);
 
     void* data();
 
@@ -669,9 +670,10 @@ private:
     typedef std::map<uint32_t, TrapRecordBuilder> SectionBuilderMap;
 
     SectionBuilderMap create_section_builders(ElfSymbolTable *symbol_table);
-    void prune_section_builders(SectionBuilderMap *section_builders);
+    void prune_section_builders(SectionBuilderMap *section_builders,
+                                bool emit_eh_txtrp);
 
-    bool create_trap_info_impl(bool emit_textramp);
+    bool create_trap_info_impl(bool emit_textramp, bool emit_eh_txtrp);
     void add_anchor_reloc(const GElf_Shdr *header,
                           Elf_SectionIndex section_ndx,
                           Elf_SectionIndex symtab_section_ndx,

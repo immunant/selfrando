@@ -74,6 +74,7 @@ public:
                                         m_add_selfrando_libs(true),
                                         m_emit_textramp(true),
                                         m_pic_warning(true),
+                                        m_emit_eh_txtrp(false),
                                         m_relocatable(false),
                                         m_shared(false), m_static(false),
                                         m_whole_archive(false),
@@ -91,6 +92,10 @@ public:
 
     bool emit_textramp() const {
         return m_emit_textramp;
+    }
+
+    bool emit_eh_txtrp() const {
+        return m_emit_eh_txtrp;
     }
 
     std::vector<std::pair<std::string, bool>> input_files() const {
@@ -155,6 +160,7 @@ private:
     int handle_traplinker_no_libs(int i, const std::string &arg_key);
     int handle_traplinker_no_textramp(int i, const std::string &arg_key);
     int handle_traplinker_no_pic_warning(int i, const std::string &arg_key);
+    int handle_traplinker_emit_eh_txtrp(int i, const std::string &arg_key);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -212,6 +218,7 @@ private:
     bool m_add_selfrando_libs;
     bool m_emit_textramp;
     bool m_pic_warning;
+    bool m_emit_eh_txtrp;
 
     bool m_relocatable;
     bool m_shared;
@@ -462,7 +469,8 @@ void LinkWrapper::rewrite_file(std::string input_filename,
             Debug::printf<1>("Creating trap info for temp file: %s\n", temp_file.second.c_str());
             std::string rewritten_file;
             uint16_t file_machine;
-            std::tie(rewritten_file, file_machine) = obj.create_trap_info(Args.emit_textramp());
+            std::tie(rewritten_file, file_machine) = obj.create_trap_info(Args.emit_textramp(),
+                                                                          Args.emit_eh_txtrp());
             m_rewritten_inputs[input_filename] = rewritten_file;
             if (rewritten_file != temp_file.second)
                 m_temp_files.push_back(rewritten_file);
@@ -1269,6 +1277,11 @@ int ArgParser::handle_traplinker_no_textramp(int i, const std::string &arg_key) 
 
 int ArgParser::handle_traplinker_no_pic_warning(int i, const std::string &arg_key) {
     m_pic_warning = false;
+    return 0;
+}
+
+int ArgParser::handle_traplinker_emit_eh_txtrp(int i, const std::string &arg_key) {
+    m_emit_eh_txtrp = true;
     return 0;
 }
 
