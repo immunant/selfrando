@@ -116,6 +116,8 @@ protected:
 protected:
 #if RANDOLIB_RNG_IS_RAND_R
     static uint32_t rand_seed[RANDOLIB_SEED_WORDS];
+    // Make rand_seed accessible from APIBase<APIImpl>
+    friend class APIBase;
 #endif
 
 #if RANDOLIB_LOG_TO_FILE || RANDOLIB_LOG_TO_DEFAULT
@@ -139,7 +141,7 @@ inline uint32_t APIBase<APIImpl>::random_full() {
 #if RANDOLIB_RNG_IS_CHACHA
     return _TRaP_chacha_random_u32();
 #elif RANDOLIB_RNG_IS_RAND_R
-    return _TRaP_libc_rand_r(&rand_seed[0]);
+    return _TRaP_libc_rand_r(&APIImpl::rand_seed[0]);
 #elif RANDOLIB_RNG_IS_URANDOM
     return _TRaP_rand_linux(0xffffffffU);
 #else
