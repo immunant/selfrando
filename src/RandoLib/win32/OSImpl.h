@@ -82,7 +82,7 @@ private:
     size_t m_capacity;
 };
 
-class RANDO_SECTION APIImpl : public APIBase {
+class RANDO_SECTION APIImpl : public APIBase<APIImpl> {
 public:
     static void SystemMessage(const char *fmt, ...);
 
