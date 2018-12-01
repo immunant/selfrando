@@ -16,7 +16,9 @@ SOURCES.extend([Glob('bionic/stubs/*.c'),
                 Glob('bionic/arch-%s/*.cpp' % target),
                 Glob('bionic/arch-%s/syscalls/*.S' % target)])
 
-if env['RNG'] == 'urandom':
+if env['RNG'] == 'chacha':
+    SOURCES.append('../util/rand_chacha.cpp')
+elif env['RNG'] == 'urandom':
     SOURCES.append('util/rand_linux.cpp')
 
 lib_env = env.Clone()

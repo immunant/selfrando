@@ -1,12 +1,12 @@
 
 cmake_policy(SET CMP0063 NEW)
 
-set(SR_RNG "urandom" CACHE STRING
-    "Random number generator to use ('rand_r' or 'urandom')")
+set(SR_RNG "chacha" CACHE STRING
+    "Random number generator to use ('chacha', 'rand_r' or 'urandom')")
 set(SR_NO_MREMAP OFF CACHE BOOL
     "Avoid using mremap() to rallocate memory")
 
-set(ALLOWED_RNGS rand_r urandom)
+set(ALLOWED_RNGS chacha rand_r urandom)
 set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
 list(FIND ALLOWED_RNGS ${SR_RNG} rng_idx)
 if(${rng_idx} LESS 0)
@@ -110,7 +110,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
         target_sources(selfrando_objects PRIVATE arm/UnwindStubs.c)
     endif()
 
-    if("${SR_RNG}" STREQUAL "urandom")
+    if("${SR_RNG}" STREQUAL "chacha")
+        target_sources(selfrando_objects PRIVATE ../util/rand_chacha.cpp)
+    elseif("${SR_RNG}" STREQUAL "urandom")
         target_sources(selfrando_objects PRIVATE util/rand_linux.cpp)
     endif()
 

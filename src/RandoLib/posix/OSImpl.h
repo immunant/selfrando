@@ -33,6 +33,7 @@ long _TRaP_rand_linux(long);
 #endif
 pid_t _TRaP_syscall___getpid(void);
 int _TRaP_syscall_open(const char*, int, ...);
+ssize_t _TRaP_syscall_read(int, void*, size_t);
 ssize_t _TRaP_syscall_write(int, const void*, size_t);
 int _TRaP_syscall____close(int);
 }

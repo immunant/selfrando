@@ -68,6 +68,28 @@ RANDO_SECTION void _TRaP_chacha_init(uint32_t key[KEY_WORDS],
     chacha_rekey();
 }
 
+#if RANDOLIB_IS_POSIX
+// FIXME: move this to posix/OSImpl.cpp???
+// That's where it should be, but we have KEY_WORDS and IV_WORDS here
+RANDO_SECTION void _TRaP_chacha_init_urandom() {
+    uint32_t key_iv[KEY_WORDS + IV_WORDS];
+    os::File urandom = os::API::open_file("/dev/urandom", false, false);
+    RANDO_ASSERT(urandom != os::kInvalidFile);
+    for (size_t ofs = 0; ofs < sizeof(key_iv);) {
+        auto ptr = reinterpret_cast<uint8_t*>(key_iv) + ofs;
+        ssize_t left = sizeof(key_iv) - ofs;
+        auto read = os::API::read_file(urandom, ptr, left);
+        if (read == -EAGAIN || read == -EINTR)
+            continue;
+        RANDO_ASSERT(read >= 0);
+        RANDO_ASSERT(read <= left);
+        ofs += read;
+    }
+    os::API::close_file(urandom);
+    _TRaP_chacha_init(key_iv, key_iv + KEY_WORDS);
+}
+#endif
+
 RANDO_SECTION void _TRaP_chacha_finish() {
     if (chacha_rng_state != nullptr) {
         os::API::munmap(chacha_rng_state, chacha_state_size(), true);

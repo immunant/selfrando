@@ -41,6 +41,11 @@ int _TRaP_syscall_unlinkat(int, const char*, int);
 void _TRaP_rand_close_fd(void);
 }
 
+#if RANDOLIB_RNG_IS_CHACHA
+void _TRaP_chacha_init_urandom(void);
+void _TRaP_chacha_finish(void);
+#endif
+
 namespace os {
 
 #if RANDOLIB_RNG_IS_RAND_R
@@ -110,7 +115,9 @@ RANDO_SECTION void API::init() {
 #undef STRINGIFY_MACRO
 #endif
 
-#if RANDOLIB_RNG_IS_RAND_R
+#if RANDOLIB_RNG_IS_CHACHA
+    _TRaP_chacha_init_urandom();
+#elif RANDOLIB_RNG_IS_RAND_R
 #ifdef RANDOLIB_DEBUG_SEED
     rand_seed[0] = RANDOLIB_DEBUG_SEED;
 #else // RANDOLIB_DEBUG_SEED
@@ -136,13 +143,16 @@ RANDO_SECTION void API::finish() {
     if (log_fd != -1)
         _TRaP_syscall____close(log_fd);
 #endif
-#if RANDOLIB_RNG_IS_URANDOM
-    _TRaP_rand_close_fd();
-#endif
 
-#if RANDOLIB_RNG_IS_RAND_R
+#if RANDOLIB_RNG_IS_CHACHA
+    _TRaP_chacha_finish();
+#elif RANDOLIB_RNG_IS_RAND_R
     for (size_t i = 0; i < RANDOLIB_SEED_WORDS; i++)
         rand_seed[i] = 0;
+#elif RANDOLIB_RNG_IS_URANDOM
+    _TRaP_rand_close_fd();
+#else
+#error Unknown RNG setting
 #endif
 }
 
@@ -287,6 +297,11 @@ RANDO_SECTION File API::open_file(const char *name, bool write, bool create) {
         flags |= O_CREAT;
     int fd = _TRaP_syscall_open(name, flags, 0660);
     return APIImpl::syscall_retval_is_err(fd) ? kInvalidFile : fd;
+}
+
+RANDO_SECTION ssize_t API::read_file(File file, void *buf, size_t len) {
+    RANDO_ASSERT(file != kInvalidFile);
+    return _TRaP_syscall_read(file, buf, len);
 }
 
 RANDO_SECTION ssize_t API::write_file(File file, const void *buf, size_t len) {

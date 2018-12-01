@@ -215,6 +215,7 @@ public:
     static PagePermissions mprotect(void*, size_t, PagePermissions);
 
     static File open_file(const char *name, bool write, bool create);
+    static ssize_t read_file(File file, void *buf, size_t len);
     static ssize_t write_file(File file, const void *buf, size_t len);
     static void close_file(File file);
 
