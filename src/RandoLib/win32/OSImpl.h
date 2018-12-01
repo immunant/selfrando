@@ -166,7 +166,7 @@ template<>
 template<>
 inline int APIBase<APIImpl>::clz(uint64_t x) {
     DWORD clz = 0;
-    _BitScanReverse64(&clz, c);
+    _BitScanReverse64(&clz, x);
     return 63 - clz;
 }
 #endif // RANDOLIB_IS_X86_64
