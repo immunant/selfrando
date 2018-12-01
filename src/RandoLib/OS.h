@@ -108,7 +108,7 @@ public:
     }
 
     // Return a random number from the entire set of values of type `T`,
-    // e.g., 0..2^32-1 iff T==uint32_t
+    // e.g., 0..2^32-1 if T==uint32_t
     template<typename T>
     static inline T random_full() {
         // The default implementation forwards everything to
