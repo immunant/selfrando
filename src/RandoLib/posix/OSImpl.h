@@ -126,12 +126,14 @@ protected:
 };
 
 template<>
-inline int APIImpl::clz(uint32_t x) {
+template<>
+inline int APIBase<APIImpl>::clz(uint32_t x) {
     return __builtin_clz(x);
 }
 
 template<>
-inline int APIImpl::clz(uint64_t x) {
+template<>
+inline int APIBase<APIImpl>::clz(uint64_t x) {
     return __builtin_clzll(x);
 }
 

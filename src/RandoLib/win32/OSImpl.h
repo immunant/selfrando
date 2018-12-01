@@ -154,7 +154,8 @@ protected:
 };
 
 template<>
-inline int APIImpl::clz(uint32_t x) {
+template<>
+inline int APIBase<APIImpl>::clz(uint32_t x) {
     DWORD clz = 0;
     _BitScanReverse(&clz, x);
     return 31 - clz;
@@ -162,7 +163,8 @@ inline int APIImpl::clz(uint32_t x) {
 
 #if RANDOLIB_IS_X86_64
 template<>
-inline int APIImpl::clz(uint64_t x) {
+template<>
+inline int APIBase<APIImpl>::clz(uint64_t x) {
     DWORD clz = 0;
     _BitScanReverse64(&clz, c);
     return 63 - clz;
