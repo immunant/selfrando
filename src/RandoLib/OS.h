@@ -63,6 +63,7 @@ void _TRaP_qsort(void *, size_t, size_t,
 }
 
 // Base class for APIImpl subclasses to inherit from
+template<typename Impl>
 class RANDO_SECTION APIBase {
 public:
     // C library functions
@@ -81,6 +82,46 @@ public:
         T tmp = static_cast<T&&>(a);
         a = static_cast<T&&>(b);
         b = static_cast<T&&>(tmp);
+    }
+
+    // Count Leading Zeroes: returns the number of zeroes that the
+    // binary representation of `x` starts with
+    template<typename T>
+    static inline int clz(T x);
+
+    // Return a uniformly-distributed number in the range [0, max)
+    template<typename T>
+    static inline T random(T max) {
+        if (max == 0)
+            return 0;
+
+        auto clz = Impl::template clz<T>(max);
+        auto mask = static_cast<T>(-1LL) >> clz;
+        for (;;) {
+            // Clip rand to next power of 2 after "max"
+            // This ensures that we always have
+            // P(rand < max) > 0.5
+            auto rand = Impl::template random_full<T>() & mask;
+            if (rand < max)
+                return rand;
+        }
+    }
+
+    // Return a random number from the entire set of values of type `T`,
+    // e.g., 0..2^32-1 iff T==uint32_t
+    template<typename T>
+    static inline T random_full() {
+        // The default implementation forwards everything to
+        // random_full<uint32_t>()
+        constexpr size_t wsize = sizeof(uint32_t);
+        constexpr size_t words = (sizeof(T) + wsize - 1) / wsize;
+        union {
+            uint32_t x32[words];
+            T xt;
+        } x;
+        for (size_t i = 0; i < words; i++)
+            x.x32[i] = Impl::template random_full<uint32_t>();
+        return x.xt;
     }
 };
 
@@ -139,7 +180,9 @@ public:
     using APIImpl::memcpy;
     using APIImpl::memcmp;
     using APIImpl::memset;
+    using APIImpl::clz;
     using APIImpl::random;
+    using APIImpl::random_full;
     using APIImpl::time;
     using APIImpl::getenv;
     using APIImpl::getpid;

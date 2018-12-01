@@ -24,7 +24,9 @@ extern int _TRaP_libc_memcmp(const void*, const void*, size_t);
 extern void *_TRaP_libc_memset(void *, int, size_t);
 extern char *_TRaP_libc_getenv(const char*);
 extern long _TRaP_libc_strtol(const char*, char **, int);
-#if RANDOLIB_RNG_IS_RAND_R
+#if RANDOLIB_RNG_IS_CHACHA
+uint32_t _TRaP_chacha_random_u32();
+#elif RANDOLIB_RNG_IS_RAND_R
 int _TRaP_libc_rand_r(unsigned int*);
 #elif RANDOLIB_RNG_IS_URANDOM
 long _TRaP_rand_linux(long);
@@ -44,7 +46,7 @@ typedef pid_t Pid;
 
 static const File kInvalidFile = -1;
 
-class APIImpl : public APIBase {
+class APIImpl : public APIBase<APIImpl> {
 public:
     static void SystemMessage(const char *fmt, ...);
 
@@ -60,30 +62,9 @@ public:
         return _TRaP_libc_memset(s, c, n);
     }
 
-    static inline size_t random(size_t max) {
-#if RANDOLIB_RNG_IS_RAND_R
-#if RANDOLIB_IS_ARM
-        // On some architectures, we want to avoid the division below
-        // because it's implemented in libgcc.so
-        auto clz = (sizeof(max) == sizeof(long long)) ? __builtin_clzll(max) : __builtin_clz(max);
-        auto mask = static_cast<size_t>(-1LL) >> clz;
-        for (;;) {
-            // Clip rand to next power of 2 after "max"
-            // This ensures that we always have
-            // P(rand < max) > 0.5
-            auto rand = static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed[0])) & mask;
-            if (rand < max)
-                return rand;
-        }
-#else
-        return static_cast<size_t>(_TRaP_libc_rand_r(&rand_seed[0])) % max; // FIXME: better RNG
-#endif
-#elif RANDOLIB_RNG_IS_URANDOM
-        return _TRaP_rand_linux(max);
-#else
-#error Unknown RNG setting
-#endif
-    }
+    using APIBase::clz;
+    using APIBase::random;
+    using APIBase::random_full;
 
     static inline Time time() {
         return _TRaP_libc_time(nullptr); // FIXME: we need something more precise
@@ -141,6 +122,30 @@ protected:
     static int log_fd;
 #endif
 };
+
+template<>
+inline int APIImpl::clz(uint32_t x) {
+    return __builtin_clz(x);
+}
+
+template<>
+inline int APIImpl::clz(uint64_t x) {
+    return __builtin_clzll(x);
+}
+
+template<>
+template<>
+inline uint32_t APIBase<APIImpl>::random_full() {
+#if RANDOLIB_RNG_IS_CHACHA
+    return _TRaP_chacha_random_u32();
+#elif RANDOLIB_RNG_IS_RAND_R
+    return _TRaP_libc_rand_r(&rand_seed[0]);
+#elif RANDOLIB_RNG_IS_URANDOM
+    return _TRaP_rand_linux(0xffffffffU);
+#else
+#error Unknown RNG setting
+#endif
+}
 
 }
 #endif // __cplusplus

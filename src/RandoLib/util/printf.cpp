@@ -132,20 +132,7 @@ int _TRaP_vsnprintf(char *buf, size_t bufsize,
                 PRINT_CHAR('0');
             } else {
                 // Skip the leading zero digits
-#if RANDOLIB_IS_POSIX || RANDOLIB_IS_BAREFLANK
-                ival = (sizeof(uintptr_t) == 8) ? __builtin_clzll(pval) : __builtin_clz(pval);
-#elif RANDOLIB_IS_WIN32
-                DWORD clz = 0;
-#if RANDOLIB_IS_X86
-                _BitScanReverse(&clz, pval);
-                ival = 31 - clz;
-#else
-                _BitScanReverse64(&clz, pval);
-                ival = 63 - clz;
-#endif
-#else
-#error Unknown architecture
-#endif
+                ival = os::API::clz<uintptr_t>(pval);
                 ival = 2 * sizeof(uintptr_t) - (ival / 4);
                 while (--ival >= 0)
                     PRINT_CHAR(hex_table[(pval >> (4 * ival)) & 0xf]);
