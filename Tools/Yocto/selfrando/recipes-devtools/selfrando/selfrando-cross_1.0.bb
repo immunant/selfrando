@@ -16,7 +16,7 @@ do_install () {
     t_d=$c_d/${TARGET_SYS}
     install -d $c_d
     install -d $t_d
-    for x in traplinker trapdump linker_id.sh linker_script.ld; do
+    for x in traplinker trapdump traplinker_id.sh traplinker_script.ld; do
         lnr $n_d/$x $c_d/$x
         lnr $n_d/$x $t_d/$x
     done

@@ -37,8 +37,8 @@ do_install() {
     install -d ${D}${bindir}/selfrando
     install -m 0755 ${B}/src/TrapLinker/posix/traplinker ${D}${bindir}/selfrando/traplinker
     install -m 0755 ${B}/src/TrapInfo/trapdump ${D}${bindir}/selfrando/trapdump
-    install -m 0755 ${S}/src/TrapLinker/posix/linker_id.sh ${D}${bindir}/selfrando/linker_id.sh
-    install -m 0644 ${S}/src/TrapLinker/posix/linker_script.ld ${D}${bindir}/selfrando/linker_script.ld
+    install -m 0755 ${S}/src/TrapLinker/posix/traplinker_id.sh ${D}${bindir}/selfrando/traplinker_id.sh
+    install -m 0644 ${S}/src/TrapLinker/posix/traplinker_script.ld ${D}${bindir}/selfrando/traplinker_script.ld
 }
 
 do_install_append_class-target() {
