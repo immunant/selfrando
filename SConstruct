@@ -20,7 +20,7 @@ vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files 
 vars.Add(EnumVariable('DELETE_LAYOUTS', 'Delete the layout file on process exit',
                       'no', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('RNG', 'Random number generator to use',
-                      'urandom', allowed_values=('rand_r', 'urandom')))
+                      'chacha', allowed_values=('chacha', 'rand_r', 'urandom')))
 vars.Add(BoolVariable('NO_MREMAP', 'Avoid using mremap() to reallocate memory', 0))
 
 def decode_debug_level(var):
