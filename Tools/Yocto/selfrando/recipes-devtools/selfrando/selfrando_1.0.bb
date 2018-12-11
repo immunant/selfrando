@@ -45,8 +45,11 @@ do_install_append_class-target() {
     # TODO: install static libselfrando.a and page-alignment libs
     install -d ${D}${libdir}
     install -m 0755 ${B}/src/RandoLib/posix/libselfrando.so ${D}${libdir}/libselfrando.so
-    for l in randoentry_exec randoentry_so trapheader trapfooter trapfooter_nopage; do
+    for l in randoentry_exec randoentry_so; do
         install -m 0644 ${B}/src/RandoLib/posix/lib$l.a ${D}${libdir}/lib$l.a
+    done
+    for l in trapheader trapfooter trapfooter_nopage; do
+        install -m 0644 ${B}/src/TrapLibs/posix/lib$l.a ${D}${libdir}/lib$l.a
     done
 }
 
