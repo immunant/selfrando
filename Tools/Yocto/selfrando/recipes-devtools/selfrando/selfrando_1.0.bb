@@ -28,7 +28,7 @@ EXTRA_OECMAKE_append_class-nativesdk = " \
 "
 
 EXTRA_OECMAKE_append_class-target = " \
-    -DSR_BUILD_MODULES="TrapLinker;TrapDump;RandoLib" \
+    -DSR_BUILD_MODULES="TrapLinker;TrapDump;RandoLib;TrapLibs" \
     -DSR_ARCH=${@map_selfrando_arch(bb, d, "TARGET_ARCH")} \
     -DBUILD_SHARED_LIBS=1 \
 "
