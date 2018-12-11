@@ -9,6 +9,7 @@ DEPENDS += "selfrando-native"
 deltask do_patch
 deltask do_configure
 deltask do_compile
+deltask do_populate_lic
 
 do_install () {
     n_d=`readlink -m ${D}${bindir}/../selfrando`
