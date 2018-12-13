@@ -7,7 +7,7 @@ set(SR_LOG_APPEND OFF CACHE BOOL
     "Append to log instead of replacing it")
 set(SR_DEBUG_SEED "" CACHE STRING
     "Fixed seed to use for debugging")
-set(SR_FORCE_INPLACE OFF CACHE BOOL
+set(SR_FORCE_INPLACE ON CACHE BOOL
     "Terminate execution (via failed assertion) if in-place randomization would fail")
 set(SR_WRITE_LAYOUTS "no" CACHE STRING
     "After randomization, write layout files to /tmp/ (set to 'no', 'env' or 'always')")

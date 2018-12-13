@@ -14,7 +14,7 @@ vars.Add('ANDROID_NDK', 'Android NDK directory (build libs for Android)', None)
 vars.Add('LIBELF_PATH', 'Path to directory containing libelf.so (if not using system libelf)', None)
 vars.Add(BoolVariable('OPTIMIZED', 'Enable optimized build of traplinker.', 1))
 vars.Add('DEBUG_SEED', 'Fixed seed to use for debugging', False) # We need to use False as the default since None means "no default"
-vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertion) if in-place randomization would fail', 0))
+vars.Add(BoolVariable('FORCE_INPLACE', 'Terminate execution (via failed assertion) if in-place randomization would fail', 1))
 vars.Add(EnumVariable('WRITE_LAYOUTS', 'After randomization, write layout files to /tmp/',
                       'no', allowed_values=('no', 'env', 'always')))
 vars.Add(EnumVariable('DELETE_LAYOUTS', 'Delete the layout file on process exit',
