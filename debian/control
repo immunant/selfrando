@@ -23,7 +23,7 @@ Description: Development tools and runtime for Selfrando
 Package: selfrando-traplinker
 Section: devel
 Architecture: any
-Multi-Arch: allowed
+Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: libselfrando-dev
 Description: TrapLinker linker wrapper for Selfrando
