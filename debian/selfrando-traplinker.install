@@ -1,0 +1,3 @@
+usr/bin/ld* usr/lib/selfrando
+usr/bin/trapdump usr/lib/selfrando
+usr/bin/traplinker* usr/lib/selfrando

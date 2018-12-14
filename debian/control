@@ -1,0 +1,59 @@
+Source: selfrando
+Priority: optional
+Maintainer: Andrei Homescu <ah@immunant.com>
+Build-Depends: debhelper (>= 10), libelf1 (>= 0.169), libelf-dev (>= 0.169),
+    cmake (>= 3.3), python
+Standards-Version: 4.1.2
+Section: libs
+Vcs-Git: https://github.com/immunant/selfrando.git
+Vcs-Browser: https://github.com/immunant/selfrando
+
+Package: selfrando
+Section: devel
+Architecture: any
+Depends: selfrando-traplinker, libselfrando-dev, ${shlibs:Depends}, ${misc:Depends}
+Recommends: libselfrando
+Description: Development tools and runtime for Selfrando
+ Selfrando is a load-time code randomization library that shuffles
+ a program's code at startup time.
+ .
+ This package provides the tools and libraries
+ required to build other packages with Selfrando support.
+
+Package: selfrando-traplinker
+Section: devel
+Architecture: any
+Multi-Arch: foreign
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: libselfrando-dev
+Description: TrapLinker linker wrapper for Selfrando
+ Selfrando is a load-time code randomization library that shuffles
+ a program's code at startup time.
+ .
+ This package provides the linker wrapper
+ required to build other packages with Selfrando support.
+
+Package: libselfrando-dev
+section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: ${misc:Depends}
+Recommends: selfrando-traplinker
+Description: Static build libraries for Selfrando
+ Selfrando is a load-time code randomization library that shuffles
+ a program's code at startup time.
+ .
+ This package provides the static libraries
+ required to build other packages with Selfrando support.
+
+Package: libselfrando
+Section: libs
+Architecture: any
+Multi-Arch: no
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Suggests: selfrando
+Description: Selfrando load-time code randomization library
+ Selfrando is a load-time code randomization library that shuffles
+ a program's code at startup time. This package provides the
+ shared library version of the Selfrando runtime.
+

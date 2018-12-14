@@ -1,0 +1,45 @@
+#!/usr/bin/make -f
+export DH_VERBOSE = 1
+
+# see FEATURE AREAS in dpkg-buildflags(1)
+#export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# see ENVIRONMENT in dpkg-buildflags(1)
+# package maintainers to append CFLAGS
+#export DEB_CFLAGS_MAINT_APPEND  = -Wall -pedantic
+# package maintainers to append LDFLAGS
+#export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+# Translate DEB_HOST_ARCH to SR_ARCH
+ifneq (,$(filter $(DEB_HOST_ARCH), i386 kfreebsd-i386 hurd-i386))
+	sr_arch = x86
+else ifneq (,$(filter $(DEB_HOST_ARCH), amd64 kfreebsd-amd64))
+	sr_arch = x86_64
+else ifneq (,$(filter $(DEB_HOST_ARCH), armel armhf))
+	sr_arch = arm
+else
+	sr_arch = $(DEB_HOST_ARCH)
+endif
+
+%:
+	dh $@ --buildsystem=cmake
+
+# dh_make generated override targets
+# This is example for Cmake (See https://bugs.debian.org/641051 )
+override_dh_auto_configure:
+	dh_auto_configure -- -DSR_ARCH=$(sr_arch)
+#	dh_auto_configure -- #	-DCMAKE_LIBRARY_PATH=$(DEB_HOST_MULTIARCH)
+
+override_dh_auto_install:
+	# libselfrando-dev.install references $(sr_arch)
+	sed -e "s/@sr_arch@/$(sr_arch)/g" \
+	    -e "s/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/g" \
+	    debian/libselfrando-dev.install.in \
+	    > debian/libselfrando-dev.install
+	dh_auto_install --buildsystem=cmake
+
+override_dh_auto_clean:
+	# Clean up the auto-generated .install files
+	rm -f debian/libselfrando-dev.install
+	dh_auto_clean --buildsystem=cmake
+

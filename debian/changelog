@@ -1,0 +1,17 @@
+selfrando (0.1.0-1ubuntu2) bionic; urgency=medium
+
+  * Switched selfrando-traplinker to foreign multiarch
+
+ -- Andrei Homescu <ah@immunant.com>  Fri, 14 Dec 2018 00:59:58 +0000
+
+selfrando (0.1.0-1ubuntu1) bionic; urgency=medium
+
+  *  Updated Debian files for Ubuntu bionic
+
+ -- Andrei Homescu <ah@immunant.com>  Fri, 14 Dec 2018 00:20:29 +0000
+
+selfrando (0.1.0-1) bionic; urgency=low
+
+  * Initial release
+
+ -- Andrei Homescu <ah@immunant.com>  Tue, 11 Dec 2018 22:45:43 +0000
