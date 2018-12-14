@@ -2,7 +2,7 @@ Source: selfrando
 Priority: optional
 Maintainer: Andrei Homescu <ah@immunant.com>
 Build-Depends: debhelper (>= 10), libelf1 (>= 0.169), libelf-dev (>= 0.169),
-    cmake (>= 3.3)
+    cmake (>= 3.3), python
 Standards-Version: 4.1.2
 Section: libs
 Vcs-Git: https://github.com/immunant/selfrando.git
