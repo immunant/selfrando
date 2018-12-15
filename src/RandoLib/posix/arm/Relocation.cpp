@@ -324,8 +324,8 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
 void Module::Relocation::fixup_entry_point(const Module &module,
                                            uintptr_t entry_point,
                                            uintptr_t target) {
-    RANDO_ASSERT(*reinterpret_cast<uint32_t*>(entry_point) == 0xe51fc00c);
-    *reinterpret_cast<uint32_t*>(entry_point-4) = static_cast<uint32_t>(target);
+    *reinterpret_cast<int32_t*>(entry_point - 4) =
+        static_cast<int32_t>(target - entry_point);
 }
 
 void Module::preprocess_arch() {

@@ -6,27 +6,24 @@
  *
  */
 
-        .section .rodata
-.globl selfrando_init_dest
-.hidden selfrando_init_dest
-selfrando_init_dest:
-    .long init_begin
-.globl selfrando_entry_dest
-.hidden selfrando_entry_dest
-selfrando_entry_dest:
-    .long entry_begin
-
 .section .selfrando.entry, "ax", %progbits
 .globl selfrando_init
 .hidden selfrando_init
 .type selfrando_init,%function
 .arm
-init_dest:
-    .long init_begin
+// Relocation.cpp rewrites this to the real init function,
+// and expects a PC-relative address (relative to itself)
+init_pcrel:
+    .long init_begin - selfrando_init
+
+// The actual init entry point for our code
 selfrando_init:
     // selfrando will patch this to the correct target
     // FIXME: use full 32-bit stub
-    ldr r12, init_dest
+    ldr r12, init_pcrel
+    add r12, r12, #selfrando_init - init_pcadd - 8
+init_pcadd:
+    add r12, r12, pc
     bx r12
 
 init_begin:
@@ -45,11 +42,15 @@ init_begin:
 .hidden selfrando_entry
 .type selfrando_entry,%function
 .arm
-entry_dest:
-    .long entry_begin
+// See init_pcrel above
+entry_pcrel:
+    .long entry_begin - selfrando_entry
+
 selfrando_entry:
-    // selfrando will patch this to the correct target
-    ldr r12, entry_dest
+    ldr r12, entry_pcrel
+    add r12, r12, #selfrando_entry - entry_pcadd - 8
+entry_pcadd:
+    add r12, r12, pc
     bx r12
 
 entry_begin:
