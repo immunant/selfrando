@@ -325,7 +325,7 @@ void Module::Relocation::fixup_entry_point(const Module &module,
                                            uintptr_t entry_point,
                                            uintptr_t target) {
     *reinterpret_cast<int32_t*>(entry_point - 4) =
-        static_cast<int32_t>(target - entry_point);
+        os::API::assert_cast<int32_t>(target - entry_point);
 }
 
 void Module::preprocess_arch() {
