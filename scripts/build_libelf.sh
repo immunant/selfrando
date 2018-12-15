@@ -13,9 +13,9 @@ OUTDIR=$1
 mkdir -p $OUTDIR
 cd $OUTDIR
 
-LIBELF_VER="0.169"
-LIBELF_FILE="elfutils-$LIBELF_VER.tar.bz2"
-LIBELF_URL="https://sourceware.org/elfutils/ftp/$LIBELF_VER/$LIBELF_FILE"
+LIBELF_VER="0.175"
+LIBELF_FILE="elfutils_$LIBELF_VER.orig.tar.bz2"
+LIBELF_URL="http://deb.debian.org/debian/pool/main/e/elfutils/$LIBELF_FILE"
 
 wget -O $LIBELF_FILE $LIBELF_URL
 tar xjf $LIBELF_FILE
