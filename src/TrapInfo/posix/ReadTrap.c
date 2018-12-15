@@ -105,15 +105,16 @@ struct trap_data_t read_trap_data(struct trap_file_t *file) {
     }
 
     // FIXME: we should actually be reading .dynamic
-    // and getting the pointer from DT_PLTGOT
-    // (using the address of .got.plt works fine on x86,
-    //  but not on other architectures)
-    Elf_Scn *got_plt_scn = find_section(file->elf, ".got.plt");
-    if (got_plt_scn != NULL) {
+    // Use the address of ".got" as the base address
+    // (currently only relevant on ARM)
+    Elf_Scn *got_scn = find_section(file->elf, ".got");
+    if (got_scn != NULL) {
         if (gelf_getshdr(got_plt_scn, &shdr) == NULL)
             errx(EXIT_FAILURE, "Cannot get section header");
 
         res.base_address = shdr.sh_addr;
+    } else {
+        res.base_address = 0;
     }
 
     Elf_Data *data = elf_getdata(txtrp_scn, NULL);
