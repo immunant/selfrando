@@ -109,7 +109,7 @@ struct trap_data_t read_trap_data(struct trap_file_t *file) {
     // (currently only relevant on ARM)
     Elf_Scn *got_scn = find_section(file->elf, ".got");
     if (got_scn != NULL) {
-        if (gelf_getshdr(got_plt_scn, &shdr) == NULL)
+        if (gelf_getshdr(got_scn, &shdr) == NULL)
             errx(EXIT_FAILURE, "Cannot get section header");
 
         res.base_address = shdr.sh_addr;
