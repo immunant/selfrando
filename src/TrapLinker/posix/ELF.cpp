@@ -54,7 +54,7 @@ const std::unordered_map<uint16_t, ElfObject::TargetInfo> ElfObject::kInfoForTar
     },
     { EM_ARM, {
         .none_reloc      = R_ARM_NONE,
-        .symbol_reloc    = R_ARM_GOTOFF,
+        .symbol_reloc    = R_ARM_REL32,
         .copy_reloc      = R_ARM_COPY,
         .min_p2align     = 0,
         .padding_p2align = 1,
