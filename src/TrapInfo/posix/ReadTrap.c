@@ -68,7 +68,7 @@ static Elf_Scn *find_section(Elf *elf, const char *needle) {
 }
 
 struct trap_data_t read_trap_data(struct trap_file_t *file) {
-    struct trap_data_t res = { TRAP_PLATFORM_UNKNOWN, 0, NULL, 0 };
+    struct trap_data_t res = { TRAP_PLATFORM_UNKNOWN, 0, 0, NULL, 0 };
     Elf_Scn *txtrp_scn = find_section(file->elf, ".txtrp");
     if (txtrp_scn == NULL)
         return res;
@@ -102,19 +102,6 @@ struct trap_data_t read_trap_data(struct trap_file_t *file) {
     default:
         errx(EXIT_FAILURE, "Unknown ELF machine");
         break;
-    }
-
-    // FIXME: we should actually be reading .dynamic
-    // Use the address of ".got" as the base address
-    // (currently only relevant on ARM)
-    Elf_Scn *got_scn = find_section(file->elf, ".got");
-    if (got_scn != NULL) {
-        if (gelf_getshdr(got_scn, &shdr) == NULL)
-            errx(EXIT_FAILURE, "Cannot get section header");
-
-        res.base_address = shdr.sh_addr;
-    } else {
-        res.base_address = 0;
     }
 
     Elf_Data *data = elf_getdata(txtrp_scn, NULL);

@@ -32,10 +32,8 @@ int main(int argc, const char *argv[]) {
     printf("Read TRaP data bytes: %zd\n", data.size);
 
     // Delta to add to all addresses to obtain .txtrp-relative values
-    int64_t address_delta = 0;
-    if (data.trap_platform != TRAP_PLATFORM_POSIX_ARM) {
-        address_delta = (intptr_t)data.txtrp_address - (intptr_t)data.data;
-    }
+    int64_t address_delta =
+        (intptr_t)data.txtrp_address - (intptr_t)data.data;
 
     struct trap_header_t header = {};
     uint8_t *trap_ptr = data.data;
