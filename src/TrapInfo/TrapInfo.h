@@ -256,9 +256,9 @@ trap_address_t trap_read_address(const struct trap_header_t *header,
             delta = *RCAST(int64_t*, *trap_ptr);
         }
         if (trap_header_has_flag(header, TRAP_BASE_RELATIVE_ADDRESSES)) {
-            addr = SCAST(trap_address_t, header->base_address + delta);
+            addr = header->base_address + delta;
         } else {
-            addr = RCAST(trap_address_t, *trap_ptr + delta);
+            addr = RCAST(trap_address_t, *trap_ptr) + delta;
         }
     } else {
         if (header->pointer_size == 32) {
