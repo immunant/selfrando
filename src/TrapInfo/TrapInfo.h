@@ -260,6 +260,7 @@ trap_address_t trap_read_address(const struct trap_header_t *header,
         } else {
             addr = RCAST(trap_address_t, *trap_ptr) + delta;
         }
+        RANDO_ASSERT(SCAST(int64_t, addr) >= 0);
     } else {
         if (header->pointer_size == 32) {
             addr = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
