@@ -149,11 +149,13 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
                 Error::printf("Could not parse ELF archive %s\n", m_filename.c_str());
             if (is_object()) {
                 auto new_machine = m_ehdr.e_machine;
-                if (elf_machine == EM_NONE && new_machine != EM_NONE) {
-                    elf_machine = new_machine;
-                } else if (new_machine != elf_machine) {
-                    Error::printf("Incompatible machine types:%hd and %hd\n",
-                                  elf_machine, new_machine);
+                if (new_machine != EM_NONE) {
+                    if (elf_machine == EM_NONE) {
+                        elf_machine = new_machine;
+                    } else if (new_machine != elf_machine) {
+                        Error::printf("Incompatible machine types:%hd and %hd\n",
+                                      elf_machine, new_machine);
+                    }
                 }
             }
             if (needs_trap_info()) {

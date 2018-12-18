@@ -476,11 +476,13 @@ void LinkWrapper::rewrite_file(std::string input_filename,
                 m_temp_files.push_back(rewritten_file);
 
             // Update the machine type
-            if (m_elf_machine == EM_NONE && file_machine != EM_NONE) {
-                m_elf_machine = file_machine;
-            } else if (file_machine != m_elf_machine) {
-                Error::printf("Incompatible machine types:%hd and %hd\n",
-                              m_elf_machine, file_machine);
+            if (file_machine != EM_NONE) {
+                if (m_elf_machine == EM_NONE) {
+                    m_elf_machine = file_machine;
+                } else if (file_machine != m_elf_machine) {
+                    Error::printf("Incompatible machine types:%hd and %hd\n",
+                                  m_elf_machine, file_machine);
+                }
             }
         }
     } else if (type == LINKER_SCRIPT) {
