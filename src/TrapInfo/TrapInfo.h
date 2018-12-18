@@ -249,26 +249,30 @@ trap_address_t trap_read_address(const struct trap_header_t *header,
     trap_address_t addr;
     if (trap_header_has_flag(header, TRAP_PC_RELATIVE_ADDRESSES) ||
         trap_header_has_flag(header, TRAP_BASE_RELATIVE_ADDRESSES)) {
-        int64_t delta;
-        if (header->pointer_size == 32) {
-            delta = SCAST(int64_t, *RCAST(int32_t*, *trap_ptr));
-        } else {
-            delta = *RCAST(int64_t*, *trap_ptr);
-        }
         if (trap_header_has_flag(header, TRAP_BASE_RELATIVE_ADDRESSES)) {
-            addr = header->base_address + delta;
+            addr = header->base_address;
         } else {
-            addr = RCAST(trap_address_t, *trap_ptr) + delta;
+            addr = RCAST(trap_address_t, *trap_ptr);
         }
-        RANDO_ASSERT(SCAST(int64_t, addr) >= 0);
+        if (header->pointer_size == 32) {
+            int64_t delta = SCAST(int64_t, *RCAST(int32_t*, *trap_ptr));
+            *trap_ptr += sizeof(int32_t);
+            // Truncate the result to 32 bits, since the addition may overflow
+            addr = (addr + delta) & 0xffffffffULL;
+        } else {
+            int64_t delta = *RCAST(int64_t*, *trap_ptr);
+            *trap_ptr += sizeof(int64_t);
+            addr += delta;
+        }
     } else {
         if (header->pointer_size == 32) {
             addr = SCAST(trap_address_t, *RCAST(uint32_t*, *trap_ptr));
+            *trap_ptr += sizeof(uint32_t);
         } else {
             addr = SCAST(trap_address_t, *RCAST(uint64_t*, *trap_ptr));
+            *trap_ptr += sizeof(uint64_t);
         }
     }
-    *trap_ptr += header->pointer_size / 8;
     return addr;
 }
 
