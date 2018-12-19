@@ -33,7 +33,7 @@ extern char
     trap_end_page __attribute__((weak)); // FIXME: this might not be available under -Bsymbolic
 
 extern char _DYNAMIC __attribute__((weak));
-extern char _GLOBAL_OFFSET_TABLE_ __attribute__((weak));
+extern uintptr_t _GLOBAL_OFFSET_TABLE_[];
 #pragma GCC visibility pop
 
 void selfrando_run(void) __attribute__((section(".selfrando.entry")));
@@ -48,7 +48,7 @@ void selfrando_run(void) {
     PIT.selfrando_return = (uintptr_t)(&selfrando_return);
     PIT.xptramp_start = (uintptr_t)(&xptramp_begin);
     PIT.xptramp_size = &xptramp_end - &xptramp_begin;
-    PIT.got_start = (uintptr_t*)(&_GLOBAL_OFFSET_TABLE_);
+    PIT.got_start = _GLOBAL_OFFSET_TABLE_;
     if (&trap_end_page > &trap_end) {
         PIT.trap_end_page = (uintptr_t)(&trap_end_page);
     }
