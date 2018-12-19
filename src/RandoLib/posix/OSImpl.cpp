@@ -404,31 +404,8 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     }
 
     // FIXME: do we always get .got.plt from the ProgramInfoTable???
-    m_got = reinterpret_cast<BytePointer>(m_module_info->program_info_table->got_plt_start);
-    // If got_plt_start == m_image_base, that means that
-    // _TRaP_got_plt_begin == 0, so we don't have a .got.plt
-    // In that case, just use .got as the GOT section
-    if (m_got == m_image_base || m_got == nullptr)
-      m_got = reinterpret_cast<BytePointer>(m_module_info->program_info_table->got_start);
+    m_got = reinterpret_cast<BytePointer>(m_module_info->program_info_table->got_start);
     RANDO_ASSERT(m_got != nullptr);
-
-    // Some loaders add the image base to the entries in .dynamic, others don't.
-    // The easiest way to find out if this is the case is to compare DT_PLTGOT
-    // against the address of .got.plt obtained some other way, e.g., from
-    // _GLOBAL_OFFSET_TABLE_.
-    typedef std::conditional<sizeof(uintptr_t) == 8, Elf64_Dyn, Elf32_Dyn>::type Elf_Dyn;
-    auto dyn = reinterpret_cast<Elf_Dyn*>(m_module_info->dynamic);
-    for (; dyn->d_tag != DT_NULL; dyn++) {
-        if (dyn->d_tag == DT_PLTGOT) {
-            if (reinterpret_cast<os::BytePointer>(dyn->d_un.d_ptr) == m_got) {
-                m_dynamic_has_base = true;
-            } else {
-                RANDO_ASSERT(RVA2Address(dyn->d_un.d_ptr).to_ptr() == m_got);
-                m_dynamic_has_base = false;
-            }
-            break;
-        }
-    }
 
     m_eh_frame_hdr = nullptr;
     for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {

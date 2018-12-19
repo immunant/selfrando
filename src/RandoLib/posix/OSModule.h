@@ -160,11 +160,6 @@ private:
 
     RANDO_SECTION void mark_randomized(RandoState);
 
-    // Some loaders add the module base to all entries in .dynamic,
-    // e.g., the glibc loaders, while others don't, e.g., the Android one.
-    // We set this flag if the addresses have the base.
-    bool m_dynamic_has_base;
-
     hashmap::HashMap<hashmap::PointerEntry<BytePointer>> m_got_entries;
     size_t m_linker_stubs;
 };
