@@ -106,6 +106,10 @@ private:
             }
     }
 
+    // Structure that efficiently stores the suffix of an existing string,
+    // split into two components:
+    // - a shared_ptr pointing to the underlying string
+    // - a start position indicating where the suffix starts in the string
     struct StringSuffix {
         StringPtr s;
         size_t start;
@@ -115,8 +119,8 @@ private:
 
         bool operator==(const StringSuffix &o) const {
             for (size_t i = 0;; i++) {
-                bool end1 = (  start + i) >= s->size();
-                bool end2 = (o.start + i) >= s->size();
+                bool end1 = (  start + i) >=   s->size();
+                bool end2 = (o.start + i) >= o.s->size();
                 if (end1 && end2)
                     return true;  // Reached the end of both strings at the same time
                 if (end1 || end2)
