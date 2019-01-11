@@ -960,11 +960,12 @@ void ElfStringTable::initialize(Elf_Scn *section) {
         input_string.append((char*)data->d_buf, data->d_size);
     }
     m_initial_size = m_next_index = input_string.size();
-    m_string_table.emplace_back(new const std::string(std::move(input_string)));
+    auto sp = std::make_shared<const std::string>(std::move(input_string));
+    m_string_table.emplace_back(sp);
     m_indices.push_back(0);
 
     // Add the string and all its suffixes to the hash map
-    hash_last_string();
+    hash_string_suffixes(sp, 0);
 }
 
 void ElfStringTable::update(ElfObject &object) {

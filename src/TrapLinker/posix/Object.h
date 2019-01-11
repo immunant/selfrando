@@ -54,11 +54,11 @@ public:
     void initialize (Elf_Scn *section);
 
     size_t add_string(const std::string &string) {
-        return internal_add_string(string, string.c_str());
+        return internal_add_string(std::string{string});
     }
 
     size_t add_string(const char *string) {
-        return internal_add_string(string, string);
+        return internal_add_string(std::string{string});
     }
 
     std::string get_string(size_t index) {
@@ -74,55 +74,81 @@ public:
     void update(ElfObject &object);
 
 private:
-    template<typename String>
-    size_t internal_add_string(const String &string,
-                               const char *c_string) {
-        auto it = m_string_index_map.find(c_string);
+    using StringPtr = std::shared_ptr<const std::string>;
+
+    size_t internal_add_string(std::string &&string) {
+        // Not sure if std::move() is needed here,
+        // but leaving it in just to be sure
+        auto sp = std::make_shared<const std::string>(std::move(string));
+        StringSuffix ss{sp, 0};
+        auto it = m_string_index_map.find(ss);
         if (it != m_string_index_map.end())
             return it->second;
 
-        m_string_table.emplace_back(new const std::string(string));
-        m_indices.push_back(m_next_index);
+        auto idx = m_next_index;
+        m_string_table.push_back(sp);
+        m_indices.push_back(idx);
         // Advance the index, including the null terminator
         m_next_index += m_string_table.back()->size() + 1;
 
         // Add the string and all its suffixes to the hash map
-        hash_last_string();
-        return m_indices.back();
+        hash_string_suffixes(sp, idx);
+        return idx;
     }
 
-    void hash_last_string() {
+    void hash_string_suffixes(StringPtr sp, size_t idx) {
         // Add all suffixes of the last added string
         // to the hash map
-        auto last_index = m_indices.back();
-        auto &last_string = *m_string_table.back().get();
-        for (size_t i = 0; i < last_string.size(); i++)
-            if (last_string[i] != '\0')
-                m_string_index_map[&last_string[i]] = last_index + i;
+        for (size_t i = 0; i < sp->size(); i++)
+            if ((*sp)[i] != '\0') {
+                StringSuffix ss{sp, i};
+                m_string_index_map[ss] = idx + i;
+            }
     }
 
+    struct StringSuffix {
+        StringPtr s;
+        size_t start;
+
+        StringSuffix(StringPtr s, size_t start)
+            : s(s), start(start) { }
+
+        bool operator==(const StringSuffix &o) const {
+            for (size_t i = 0;; i++) {
+                bool end1 = (  start + i) >= s->size();
+                bool end2 = (o.start + i) >= s->size();
+                if (end1 && end2)
+                    return true;  // Reached the end of both strings at the same time
+                if (end1 || end2)
+                    return false; // Reached the end of one string, so they're not equal
+                if ((*s)[start + i] != (*o.s)[o.start + i])
+                    return false; // Mismatch
+                if ((*s)[start + i] == '\0')
+                    return true;  // Null terminator in both strings => match
+            }
+        }
+
+        bool operator!=(const StringSuffix &o) const {
+            return !(*this == o);
+        }
+    };
+
     // djb2 hash for char*'s for std::unordered_map
-    struct StringHash {
-        size_t operator() (const char *string) const {
+    struct StringSuffixHash {
+        size_t operator() (const StringSuffix &ss) const {
             unsigned long hash = 5381;
-            for (; *string != '\0'; string++)
-                hash = ((hash << 5) + hash) + static_cast<int>(*string);
+            for (size_t i = ss.start; i < ss.s->size() && (*ss.s)[i] != '\0'; i++)
+                hash = ((hash << 5) + hash) + static_cast<int>((*ss.s)[i]);
             return static_cast<size_t>(hash);
         }
     };
 
-    struct StringEqual {
-        bool operator() (const char *sa, const char *sb) const {
-            return strcmp(sa, sb) == 0;
-        }
-    };
-
     Elf_Scn *m_section;
-    std::vector<std::unique_ptr<const std::string>> m_string_table;
+    std::vector<StringPtr> m_string_table;
     std::vector<size_t> m_indices;
     size_t m_initial_size;
     size_t m_next_index;
-    std::unordered_map<const char*, size_t, StringHash, StringEqual> m_string_index_map;
+    std::unordered_map<StringSuffix, size_t, StringSuffixHash> m_string_index_map;
 };
 
 class ElfSymbolTable {
