@@ -3,6 +3,8 @@ set(TRAPLINKER_INSTALL_LD ON CACHE BOOL
     "Install ld replacement links")
 set(TRAPLINKER_KEEP_FILES OFF CACHE BOOL
     "Keep temporary files produced by TrapLinker")
+set(TRAPLINKER_DEBUG_ASAN OFF CACHE BOOL
+    "Build TrapLinker with ASAN (for debugging)")
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -26,6 +28,18 @@ if (SR_BUILD_MODULE_TRAPLINKER)
 
     if (TRAPLINKER_KEEP_FILES)
         add_definitions(-DTRAPLINKER_KEEP_FILES)
+    endif()
+
+    if (TRAPLINKER_DEBUG_ASAN)
+        target_compile_options(traplinker PRIVATE
+            -fsanitize=address
+            -fno-omit-frame-pointer
+            -fno-optimize-sibling-calls
+            )
+        target_link_libraries(traplinker
+            -fsanitize=address
+            -fno-omit-frame-pointer
+            )
     endif()
 
     target_link_libraries(traplinker ${SR_LIBELF_LIB} z randolib_support)
