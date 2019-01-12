@@ -1331,7 +1331,8 @@ ElfSymbolTable::XindexTable::XindexTable(ElfObject &object)
             m_symtab_index = new_symtab_index;
 
             size_t num_symbols = section_header.sh_size / section_header.sh_entsize;
-            m_xindex_table.resize(num_symbols);
+            if (num_symbols > m_xindex_table.size())
+                m_xindex_table.resize(num_symbols);
             break;
         }
         case SHT_SYMTAB_SHNDX: {
