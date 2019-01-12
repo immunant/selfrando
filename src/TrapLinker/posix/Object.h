@@ -239,7 +239,7 @@ public:
             case INPUT_LOCAL:
                 return base + m_index;
             default:
-                assert("Unknown SymbolRef source");
+                assert(false && "Unknown SymbolRef source");
                 return 0;
             }
         }
@@ -261,7 +261,7 @@ public:
             case INPUT_LOCAL:
                 return base + m_index;
             default:
-                assert("Unknown SymbolRef source");
+                assert(false && "Unknown SymbolRef source");
                 return 0;
             }
         }
@@ -277,7 +277,7 @@ public:
             case NEW_GLOBAL:
                 return &m_symtab->m_new_globals[m_index];
             default:
-                assert("Invalid SymbolRef");
+                assert(false && "Invalid SymbolRef");
                 return nullptr;
             }
         }
@@ -296,7 +296,7 @@ public:
             case NEW_GLOBAL:
                 return m_symtab->m_new_globals_xindex[m_index];
             default:
-                assert("Invalid SymbolRef");
+                assert(false && "Invalid SymbolRef");
                 return 0;
             }
         }
