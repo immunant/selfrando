@@ -1063,11 +1063,10 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
 
 void ElfSymbolTable::mark_entry_symbol(std::string orig_symbol_name, std::string symbol_name) {
     auto check_symbol = [this, &orig_symbol_name, &symbol_name]
-            (const GElf_Sym &symbol, size_t sym_idx){
+            (const GElf_Sym &symbol, uint32_t new_sym_xindex){
         if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {
             Debug::printf<3>("Marking entry point symbol: %s\n", orig_symbol_name.c_str());
             GElf_Sym new_symbol = symbol;
-            uint32_t new_sym_xindex = m_xindex_table.get(sym_idx);
             new_symbol.st_name = m_string_table->add_string(symbol_name);
             new_symbol.st_info = GELF_ST_INFO(STB_WEAK, STT_FUNC);
             new_symbol.st_other = STV_HIDDEN;
@@ -1080,22 +1079,24 @@ void ElfSymbolTable::mark_entry_symbol(std::string orig_symbol_name, std::string
 
     size_t sym_idx = 0;
     for (auto &symbol : m_input_locals) {
-        if (check_symbol(symbol, sym_idx))
-            return;
-        sym_idx++;
-    }
-    for (auto &symbol : m_new_locals) {
-        if (check_symbol(symbol, sym_idx))
+        if (check_symbol(symbol, m_xindex_table.get(sym_idx)))
             return;
         sym_idx++;
     }
     for (auto &symbol : m_input_globals) {
-        if (check_symbol(symbol, sym_idx))
+        if (check_symbol(symbol, m_xindex_table.get(sym_idx)))
             return;
         sym_idx++;
     }
+    sym_idx = 0;
+    for (auto &symbol : m_new_locals) {
+        if (check_symbol(symbol, m_new_locals_xindex[sym_idx]))
+            return;
+        sym_idx++;
+    }
+    sym_idx = 0;
     for (auto &symbol : m_new_globals) {
-        if (check_symbol(symbol, sym_idx))
+        if (check_symbol(symbol, m_new_globals_xindex[sym_idx]))
             return;
         sym_idx++;
     }
