@@ -79,16 +79,16 @@ typedef struct {
     // at even addresses (C++ uses odd pointers for
     // class member pointers)
     uint8_t padding[1];
-} TrampolineInstruction;
+} X8664TrampolineInstruction;
 #pragma pack(pop)
 
-static TrampolineInstruction kJumpInstruction = {0xe9, 0, {0x90}};
+static X8664TrampolineInstruction kJumpInstruction = {0xe9, 0, {0x90}};
 
 ElfObject::DataBuffer X8664TrampolineBuilder::create_trampoline_data(
     const EntrySymbols &entry_symbols) {
-    std::vector<TrampolineInstruction> tramp_data;
+    std::vector<X8664TrampolineInstruction> tramp_data;
     for (auto &sym : entry_symbols) {
-        m_trampoline_offsets[sym] = tramp_data.size()*sizeof(TrampolineInstruction);
+        m_trampoline_offsets[sym] = tramp_data.size()*sizeof(X8664TrampolineInstruction);
         tramp_data.push_back(kJumpInstruction);
     }
 
@@ -103,7 +103,7 @@ void X8664TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
 }
 
 size_t X8664TrampolineBuilder::trampoline_size() const {
-    return sizeof(TrampolineInstruction);
+    return sizeof(X8664TrampolineInstruction);
 }
 
 void X8664TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {

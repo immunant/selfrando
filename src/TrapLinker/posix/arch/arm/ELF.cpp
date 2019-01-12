@@ -71,19 +71,19 @@ protected:
 
 typedef struct {
     uint32_t insn;
-} TrampolineInstruction;
+} ARMTrampolineInstruction;
 
-static TrampolineInstruction kThumbJumpInstruction = {0xbffef7ff};
-static TrampolineInstruction kARMJumpInstruction = {0xeafffffe};
+static ARMTrampolineInstruction kThumbJumpInstruction = {0xbffef7ff};
+static ARMTrampolineInstruction kARMJumpInstruction = {0xeafffffe};
 
 ElfObject::DataBuffer ARMTrampolineBuilder::create_trampoline_data(
     const EntrySymbols &entry_symbols) {
-    std::vector<TrampolineInstruction> tramp_data;
+    std::vector<ARMTrampolineInstruction> tramp_data;
     for (auto &sym : entry_symbols) {
         auto sym_type = GELF_ST_TYPE(sym.get()->st_info);
         // Determine if symbol is ARM or Thumb
         // Thumb iff STT_ARM_TFUNC or (sym.st_value & 1) != 0
-        auto tramp_pos = tramp_data.size()*sizeof(TrampolineInstruction);
+        auto tramp_pos = tramp_data.size()*sizeof(ARMTrampolineInstruction);
         if (sym_type == STT_ARM_TFUNC ||
             (sym_type == STT_FUNC && (sym.get()->st_value & 1) != 0)) {
             // We have a Thumb symbol
@@ -119,7 +119,7 @@ void ARMTrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
 }
 
 size_t ARMTrampolineBuilder::trampoline_size() const {
-    return sizeof(TrampolineInstruction);
+    return sizeof(ARMTrampolineInstruction);
 }
 
 void ARMTrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
@@ -128,7 +128,7 @@ void ARMTrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
         std::string symbol_name = (trampoline.second & 1) ? "$t" : "$a";
         m_symbol_table.add_local_symbol(trampoline.second & ~static_cast<GElf_Addr>(1),
                                         tramp_section_index, symbol_name,
-                                        STT_OBJECT, sizeof(TrampolineInstruction));
+                                        STT_OBJECT, sizeof(ARMTrampolineInstruction));
     }
 }
 

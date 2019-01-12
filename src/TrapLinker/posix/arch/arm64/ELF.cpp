@@ -70,15 +70,15 @@ protected:
 
 typedef struct {
     uint32_t insn;
-} TrampolineInstruction;
+} ARM64TrampolineInstruction;
 
-static TrampolineInstruction kJumpInstruction = {0x14000000};
+static ARM64TrampolineInstruction kJumpInstruction = {0x14000000};
 
 ElfObject::DataBuffer ARM64TrampolineBuilder::create_trampoline_data(
     const EntrySymbols &entry_symbols) {
-    std::vector<TrampolineInstruction> tramp_data;
+    std::vector<ARM64TrampolineInstruction> tramp_data;
     for (auto &sym : entry_symbols) {
-        m_trampoline_offsets[sym] = tramp_data.size()*sizeof(TrampolineInstruction);
+        m_trampoline_offsets[sym] = tramp_data.size()*sizeof(ARM64TrampolineInstruction);
         tramp_data.push_back(kJumpInstruction);
     }
 
@@ -93,7 +93,7 @@ void ARM64TrampolineBuilder::add_reloc(ElfSymbolTable::SymbolRef symbol_index,
 }
 
 size_t ARM64TrampolineBuilder::trampoline_size() const {
-    return sizeof(TrampolineInstruction);
+    return sizeof(ARM64TrampolineInstruction);
 }
 
 void ARM64TrampolineBuilder::target_postprocessing(unsigned tramp_section_index) {
