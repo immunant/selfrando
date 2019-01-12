@@ -582,8 +582,8 @@ bool ElfObject::create_trap_info_impl(bool emit_textramp, bool emit_eh_txtrp) {
     }
 
     Debug::printf<10>("Added .txtrp section(s)\n");
-    symbol_table.mark_symbol(m_entry_points.first, "_TRaP_orig_init");
-    symbol_table.mark_symbol(m_entry_points.second, "_TRaP_orig_entry");
+    symbol_table.mark_entry_symbol(m_entry_points.first, "_TRaP_orig_init");
+    symbol_table.mark_entry_symbol(m_entry_points.second, "_TRaP_orig_entry");
     symbol_table.finalize();
 
     // Now add relocations
@@ -1061,7 +1061,7 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     return add_symbol(new_symbol, new_sym_xindex);
 }
 
-void ElfSymbolTable::mark_symbol(std::string orig_symbol_name, std::string symbol_name) {
+void ElfSymbolTable::mark_entry_symbol(std::string orig_symbol_name, std::string symbol_name) {
     auto check_symbol = [this, &orig_symbol_name, &symbol_name]
             (const GElf_Sym &symbol, size_t sym_idx){
         if (m_string_table->get_string(symbol.st_name) == orig_symbol_name) {

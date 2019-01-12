@@ -366,7 +366,7 @@ public:
                              Elf_SectionIndex section_index,
                              size_t new_size);
 
-    void mark_symbol(std::string symbol_name, std::string new_name);
+    void mark_entry_symbol(std::string symbol_name, std::string new_name);
 
     SymbolRef add_local_symbol(GElf_Addr address, Elf_SectionIndex section_index,
                                const std::string &name, uint8_t type,
