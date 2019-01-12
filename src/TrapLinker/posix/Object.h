@@ -49,9 +49,8 @@ ObjectType parse_object_type(int fd);
 
 class ElfStringTable {
 public:
-    ElfStringTable() {}
-
-    void initialize (Elf_Scn *section);
+    ElfStringTable() = delete;
+    ElfStringTable(Elf_Scn *section);
 
     size_t add_string(const std::string &string) {
         return internal_add_string(std::string{string});
@@ -154,6 +153,8 @@ private:
     size_t m_next_index;
     std::unordered_map<StringSuffix, size_t, StringSuffixHash> m_string_index_map;
 };
+
+using ElfStringTablePtr = std::shared_ptr<ElfStringTable>;
 
 class ElfSymbolTable {
 public:
@@ -398,7 +399,7 @@ private:
 
     Elf_Scn *m_section;
     ElfObject &m_object;
-    ElfStringTable *m_string_table;
+    ElfStringTablePtr m_string_table;
     XindexTable m_xindex_table;
 
     std::vector<Elf_Scn*> m_rel_sections;
@@ -558,7 +559,7 @@ public:
         unsigned align;
     };
 
-    ElfStringTable *get_string_table(Elf_SectionIndex section_index);
+    ElfStringTablePtr get_string_table(Elf_SectionIndex section_index);
 
     /// Returns the index of the new section
     unsigned add_section(std::string name,
@@ -741,7 +742,7 @@ private:
     std::pair<std::string, std::string> m_entry_points;
 
     /// Fields used by parse()
-    ElfStringTable *m_section_header_strings;
+    ElfStringTablePtr m_section_header_strings;
 
     /// Number of sections, including any pending new sections to be added
     size_t m_num_sections;
@@ -757,7 +758,7 @@ private:
 
     std::vector<DataBuffer> m_replacement_data;
 
-    std::unordered_map<Elf_SectionIndex, ElfStringTable> m_string_tables;
+    std::unordered_map<Elf_SectionIndex, ElfStringTablePtr> m_string_tables;
 
     std::map<Elf_SectionIndex, Elf_RelocBuffer> m_section_relocs;
 

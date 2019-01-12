@@ -617,14 +617,15 @@ void ElfObject::add_anchor_reloc(const GElf_Shdr *header,
     m_target_info->ops->add_reloc_to_buffer(m_section_relocs[section_ndx], &reloc);
 }
 
-ElfStringTable *ElfObject::get_string_table(Elf_SectionIndex section_index) {
+ElfStringTablePtr ElfObject::get_string_table(Elf_SectionIndex section_index) {
     auto I = m_string_tables.find(section_index);
     if (I != m_string_tables.end())
-        return &(I->second);
+        return I->second;
 
     Elf_Scn *section = elf_getscn(m_elf, section_index);
-    m_string_tables[section_index].initialize(section);
-    return &(m_string_tables[section_index]);
+    auto st = std::make_shared<ElfStringTable>(section);
+    m_string_tables.emplace(section_index, st);
+    return st;
 }
 
 unsigned ElfObject::add_section(std::string name,
@@ -948,7 +949,7 @@ ret:
     return found_copy_relocs;
 }
 
-void ElfStringTable::initialize(Elf_Scn *section) {
+ElfStringTable::ElfStringTable(Elf_Scn *section) {
     m_section = section;
     m_string_table.clear();
     m_indices.clear();
