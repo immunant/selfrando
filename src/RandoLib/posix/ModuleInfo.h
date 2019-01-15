@@ -48,9 +48,6 @@ struct ModuleInfo {
     // Location of GOT
     uintptr_t *got_start;
 
-    // Location of dynamic table
-    uintptr_t dynamic;
-
     // End of .txtrp pages
     uintptr_t trap_end_page;
 

@@ -351,7 +351,6 @@ RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermission
 RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         : ModuleBase(), m_module_info(module_info) {
     RANDO_ASSERT(m_module_info != nullptr);
-    RANDO_ASSERT(phdr_info != nullptr || m_module_info->dynamic != 0);
     os::API::debug_printf<5>("Module info:\n");
     os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
     os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
@@ -363,15 +362,17 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     os::API::debug_printf<5>("  trap: %p (%u)\n", m_module_info->sections[0].trap,
                              m_module_info->sections[0].trap_size);
     if (phdr_info == nullptr) {
-        // Iterate thru the phdr's to find the one for our dynamic_ptr
+        // Iterate thru the phdr's to find the one for our .text section
         dl_iterate_phdr([] (PHdrInfoPointer iter_info, size_t size, void *arg) {
             Module *mod = reinterpret_cast<Module*>(arg);
+            auto mod_text = mod->m_module_info->sections[0].start;
             for (size_t i = 0; i < iter_info->dlpi_phnum; i++) {
                 auto phdr = &iter_info->dlpi_phdr[i];
                 auto phdr_start = static_cast<uintptr_t>(iter_info->dlpi_addr + phdr->p_vaddr);
-                if (phdr->p_type == PT_DYNAMIC && mod->m_module_info->dynamic == phdr_start) {
-                    // Binaries generally contain a DYNAMIC phdr
-                    // so we should find one here
+                auto phdr_end = phdr_start + phdr->p_memsz;
+                if (phdr->p_type == PT_LOAD &&
+                    mod_text >= phdr_start &&
+                    mod_text < phdr_end) {
                     API::memcpy(&mod->m_phdr_info, iter_info, sizeof(*iter_info));
                     return 1;
                 }
@@ -380,17 +381,6 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         }, this);
     } else {
         API::memcpy(&m_phdr_info, phdr_info, sizeof(*phdr_info));
-    }
-    if (m_module_info->dynamic == 0) {
-        // Extract m_module_info->dynamic from the phdr
-        for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
-            auto phdr = &m_phdr_info.dlpi_phdr[i];
-            if (phdr->p_type == PT_DYNAMIC) {
-                m_module_info->dynamic = RVA2Address(phdr->p_vaddr).to_ptr<uintptr_t>();
-                break;
-            }
-        }
-        RANDO_ASSERT(m_module_info->dynamic != 0);
     }
 
     // Find the image base (address of the first file byte)
@@ -416,9 +406,8 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             break;
         }
     }
-    API::debug_printf<1>("Module@%p dynamic:%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
-                         this, m_module_info->dynamic,
-                         m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
+    API::debug_printf<1>("Module@%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
+                         this, m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
     API::debug_printf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
 
     preprocess_arch();

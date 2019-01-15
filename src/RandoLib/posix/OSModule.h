@@ -32,7 +32,7 @@ public:
     typedef struct dl_phdr_info *PHdrInfoPointer;
 
     Module() = delete;
-    RANDO_SECTION Module(Handle dynamic_ptr, PHdrInfoPointer phdr_info = nullptr);
+    RANDO_SECTION Module(Handle module_info, PHdrInfoPointer phdr_info = nullptr);
     RANDO_SECTION ~Module();
 
     class Address : public ModuleBase<Module>::AddressBase<Address> {

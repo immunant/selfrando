@@ -48,7 +48,6 @@ for lib in static_libs:
                               'objcopy --rename-section .text.__x86.get_pc_thunk.bx=.selfrando.text.__x86.get_pc_thunk.bx $TARGET && '
                               'objcopy --rename-section .text.selfrando__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $TARGET && '
                               'objcopy --redefine-sym=_TRaP__GLOBAL_OFFSET_TABLE_=_GLOBAL_OFFSET_TABLE_ $TARGET && '
-                              'objcopy --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $TARGET && '
                               'objcopy --redefine-sym=_TRaP_dl_iterate_phdr=dl_iterate_phdr $TARGET && '
                               'objcopy --redefine-sym=_TRaP_selfrando__x86.get_pc_thunk.bx=__x86.get_pc_thunk.bx $TARGET')
 

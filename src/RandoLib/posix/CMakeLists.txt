@@ -77,8 +77,6 @@ if (SR_BUILD_MODULE_RANDOLIB)
             COMMAND ${CMAKE_OBJCOPY} --rename-section .text.selfrando__x86.get_pc_thunk.bx=.text.__x86.get_pc_thunk.bx $<TARGET_FILE:${static_lib}>
             COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ $<TARGET_FILE:${static_lib}>
             COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt $<TARGET_FILE:${static_lib}>
-            # TODO: add _TRaP__DYNAMIC to non_trap_syms???
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP__DYNAMIC=_DYNAMIC $<TARGET_FILE:${static_lib}>
             # On 32-bit x86, we need __x86.get_pc_thunk.bx to be defined as the
             # compiler emits it: a single-element group section
             # FIXME: it would be nice to get rid of this
