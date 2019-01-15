@@ -373,18 +373,15 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
                 if (phdr->p_type == PT_LOAD &&
                     mod_text >= phdr_start &&
                     mod_text < phdr_end) {
+                    API::memcpy(&mod->m_phdr_info, iter_info, sizeof(*iter_info));
                     mod->m_image_base = iter_info->dlpi_addr;
-                    mod->m_phdr = iter_info->dlpi_phdr;
-                    mod->m_phnum = iter_info->dlpi_phnum;
                     return 1;
                 }
             }
             return 0;
         }, this);
     } else {
-        m_image_base = phdr_info->dlpi_addr;
-        m_phdr = phdr_info->dlpi_phdr;
-        m_phnum = phdr_info->dlpi_phnum;
+        API::memcpy(&m_phdr_info, phdr_info, sizeof(*phdr_info));
     }
 
     // FIXME: do we always get .got.plt from the ModuleInfo???
@@ -392,14 +389,16 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     RANDO_ASSERT(m_got != nullptr);
 
     m_eh_frame_hdr = nullptr;
-    for (size_t i = 0; i < m_phnum; i++) {
-        if (m_phdr[i].p_type == PT_GNU_EH_FRAME) {
-            m_eh_frame_hdr = RVA2Address(m_phdr[i].p_vaddr).to_ptr();
+    for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
+        auto phdr = &m_phdr_info.dlpi_phdr[i];
+        if (phdr->p_type == PT_GNU_EH_FRAME) {
+            m_eh_frame_hdr = RVA2Address(phdr->p_vaddr).to_ptr();
             break;
         }
     }
     API::debug_printf<1>("Module@%p base:%p GOT:%p .eh_frame_hdr:%p\n",
                          this, m_image_base, m_got, m_eh_frame_hdr);
+    API::debug_printf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
 
     preprocess_arch();
 }
@@ -417,13 +416,14 @@ RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {
 
 RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCallback callback, void *callback_arg) {
     // Re-map the read-only segments as RWX
-    for (size_t i = 0; i < m_phnum; i++) {
-        if ((m_phdr[i].p_type == PT_LOAD && (m_phdr[i].p_flags & PF_W) == 0) ||
-            m_phdr[i].p_type == PT_GNU_RELRO) {
-            auto seg_start = RVA2Address(m_phdr[i].p_vaddr).to_ptr();
-            auto seg_perms = (m_phdr[i].p_flags & PF_X) != 0 ? PagePermissions::RWX
-                                                             : PagePermissions::RW;
-            API::mprotect(seg_start, m_phdr[i].p_memsz, seg_perms);
+    for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
+        auto phdr = &m_phdr_info.dlpi_phdr[i];
+        if ((phdr->p_type == PT_LOAD && (phdr->p_flags & PF_W) == 0)
+            || phdr->p_type == PT_GNU_RELRO) {
+            auto seg_start = RVA2Address(phdr->p_vaddr).to_ptr();
+            auto seg_perms = (phdr->p_flags & PF_X) != 0 ? PagePermissions::RWX
+                                                         : PagePermissions::RW;
+            API::mprotect(seg_start, phdr->p_memsz, seg_perms);
         }
     }
     // FIXME: unfortunately, the loader doesn't seem to load
@@ -457,14 +457,15 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
         sec_info.trap = sec_info.trap_size = 0;
     }
     // Re-map the read-only segments with their original permissions
-    for (size_t i = 0; i < m_phnum; i++) {
-        if ((m_phdr[i].p_type == PT_LOAD && (m_phdr[i].p_flags & PF_W) == 0) ||
-            m_phdr[i].p_type == PT_GNU_RELRO) {
-            RANDO_ASSERT((m_phdr[i].p_flags & PF_R) != 0);
-            auto seg_start = RVA2Address(m_phdr[i].p_vaddr).to_ptr();
-            auto seg_perms = (m_phdr[i].p_flags & PF_X) != 0 ? PagePermissions::RX
-                                                             : PagePermissions::R;
-            API::mprotect(seg_start, m_phdr[i].p_memsz, seg_perms);
+    for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
+        auto phdr = &m_phdr_info.dlpi_phdr[i];
+        if ((phdr->p_type == PT_LOAD && (phdr->p_flags & PF_W) == 0)
+            || phdr->p_type == PT_GNU_RELRO) {
+            RANDO_ASSERT((phdr->p_flags & PF_R) != 0);
+            auto seg_start = RVA2Address(phdr->p_vaddr).to_ptr();
+            auto seg_perms = (phdr->p_flags & PF_X) != 0 ? PagePermissions::RX
+                                                         : PagePermissions::R;
+            API::mprotect(seg_start, phdr->p_memsz, seg_perms);
         }
     }
     // FIXME: if we're not in in-place mode (we moved the copy to a

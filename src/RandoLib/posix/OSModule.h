@@ -11,12 +11,6 @@
 #include <RandoLib.h>
 #include <TrapInfo.h>
 
-#include <elf.h>
-
-#define __RANDOLIB_ELF_MERGE2(as, x)   Elf ## as ## _ ## x
-#define __RANDOLIB_ELF_MERGE1(as, x)   __RANDOLIB_ELF_MERGE2(as, x)
-#define RANDOLIB_ELF(x)                __RANDOLIB_ELF_MERGE1(RANDOLIB_ARCH_SIZE, x)
-
 struct FunctionList;
 struct Function;
 
@@ -132,7 +126,7 @@ public:
     }
 
     inline RANDO_SECTION const char *get_module_name() const {
-        return "<module>";
+        return m_phdr_info.dlpi_name;
     }
 
 #if RANDOLIB_WRITE_LAYOUTS
@@ -145,11 +139,12 @@ public:
 private:
     ModuleInfo *m_module_info;
     uintptr_t m_image_base;
-    const RANDOLIB_ELF(Phdr) *m_phdr;
-    size_t m_phnum;
-
     BytePointer m_got;
     BytePointer m_eh_frame_hdr;
+
+    // We keep our own copy of dl_phdr_info structure
+    // since dl_iterate_phdr seems to reuse its own
+    struct dl_phdr_info m_phdr_info;
 
     inline RANDO_SECTION Address RVA2Address(uintptr_t rva) const {
         return Address(*this, rva, AddressSpace::RVA);
