@@ -352,7 +352,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         : ModuleBase(), m_module_info(module_info) {
     RANDO_ASSERT(m_module_info != nullptr);
     RANDO_ASSERT(phdr_info != nullptr || m_module_info->dynamic != 0);
-    os::API::debug_printf<5>("Program info table:\n");
+    os::API::debug_printf<5>("Module info:\n");
     os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
     os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->orig_entry);
     os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->xptramp_start,
@@ -403,7 +403,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         }
     }
 
-    // FIXME: do we always get .got.plt from the ProgramInfoTable???
+    // FIXME: do we always get .got.plt from the ModuleInfo???
     m_got = reinterpret_cast<BytePointer>(m_module_info->got_start);
     RANDO_ASSERT(m_got != nullptr);
 
