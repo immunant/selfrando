@@ -39,29 +39,26 @@ extern uintptr_t _GLOBAL_OFFSET_TABLE_[];
 void selfrando_run(void) __attribute__((section(".selfrando.entry")));
 
 void selfrando_run(void) {
-    struct TrapProgramInfoTable PIT = { };
-    PIT.orig_dt_init = (uintptr_t)(&orig_init);
-    PIT.orig_entry = (uintptr_t)(&orig_entry);
-    PIT.selfrando_init = (uintptr_t)(&selfrando_init);
-    PIT.selfrando_entry = (uintptr_t)(&selfrando_entry);
-    PIT.selfrando_remove_call = (uintptr_t)(&selfrando_remove_call);
-    PIT.selfrando_return = (uintptr_t)(&selfrando_return);
-    PIT.xptramp_start = (uintptr_t)(&xptramp_begin);
-    PIT.xptramp_size = &xptramp_end - &xptramp_begin;
-    PIT.got_start = _GLOBAL_OFFSET_TABLE_;
+    struct ModuleInfo mod = { };
+    mod.orig_dt_init = (uintptr_t)(&orig_init);
+    mod.orig_entry = (uintptr_t)(&orig_entry);
+    mod.selfrando_init = (uintptr_t)(&selfrando_init);
+    mod.selfrando_entry = (uintptr_t)(&selfrando_entry);
+    mod.selfrando_remove_call = (uintptr_t)(&selfrando_remove_call);
+    mod.selfrando_return = (uintptr_t)(&selfrando_return);
+    mod.xptramp_start = (uintptr_t)(&xptramp_begin);
+    mod.xptramp_size = &xptramp_end - &xptramp_begin;
+    mod.got_start = _GLOBAL_OFFSET_TABLE_;
+    mod.dynamic = (uintptr_t)&_DYNAMIC;
     if (&trap_end_page > &trap_end) {
-        PIT.trap_end_page = (uintptr_t)(&trap_end_page);
+        mod.trap_end_page = (uintptr_t)(&trap_end_page);
     }
-    PIT.num_sections = 1;
-    PIT.sections[0].start = (uintptr_t)(&text_begin);
-    PIT.sections[0].size = &text_end - &text_begin;
-    PIT.sections[0].trap = (uintptr_t)(&trap_begin);
-    PIT.sections[0].trap_size = &trap_end - &trap_begin;
-
-    struct ModuleInfo module_info;
-    module_info.dynamic = (BytePointer)&_DYNAMIC;
-    module_info.program_info_table = &PIT;
-    RandoMain(&module_info);
+    mod.num_sections = 1;
+    mod.sections[0].start = (uintptr_t)(&text_begin);
+    mod.sections[0].size = &text_end - &text_begin;
+    mod.sections[0].trap = (uintptr_t)(&trap_begin);
+    mod.sections[0].trap_size = &trap_end - &trap_begin;
+    RandoMain(&mod);
 }
 
 // Add a declaration for dl_phdr_info

@@ -351,23 +351,23 @@ RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermission
 RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         : ModuleBase(), m_module_info(module_info) {
     RANDO_ASSERT(m_module_info != nullptr);
-    RANDO_ASSERT(phdr_info != nullptr || m_module_info->dynamic != nullptr);
+    RANDO_ASSERT(phdr_info != nullptr || m_module_info->dynamic != 0);
     os::API::debug_printf<5>("Program info table:\n");
-    os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->program_info_table->orig_dt_init);
-    os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->program_info_table->orig_entry);
-    os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->program_info_table->xptramp_start,
-                             m_module_info->program_info_table->xptramp_size);
-    os::API::debug_printf<5>("  text: %p (%u)\n", m_module_info->program_info_table->sections[0].start,
-                             m_module_info->program_info_table->sections[0].size);
-    os::API::debug_printf<5>("  trap: %p (%u)\n", m_module_info->program_info_table->sections[0].trap,
-                             m_module_info->program_info_table->sections[0].trap_size);
+    os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
+    os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->orig_entry);
+    os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->xptramp_start,
+                             m_module_info->xptramp_size);
+    os::API::debug_printf<5>("  text: %p (%u)\n", m_module_info->sections[0].start,
+                             m_module_info->sections[0].size);
+    os::API::debug_printf<5>("  trap: %p (%u)\n", m_module_info->sections[0].trap,
+                             m_module_info->sections[0].trap_size);
     if (phdr_info == nullptr) {
         // Iterate thru the phdr's to find the one for our dynamic_ptr
         dl_iterate_phdr([] (PHdrInfoPointer iter_info, size_t size, void *arg) {
             Module *mod = reinterpret_cast<Module*>(arg);
             for (size_t i = 0; i < iter_info->dlpi_phnum; i++) {
                 auto phdr = &iter_info->dlpi_phdr[i];
-                auto phdr_start = reinterpret_cast<BytePointer>(iter_info->dlpi_addr + phdr->p_vaddr);
+                auto phdr_start = static_cast<uintptr_t>(iter_info->dlpi_addr + phdr->p_vaddr);
                 if (phdr->p_type == PT_DYNAMIC && mod->m_module_info->dynamic == phdr_start) {
                     // Binaries generally contain a DYNAMIC phdr
                     // so we should find one here
@@ -380,16 +380,16 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     } else {
         API::memcpy(&m_phdr_info, phdr_info, sizeof(*phdr_info));
     }
-    if (m_module_info->dynamic == nullptr) {
+    if (m_module_info->dynamic == 0) {
         // Extract m_module_info->dynamic from the phdr
         for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
             auto phdr = &m_phdr_info.dlpi_phdr[i];
             if (phdr->p_type == PT_DYNAMIC) {
-                m_module_info->dynamic = RVA2Address(phdr->p_vaddr).to_ptr();
+                m_module_info->dynamic = RVA2Address(phdr->p_vaddr).to_ptr<uintptr_t>();
                 break;
             }
         }
-        RANDO_ASSERT(m_module_info->dynamic != nullptr);
+        RANDO_ASSERT(m_module_info->dynamic != 0);
     }
 
     // Find the image base (address of the first file byte)
@@ -404,7 +404,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     }
 
     // FIXME: do we always get .got.plt from the ProgramInfoTable???
-    m_got = reinterpret_cast<BytePointer>(m_module_info->program_info_table->got_start);
+    m_got = reinterpret_cast<BytePointer>(m_module_info->got_start);
     RANDO_ASSERT(m_got != nullptr);
 
     m_eh_frame_hdr = nullptr;
@@ -415,9 +415,8 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             break;
         }
     }
-    API::debug_printf<1>("Module@%p dynamic:%p PIT:%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
+    API::debug_printf<1>("Module@%p dynamic:%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
                          this, m_module_info->dynamic,
-                         m_module_info->program_info_table,
                          m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
     API::debug_printf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
 
@@ -452,7 +451,7 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
     // For this reason, we need to get the executable sections from somewhere
     // else. Currently, PatchEntry takes care of this.
     for (size_t i = 0; i < TRAP_NUM_SECTIONS; i++) {
-        auto &sec_info = m_module_info->program_info_table->sections[i];
+        auto &sec_info = m_module_info->sections[i];
         if (sec_info.start == 0 || sec_info.size == 0 ||
             sec_info.trap  == 0 || sec_info.trap_size == 0)
             continue;
@@ -471,7 +470,7 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
         section.flush_icache();
     }
     for (size_t i = 0; i < TRAP_NUM_SECTIONS; i++) {
-        auto &sec_info = m_module_info->program_info_table->sections[i];
+        auto &sec_info = m_module_info->sections[i];
         // Clear out the trap information fields so we don't wind up
         // trying to randomize multiple times if _TRaP_RandoMain
         // gets called more than once
@@ -504,7 +503,7 @@ RANDO_SECTION void Module::for_all_exec_sections(bool self_rando, ExecSectionCal
 
 RANDO_SECTION void Module::for_all_modules(ModuleCallback callback, void *callback_arg) {
     // FIXME: we don't currently support system libraries
-    // that don't provide a m_module_info->program_info_table-> and the ones
+    // that don't provide a m_module_info-> and the ones
     // that do provide that table also do their own randomization
 #if 0
     // We need to manually capture the callback parameters
@@ -531,33 +530,33 @@ static RANDO_SECTION int compare_eh_frame_entries(const void *pa, const void *pb
 RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     // Fix up the original entry point and init addresses
     uintptr_t new_dt_init;
-    if (m_module_info->program_info_table->orig_dt_init != 0) {
-        new_dt_init = m_module_info->program_info_table->orig_dt_init;
+    if (m_module_info->orig_dt_init != 0) {
+        new_dt_init = m_module_info->orig_dt_init;
         Relocation reloc(*this, &new_dt_init,
                          Relocation::get_pointer_reloc_type());
         functions->adjust_relocation(&reloc);
     } else {
         // Point the branch to the return instruction
-        new_dt_init = m_module_info->program_info_table->selfrando_return;
+        new_dt_init = m_module_info->selfrando_return;
     }
     // Patch the initial branch to point directly to the relocated function
     Relocation::fixup_entry_point(*this,
-                                  m_module_info->program_info_table->selfrando_init,
+                                  m_module_info->selfrando_init,
                                   new_dt_init);
 
     uintptr_t new_entry;
-    if (m_module_info->program_info_table->orig_entry != 0) {
-        new_entry = m_module_info->program_info_table->orig_entry;
+    if (m_module_info->orig_entry != 0) {
+        new_entry = m_module_info->orig_entry;
         Relocation reloc(*this, &new_entry,
                          Relocation::get_pointer_reloc_type());
         functions->adjust_relocation(&reloc);
     } else {
         // See above
-        new_entry = m_module_info->program_info_table->selfrando_return;
+        new_entry = m_module_info->selfrando_return;
     }
     // Patch the initial branch to point directly to the relocated function
     Relocation::fixup_entry_point(*this,
-                                  m_module_info->program_info_table->selfrando_entry,
+                                  m_module_info->selfrando_entry,
                                   new_entry);
     API::debug_printf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
 

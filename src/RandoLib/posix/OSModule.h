@@ -118,8 +118,8 @@ public:
     RANDO_SECTION void relocate_arch(FunctionList *functions) const;
 
     inline RANDO_SECTION Section export_section() const {
-        return Section(*this, m_module_info->program_info_table->xptramp_start,
-                              m_module_info->program_info_table->xptramp_size);
+        return Section(*this, m_module_info->xptramp_start,
+                              m_module_info->xptramp_size);
     }
 
     inline RANDO_SECTION BytePointer get_got_ptr() const {

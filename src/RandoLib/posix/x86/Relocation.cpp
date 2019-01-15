@@ -170,7 +170,7 @@ static const char kRemoveBytes[] =
 static constexpr size_t kRemoveBytesSize = sizeof(kRemoveBytes) - 1;
 
 void Module::relocate_arch(FunctionList *functions) const {
-    if (m_module_info->program_info_table->trap_end_page != 0) {
+    if (m_module_info->trap_end_page != 0) {
         // If we built with --traplinker-selfrando-txtrp-pages,
         // putting all TRaP info and our own code together
         // in one contiguous .txtrp section, we can remove it from memory
@@ -192,7 +192,7 @@ void Module::relocate_arch(FunctionList *functions) const {
         //    POP ECX
         //    POP EBX
         //    RET
-        auto end_page = m_module_info->program_info_table->trap_end_page;
+        auto end_page = m_module_info->trap_end_page;
         RANDO_ASSERT((end_page & (kPageSize - 1)) == 0);
 
         auto end_page_ptr = reinterpret_cast<BytePointer>(end_page);
@@ -205,7 +205,7 @@ void Module::relocate_arch(FunctionList *functions) const {
 
         // FIXME: this assumes that the start of .txtrp is always in
         // sections[0].trap
-        auto trap_start = m_module_info->program_info_table->sections[0].trap;
+        auto trap_start = m_module_info->sections[0].trap;
         auto trap_pages = end_page - trap_start;
         *reinterpret_cast<uint32_t*>(remove_code +  3) = trap_start;
         *reinterpret_cast<uint32_t*>(remove_code +  8) = trap_pages;
@@ -213,7 +213,7 @@ void Module::relocate_arch(FunctionList *functions) const {
 
         // Patch the NOP at selfrando_remove_call to call remove_code
         auto remove_call = reinterpret_cast<BytePointer>(
-            m_module_info->program_info_table->selfrando_remove_call);
+            m_module_info->selfrando_remove_call);
         RANDO_ASSERT(remove_call[0] == 0x0F &&
                      remove_call[1] == 0x1F &&
                      remove_call[2] == 0x44);

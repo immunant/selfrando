@@ -12,8 +12,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef uint8_t *BytePointer;
-
 // FIXME: move this to a header shared with PatchEntry
 enum {
     TRAP_SECTION_TEXT = 0,
@@ -27,8 +25,8 @@ struct TrapSectionInfoTable {
     size_t size, trap_size;
 };
 
-// ELF-specific information that PatchEntry fills in
-struct TrapProgramInfoTable {
+// ELF-specific module metadata
+struct ModuleInfo {
     uintptr_t orig_dt_init;
     uintptr_t orig_entry;
 
@@ -45,6 +43,9 @@ struct TrapProgramInfoTable {
     // Location of GOT
     uintptr_t *got_start;
 
+    // Location of dynamic table
+    uintptr_t dynamic;
+
     // End of .txtrp pages
     uintptr_t trap_end_page;
 
@@ -60,11 +61,6 @@ struct TrapProgramInfoTable {
     // we've added the sections to the table or not
     size_t num_sections;
     struct TrapSectionInfoTable sections[TRAP_NUM_SECTIONS];
-};
-
-struct ModuleInfo {
-    BytePointer dynamic;
-    struct TrapProgramInfoTable *program_info_table;
 };
 
 #endif

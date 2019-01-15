@@ -334,7 +334,7 @@ void Module::preprocess_arch() {
 
 void Module::relocate_arch(FunctionList *functions) const {
     for (size_t i = 0; i < TRAP_NUM_SECTIONS; i++) {
-        auto &sec_info = m_module_info->program_info_table->sections[i];
+        auto &sec_info = m_module_info->sections[i];
         if (sec_info.start == 0 || sec_info.size == 0 ||
             sec_info.trap  == 0 || sec_info.trap_size == 0)
             continue;
