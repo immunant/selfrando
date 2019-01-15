@@ -374,6 +374,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
                     mod_text >= phdr_start &&
                     mod_text < phdr_end) {
                     API::memcpy(&mod->m_phdr_info, iter_info, sizeof(*iter_info));
+                    mod->m_image_base = iter_info->dlpi_addr;
                     return 1;
                 }
             }
@@ -381,17 +382,6 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         }, this);
     } else {
         API::memcpy(&m_phdr_info, phdr_info, sizeof(*phdr_info));
-    }
-
-    // Find the image base (address of the first file byte)
-    // FIXME: is this 100% correct???
-    m_image_base = nullptr;
-    for (size_t i = 0; i < m_phdr_info.dlpi_phnum; i++) {
-        auto phdr = &m_phdr_info.dlpi_phdr[i];
-        if (phdr->p_type == PT_LOAD && phdr->p_offset == 0) {
-            m_image_base = RVA2Address(phdr->p_vaddr).to_ptr();
-            break;
-        }
     }
 
     // FIXME: do we always get .got.plt from the ModuleInfo???
@@ -406,8 +396,8 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             break;
         }
     }
-    API::debug_printf<1>("Module@%p base:%p->%p GOT:%p .eh_frame_hdr:%p\n",
-                         this, m_phdr_info.dlpi_addr, m_image_base, m_got, m_eh_frame_hdr);
+    API::debug_printf<1>("Module@%p base:%p GOT:%p .eh_frame_hdr:%p\n",
+                         this, m_image_base, m_got, m_eh_frame_hdr);
     API::debug_printf<1>("Module path:'%s'\n", m_phdr_info.dlpi_name);
 
     preprocess_arch();

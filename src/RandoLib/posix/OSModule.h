@@ -46,8 +46,7 @@ public:
             case AddressSpace::TRAP:
                 return reinterpret_cast<T>(m_address);
             case AddressSpace::RVA:
-                //return reinterpret_cast<T>(m_address + reinterpret_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));
-                return reinterpret_cast<T>(m_address + static_cast<uintptr_t>(m_module.m_phdr_info.dlpi_addr));
+                return reinterpret_cast<T>(m_address + m_module.m_image_base);
             default:
                 return 0;
             }
@@ -139,7 +138,7 @@ public:
 
 private:
     ModuleInfo *m_module_info;
-    BytePointer m_image_base;
+    uintptr_t m_image_base;
     BytePointer m_got;
     BytePointer m_eh_frame_hdr;
 
