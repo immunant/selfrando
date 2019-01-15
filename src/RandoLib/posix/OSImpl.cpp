@@ -352,7 +352,6 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         : ModuleBase(), m_module_info(module_info) {
     RANDO_ASSERT(m_module_info != nullptr);
     os::API::debug_printf<5>("Module info:\n");
-    os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
     os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
     os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->orig_entry);
     os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->xptramp_start,

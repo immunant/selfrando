@@ -27,11 +27,6 @@ struct TrapSectionInfoTable {
 
 // ELF-specific module metadata
 struct ModuleInfo {
-    // Start of process arguments on the stack
-    // This is set by selfrando_entry, so
-    // it will be NULL for shared libraries
-    uintptr_t *args;
-
     uintptr_t orig_dt_init;
     uintptr_t orig_entry;
 

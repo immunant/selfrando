@@ -22,25 +22,13 @@ selfrando_init:
 selfrando_entry:
 1:
         // selfrando will patch this to the correct target
-        call 2f
+        call selfrando_run_and_remove
         jmp 1b
-
-2:
-        // We're at the entry point, which means we have
-        // the arguments, environment and auxv at the top
-        // of the stack
-        push %rdi
-        lea 16(%rsp), %rdi
-        jmp srr_have_args
 
 .globl selfrando_run_and_remove
 .hidden selfrando_run_and_remove
 .type selfrando_run_and_remove,@function
 selfrando_run_and_remove:
-        push %rdi
-        xor %rdi, %rdi
-
-srr_have_args:
         push %rdx
         push %rbp
         mov %rsp, %rbp
@@ -58,7 +46,6 @@ selfrando_remove_call:
         mov %rbp, %rsp
         pop %rbp
         pop %rdx
-        pop %rdi
         ret
 
 .globl selfrando_return

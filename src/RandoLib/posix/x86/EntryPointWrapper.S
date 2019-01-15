@@ -22,23 +22,14 @@ selfrando_init:
 selfrando_entry:
 1:
         // selfrando will patch this to the correct target
-        call 2f
+        call selfrando_run_and_remove
         jmp 1b
-
-2:
-        push %edx
-        lea 8(%esp), %edx
-        push %edx
-        jmp srr_have_args
 
 .globl selfrando_run_and_remove
 .hidden selfrando_run_and_remove
 .type selfrando_run_and_remove,@function
 selfrando_run_and_remove:
         push %edx
-        pushl $0
-
-srr_have_args:
         call selfrando_run
 
 .globl selfrando_remove_call
@@ -47,7 +38,7 @@ selfrando_remove_call:
         // selfrando will patch this to a jump to
         // the munmap code, if we have it
 .byte 0x0F, 0x1F, 0x44, 0x00, 0x00
-        pop %edx
+
         pop %edx
         ret
 
