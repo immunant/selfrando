@@ -36,10 +36,11 @@ extern char _DYNAMIC __attribute__((weak));
 extern uintptr_t _GLOBAL_OFFSET_TABLE_[];
 #pragma GCC visibility pop
 
-void selfrando_run(void) __attribute__((section(".selfrando.entry")));
+void selfrando_run(uintptr_t *args) __attribute__((section(".selfrando.entry")));
 
-void selfrando_run(void) {
+void selfrando_run(uintptr_t *args) {
     struct ModuleInfo mod = { };
+    mod.args = args;
     mod.orig_dt_init = (uintptr_t)(&orig_init);
     mod.orig_entry = (uintptr_t)(&orig_entry);
     mod.selfrando_init = (uintptr_t)(&selfrando_init);
