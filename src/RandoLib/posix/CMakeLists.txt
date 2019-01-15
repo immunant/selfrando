@@ -5,6 +5,8 @@ set(SR_RNG "chacha" CACHE STRING
     "Random number generator to use ('chacha', 'rand_r' or 'urandom')")
 set(SR_NO_MREMAP OFF CACHE BOOL
     "Avoid using mremap() to rallocate memory")
+set(SR_HOOK_PREINIT ON CACHE BOOL
+    "Hook .preinit_array to perform randomization before all other initializers")
 
 set(ALLOWED_RNGS chacha rand_r urandom)
 set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
@@ -118,6 +120,10 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     if(SR_NO_MREMAP)
         add_definitions(-DRANDOLIB_NO_MREMAP=1)
+    endif()
+
+    if(SR_HOOK_PREINIT)
+        add_definitions(-DRANDOLIB_HOOK_PREINIT=1)
     endif()
 
     include(bionic/CMakeLists.txt)
