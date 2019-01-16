@@ -16,6 +16,7 @@ selfrando_init:
 
     stp x0, x30, [sp, #-16]!
 
+    mov x0, #0
     bl selfrando_run
 
     // Restore the finalizer pointer and link register
@@ -32,6 +33,7 @@ selfrando_entry:
 
     stp x0, x30, [sp, #-16]!
 
+    add x0, sp, #16
     bl selfrando_run
 
     // Restore the finalizer pointer and link register
@@ -44,6 +46,7 @@ selfrando_entry:
 .type   selfrando_run_and_remove,%function
 selfrando_run_and_remove:
     stp x0, x30, [sp, #-16]!
+    mov x0, #0
     bl selfrando_run
     // Fall-through
 selfrando_remove_call:

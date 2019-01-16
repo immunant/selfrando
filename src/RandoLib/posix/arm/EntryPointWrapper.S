@@ -27,12 +27,9 @@ init_pcadd:
     bx r12
 
 init_begin:
-    push {r1,lr}
-
+    push {lr}
     bl selfrando_run_and_remove
-
-    // Restore the finalizer pointer
-    pop {r1,lr}
+    pop {lr}
 
     // The library should have patched the entry point,
     // so go back and try again
@@ -54,12 +51,14 @@ entry_pcadd:
     bx r12
 
 entry_begin:
-    push {r1,lr}
+    push {r0,r1,lr}
 
-    bl selfrando_run_and_remove
+    add r0, sp, #12
+    bl selfrando_run
+    // FIXME: we can't use selfrando_run_and_remove for now
 
     // Restore the finalizer pointer
-    pop {r1,lr}
+    pop {r0,r1,lr}
 
     // Go back and try again
     b selfrando_entry
@@ -69,12 +68,13 @@ entry_begin:
 .type   selfrando_run_and_remove,%function
 .arm
 selfrando_run_and_remove:
-    push {lr}
+    push {r0,lr}
+    mov r0, #0
     bl selfrando_run
     // Fall-through
 selfrando_remove_call:
     // TODO: add sequence that calls mprotect()
-    pop {pc}
+    pop {r0,pc}
 
 .globl selfrando_return
 .hidden selfrando_return
