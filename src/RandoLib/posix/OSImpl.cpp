@@ -368,6 +368,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
 
     API::debug_printf<1>("Module@%p base:%p GOT:%p .eh_frame_hdr:%p\n",
                          this, m_image_base, m_got, m_eh_frame_hdr);
+    API::debug_printf<1>("Module path:'%s'\n", m_module_name);
     os::API::debug_printf<5>("Module info:\n");
     os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
     os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
@@ -402,7 +403,55 @@ RANDO_SECTION void Module::convert_phdr_info(PHdrInfoPointer phdr_info) {
     }
 
     // Option 2: scan the auxiliary vector
-    // TODO
+    if (m_module_info->args != nullptr) {
+        auto p = m_module_info->args;
+        auto argc = *p++;
+        // Skip over argv
+        m_module_name = reinterpret_cast<const char*>(*p++);
+        p += argc;
+        // Skip over envp
+        while (*p)
+            p++;
+
+        bool found_phdr = false,
+             found_phnum = false;
+        auto auxv = reinterpret_cast<RANDOLIB_ELF(auxv_t)*>(++p);
+        for (; auxv->a_type != AT_NULL; auxv++) {
+            os::API::debug_printf<10>("AUXV[%p]=%p\n",
+                                      auxv->a_type, auxv->a_un.a_val);
+            switch (auxv->a_type) {
+            case AT_ENTRY:
+                RANDO_ASSERT(auxv->a_un.a_val == m_module_info->selfrando_entry);
+                break;
+
+            case AT_PHDR:
+                m_phdr = reinterpret_cast<const RANDOLIB_ELF(Phdr)*>(auxv->a_un.a_val);
+                found_phdr = true;
+                break;
+
+            case AT_PHNUM:
+                m_phnum = auxv->a_un.a_val;
+                found_phnum = true;
+                break;
+            }
+        }
+
+        if (found_phdr && found_phnum) {
+            // Find the image base (address of the first file byte)
+            // FIXME: is this 100% correct???
+            m_image_base = 0;
+            // Try to extract the image base for the PT_PHDR header;
+            // if we can't find it, then it's very likely that the binary
+            // hasn't been moved, and the image base is 0
+            for (size_t i = 0; i < m_phnum; i++) {
+                if (m_phdr[i].p_type == PT_PHDR) {
+                    m_image_base = reinterpret_cast<uintptr_t>(m_phdr) - m_phdr[i].p_vaddr;
+                    break;
+                }
+            }
+            return;
+        }
+    }
 
     // Option 3: iterate thru the phdr's to find the one for our .text section
     dl_iterate_phdr([] (PHdrInfoPointer iter_info, size_t size, void *arg) {
