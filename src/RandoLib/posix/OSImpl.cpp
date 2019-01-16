@@ -349,7 +349,8 @@ RANDO_SECTION PagePermissions Module::Section::change_permissions(PagePermission
 }
 
 RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
-        : ModuleBase(), m_module_info(module_info) {
+        : ModuleBase(), m_module_info(module_info),
+          m_module_name("<module>") {
     RANDO_ASSERT(m_module_info != nullptr);
     os::API::debug_printf<5>("Module info:\n");
     os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
@@ -376,6 +377,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
                     mod->m_image_base = iter_info->dlpi_addr;
                     mod->m_phdr = iter_info->dlpi_phdr;
                     mod->m_phnum = iter_info->dlpi_phnum;
+                    mod->m_module_name = iter_info->dlpi_name;
                     return 1;
                 }
             }
@@ -385,6 +387,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         m_image_base = phdr_info->dlpi_addr;
         m_phdr = phdr_info->dlpi_phdr;
         m_phnum = phdr_info->dlpi_phnum;
+        m_module_name = phdr_info->dlpi_name;
     }
 
     // FIXME: do we always get .got.plt from the ModuleInfo???

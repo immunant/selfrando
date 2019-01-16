@@ -132,7 +132,7 @@ public:
     }
 
     inline RANDO_SECTION const char *get_module_name() const {
-        return "<module>";
+        return m_module_name;
     }
 
 #if RANDOLIB_WRITE_LAYOUTS
@@ -147,6 +147,7 @@ private:
     uintptr_t m_image_base;
     const RANDOLIB_ELF(Phdr) *m_phdr;
     size_t m_phnum;
+    const char *m_module_name;
 
     BytePointer m_got;
     BytePointer m_eh_frame_hdr;
