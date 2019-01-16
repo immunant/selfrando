@@ -352,43 +352,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
         : ModuleBase(), m_module_info(module_info),
           m_module_name("<module>") {
     RANDO_ASSERT(m_module_info != nullptr);
-    os::API::debug_printf<5>("Module info:\n");
-    os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
-    os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
-    os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->orig_entry);
-    os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->xptramp_start,
-                             m_module_info->xptramp_size);
-    os::API::debug_printf<5>("  text: %p (%u)\n", m_module_info->sections[0].start,
-                             m_module_info->sections[0].size);
-    os::API::debug_printf<5>("  trap: %p (%u)\n", m_module_info->sections[0].trap,
-                             m_module_info->sections[0].trap_size);
-    if (phdr_info == nullptr) {
-        // Iterate thru the phdr's to find the one for our .text section
-        dl_iterate_phdr([] (PHdrInfoPointer iter_info, size_t size, void *arg) {
-            Module *mod = reinterpret_cast<Module*>(arg);
-            auto mod_text = mod->m_module_info->sections[0].start;
-            for (size_t i = 0; i < iter_info->dlpi_phnum; i++) {
-                auto phdr = &iter_info->dlpi_phdr[i];
-                auto phdr_start = static_cast<uintptr_t>(iter_info->dlpi_addr + phdr->p_vaddr);
-                auto phdr_end = phdr_start + phdr->p_memsz;
-                if (phdr->p_type == PT_LOAD &&
-                    mod_text >= phdr_start &&
-                    mod_text < phdr_end) {
-                    mod->m_image_base = iter_info->dlpi_addr;
-                    mod->m_phdr = iter_info->dlpi_phdr;
-                    mod->m_phnum = iter_info->dlpi_phnum;
-                    mod->m_module_name = iter_info->dlpi_name;
-                    return 1;
-                }
-            }
-            return 0;
-        }, this);
-    } else {
-        m_image_base = phdr_info->dlpi_addr;
-        m_phdr = phdr_info->dlpi_phdr;
-        m_phnum = phdr_info->dlpi_phnum;
-        m_module_name = phdr_info->dlpi_name;
-    }
+    convert_phdr_info(phdr_info);
 
     // FIXME: do we always get .got.plt from the ModuleInfo???
     m_got = reinterpret_cast<BytePointer>(m_module_info->got_start);
@@ -401,14 +365,61 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
             break;
         }
     }
+
     API::debug_printf<1>("Module@%p base:%p GOT:%p .eh_frame_hdr:%p\n",
                          this, m_image_base, m_got, m_eh_frame_hdr);
+    os::API::debug_printf<5>("Module info:\n");
+    os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
+    os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
+    os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->orig_entry);
+    os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->xptramp_start,
+                             m_module_info->xptramp_size);
+    os::API::debug_printf<5>("  text: %p (%u)\n", m_module_info->sections[0].start,
+                             m_module_info->sections[0].size);
+    os::API::debug_printf<5>("  trap: %p (%u)\n", m_module_info->sections[0].trap,
+                             m_module_info->sections[0].trap_size);
 
     preprocess_arch();
 }
 
 RANDO_SECTION Module::~Module() {
     m_got_entries.clear();
+}
+
+RANDO_SECTION void Module::convert_phdr_info(PHdrInfoPointer phdr_info) {
+    // We need to convert the ELF PHdr module information into our own format
+    // We have 3 possible sources:
+    // 1) the `phdr_info` argument passed to the constructor
+    // 2) the auxiliary vector from the kernel, if we have it
+    // 3) `dl_iterate_phdr`, as a last resort
+    // Option 1: try `phdr_info`
+    if (phdr_info != nullptr) {
+        m_image_base = phdr_info->dlpi_addr;
+        m_phdr = phdr_info->dlpi_phdr;
+        m_phnum = phdr_info->dlpi_phnum;
+        m_module_name = phdr_info->dlpi_name;
+        return;
+    }
+
+    // Option 2: scan the auxiliary vector
+    // TODO
+
+    // Option 3: iterate thru the phdr's to find the one for our .text section
+    dl_iterate_phdr([] (PHdrInfoPointer iter_info, size_t size, void *arg) {
+        Module *mod = reinterpret_cast<Module*>(arg);
+        auto mod_text = mod->m_module_info->sections[0].start;
+        for (size_t i = 0; i < iter_info->dlpi_phnum; i++) {
+            auto phdr = &iter_info->dlpi_phdr[i];
+            auto phdr_start = static_cast<uintptr_t>(iter_info->dlpi_addr + phdr->p_vaddr);
+            auto phdr_end = phdr_start + phdr->p_memsz;
+            if (phdr->p_type == PT_LOAD &&
+                mod_text >= phdr_start && mod_text < phdr_end) {
+                mod->convert_phdr_info(iter_info);
+                return 1;
+            }
+        }
+        return 0;
+    }, this);
 }
 
 RANDO_SECTION void Module::mark_randomized(Module::RandoState state) {

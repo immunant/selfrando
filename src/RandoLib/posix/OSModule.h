@@ -143,6 +143,9 @@ public:
     RANDO_SECTION void read_got_relocations(const TrapInfo *trap_info);
 
 private:
+    RANDO_SECTION void convert_phdr_info(PHdrInfoPointer phdr_info);
+
+private:
     ModuleInfo *m_module_info;
     uintptr_t m_image_base;
     const RANDOLIB_ELF(Phdr) *m_phdr;
