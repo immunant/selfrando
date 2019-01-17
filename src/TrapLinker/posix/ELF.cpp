@@ -330,7 +330,8 @@ ElfObject::create_section_builders(ElfSymbolTable *symbol_table) {
                         }
                         break;
                     case STT_GNU_IFUNC:
-                        // TODO: handle GNU ifuncs
+                        section_builders[sym_shndx].set_has_func_symbols();
+                        section_builders[sym_shndx].add_entry_symbol(sym_ref);
                         break;
                     }
                 }
@@ -1044,6 +1045,13 @@ ElfSymbolTable::SymbolRef ElfSymbolTable::replace_symbol(SymbolRef symbol,
     auto sym_name_orig = get_suffixed_symbol(old_symbol->st_name, "$orig");
     new_symbol.st_name = m_string_table->add_string(sym_name_orig);
     new_symbol.st_other = GELF_ST_VISIBILITY(STV_HIDDEN);
+    if (GELF_ST_TYPE(new_symbol.st_info) == STT_GNU_IFUNC) {
+        // The externally-visible symbol should still be an ifunc,
+        // but the internal ones shouldn't because we only want
+        // the function to be called once
+        auto binding = GELF_ST_BIND(new_symbol.st_info);
+        new_symbol.st_info = GELF_ST_INFO(STT_FUNC, binding);
+    }
 
     // Add new symbol for wrapper
     uint32_t old_sym_xindex;
