@@ -87,7 +87,7 @@ public:
     bool parse();
 
     bool is_trap_enabled() const {
-        return m_enabled && !m_static && !m_relocatable;
+        return m_enabled && !m_relocatable;
     }
 
     bool emit_textramp() const {
