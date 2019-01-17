@@ -942,6 +942,10 @@ LinkerInvocation ArgParser::create_new_invocation(
     if (m_relocatable)
         m_enabled = false;
 
+    // Statically-linked binary implies static libselfrando.a
+    if (m_static)
+        m_static_selfrando = true;
+
     // If TRaP mode is enabled, add all the arguments
     // If we couldn't determine the ELF machine, do not add TRaP info
     if (is_trap_enabled() && elf_machine != EM_NONE) {
