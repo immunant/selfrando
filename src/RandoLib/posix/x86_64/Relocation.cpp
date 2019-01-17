@@ -67,6 +67,12 @@ BytePointer Module::Relocation::get_target_ptr() const {
     case 42: // R_X86_64_REX_GOTPCRELX
         if (is_patched_gotpcrel(m_src_ptr, m_addend))
             return reinterpret_cast<BytePointer>(*reinterpret_cast<uint32_t*>(m_src_ptr));
+        if (m_src_ptr[-2] == 0xe9 && m_src_ptr[3] == 0x90) {
+            // JMP *foo@GOTPCREL(%rip) got converted to JMP foo
+            // which moved our relocation back 1 byte
+            return (m_orig_src_ptr - 1) - m_addend +
+                *reinterpret_cast<int32_t*>(m_src_ptr - 1);
+        }
         goto pcrel_reloc;
     case R_X86_64_PC32:
     case R_X86_64_PLT32:
@@ -119,6 +125,14 @@ void Module::Relocation::set_target_ptr(BytePointer new_target) {
     case 42: // R_X86_64_REX_GOTPCRELX
         if (is_patched_gotpcrel(m_src_ptr, m_addend)) {
             set_p32(new_target);
+            return;
+        }
+        if (m_src_ptr[-2] == 0xe9 && m_src_ptr[3] == 0x90) {
+            // See discussion in get_target_ptr()
+            auto adj_src_ptr = m_src_ptr - 1;
+            auto new_offset = new_target + m_addend - adj_src_ptr;
+            *reinterpret_cast<int32_t*>(adj_src_ptr) =
+                API::assert_cast<int32_t>(new_offset);
             return;
         }
         goto pcrel_reloc;
