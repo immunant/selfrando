@@ -429,6 +429,10 @@ RANDO_SECTION void Module::convert_phdr_info(PHdrInfoPointer phdr_info) {
                 found_phdr = true;
                 break;
 
+            case AT_PHENT:
+                RANDO_ASSERT(auxv->a_un.a_val == sizeof(RANDOLIB_ELF(Phdr)));
+                break;
+
             case AT_PHNUM:
                 m_phnum = auxv->a_un.a_val;
                 found_phnum = true;
