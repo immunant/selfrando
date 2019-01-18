@@ -69,13 +69,7 @@ typedef std::tuple<std::vector<char*>, bool, bool> LinkerInvocation;
 class ArgParser {
 public:
     ArgParser(int argc, char* argv[]) : m_argc(argc), m_argv(argv),
-                                        m_enabled(true), m_static_selfrando(false),
-                                        m_selfrando_txtrp_pages(false),
-                                        m_add_selfrando_libs(true),
-                                        m_emit_textramp(true),
-                                        m_pic_warning(true),
-                                        m_emit_eh_txtrp(false),
-                                        m_relocatable(false),
+                                        m_enabled(true), m_relocatable(false),
                                         m_shared(false), m_static(false),
                                         m_whole_archive(false),
                                         m_sysroot(), m_canonical_sysroot() {
@@ -137,6 +131,13 @@ private:
     int get_value(int i, const std::string &arg_key, std::string &val);
     int handle_input_file(int i);
 
+#define HANDLE_OPTION_BOOL(opt, defval)                     \
+    bool m_ ## opt = (defval);                              \
+    int handle_ ## opt(int i, const std::string &arg_key) { \
+        m_ ## opt = !(defval);                              \
+        return 0;                                           \
+    }
+
     int handle_output(int i, const std::string &arg_key);
     int handle_entry(int i, const std::string &arg_key);
     int handle_init(int i, const std::string &arg_key);
@@ -155,12 +156,12 @@ private:
     int handle_original_linker(int i, const std::string &arg_key);
     int handle_traplinker_disable(int i, const std::string &arg_key);
     int handle_traplinker_enable(int i, const std::string &arg_key);
-    int handle_static_selfrando(int i, const std::string &arg_key);
-    int handle_selfrando_txtrp_pages(int i, const std::string &arg_key);
-    int handle_traplinker_no_libs(int i, const std::string &arg_key);
-    int handle_traplinker_no_textramp(int i, const std::string &arg_key);
-    int handle_traplinker_no_pic_warning(int i, const std::string &arg_key);
-    int handle_traplinker_emit_eh_txtrp(int i, const std::string &arg_key);
+    HANDLE_OPTION_BOOL(static_selfrando,        false);
+    HANDLE_OPTION_BOOL(selfrando_txtrp_pages,   false);
+    HANDLE_OPTION_BOOL(add_selfrando_libs,      true);
+    HANDLE_OPTION_BOOL(emit_textramp,           true);
+    HANDLE_OPTION_BOOL(pic_warning,             true);
+    HANDLE_OPTION_BOOL(emit_eh_txtrp,           false);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -213,12 +214,6 @@ private:
 
     std::string m_original_linker_path;
     bool m_enabled;
-    bool m_static_selfrando;
-    bool m_selfrando_txtrp_pages;
-    bool m_add_selfrando_libs;
-    bool m_emit_textramp;
-    bool m_pic_warning;
-    bool m_emit_eh_txtrp;
 
     bool m_relocatable;
     bool m_shared;
@@ -1260,36 +1255,6 @@ int ArgParser::handle_traplinker_disable(int i, const std::string &arg_key) {
 
 int ArgParser::handle_traplinker_enable(int i, const std::string &arg_key) {
     m_enabled = true;
-    return 0;
-}
-
-int ArgParser::handle_static_selfrando(int i, const std::string &arg_key) {
-    m_static_selfrando = true;
-    return 0;
-}
-
-int ArgParser::handle_selfrando_txtrp_pages(int i, const std::string &arg_key) {
-    m_selfrando_txtrp_pages = true;
-    return 0;
-}
-
-int ArgParser::handle_traplinker_no_libs(int i, const std::string &arg_key) {
-    m_add_selfrando_libs = false;
-    return 0;
-}
-
-int ArgParser::handle_traplinker_no_textramp(int i, const std::string &arg_key) {
-    m_emit_textramp = false;
-    return 0;
-}
-
-int ArgParser::handle_traplinker_no_pic_warning(int i, const std::string &arg_key) {
-    m_pic_warning = false;
-    return 0;
-}
-
-int ArgParser::handle_traplinker_emit_eh_txtrp(int i, const std::string &arg_key) {
-    m_emit_eh_txtrp = true;
     return 0;
 }
 
