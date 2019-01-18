@@ -941,7 +941,9 @@ LinkerInvocation ArgParser::create_new_invocation(
     // In --relocatable mode, we don't add TRaP info
     if (m_relocatable)
         m_enabled = false;
-
+    // Building statically-linked shared libraries is wonky
+    if (m_shared)
+        m_static = false;
     // Statically-linked binary implies static libselfrando.a
     if (m_static)
         m_static_selfrando = true;
