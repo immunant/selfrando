@@ -1007,7 +1007,14 @@ LinkerInvocation ArgParser::create_new_invocation(
             } else {
                 m_args.emplace_back("-l:libselfrando.so", true);
             }
-            m_args.emplace_back("-ldl", true);
+            if (!m_static) {
+                // We can't pull in libdl.a for static builds,
+                // since we haven't emitted TRaP info for it;
+                // this fine for dynamically-linked builds, and not
+                // a problem either for static builds since those
+                // don't use `dl_iterate_phdr`
+                m_args.emplace_back("-ldl", true);
+            }
         }
 
         // Add the files that mark the end of .txtrp
