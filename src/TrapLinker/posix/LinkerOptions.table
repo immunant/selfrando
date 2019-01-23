@@ -29,12 +29,12 @@
 -dy             handle_dynamic
 
 -r              handle_relocatable
---relocatable   handle_relocatable
+-relocatable   handle_relocatable
 
 -z              handle_z_keyword
 
---whole-archive     handle_whole_archive
---no-whole-archive  handle_whole_archive
+-whole-archive     handle_whole_archive
+-no-whole-archive  handle_whole_archive
 
 // HP-UX compatibility not sure I care
 // -a handle_a
@@ -44,7 +44,7 @@
 -push-state     handle_push_state
 -pop-state      handle_pop_state
 
---sysroot       handle_sysroot
+-sysroot       handle_sysroot
 
 // these probably need to be handled
 -exclude-libs   ignore_long_arg_with_value
@@ -54,9 +54,9 @@
 -dT             ignore_long_arg_with_value
 -default-script ignore_long_arg_with_value
 
---help           ignore_arg_disable_rando
---target-help    ignore_arg_disable_rando
---version        ignore_arg_disable_rando
+-help           ignore_arg_disable_rando
+-target-help    ignore_arg_disable_rando
+-version        ignore_arg_disable_rando
 // TODO: also disable randomization on -V???
 
 // Gold specific options
@@ -97,7 +97,7 @@
 -no-ld-generated-unwind-info ignore_arg
 
 // Options used in Android build
---fix-cortex-a53-843419 ignore_arg
+-fix-cortex-a53-843419 ignore_arg
 
 // Our own options
 --traplinker-original-linker    handle_original_linker
