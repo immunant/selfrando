@@ -192,7 +192,7 @@ BytePointer Module::Relocation::get_got_entry() const {
             return nullptr; // jmpq-to-jmpq-nop conversion
         return at_ptr + *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
     case R_X86_64_GOTPC32:
-        at_ptr += *reinterpret_cast<int32_t*>(at_ptr);
+        at_ptr += *reinterpret_cast<int32_t*>(at_ptr) - m_addend;
         RANDO_ASSERT(at_ptr == m_module.get_got_ptr());
         return nullptr;
     case R_X86_64_GOTPCREL64:
