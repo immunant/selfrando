@@ -6,18 +6,6 @@
  *
  */
 
-#if RANDOLIB_HOOK_PREINIT > 0
-extern void selfrando_run_and_remove(void) __attribute__((section(".selfrando.entry")));
-
-// Make sure that we randomize as early as possible,
-// by creating a .preinit_array entry for our entry point.
-void (*const selfrando_preinit_array[])(void)
-    __attribute__((section(".preinit_array"), aligned(sizeof(void*)))) =
-{
-    &selfrando_run_and_remove
-};
-#endif
-
 extern void selfrando_delete_layout_file(void);
 
 void (*const selfrando_fini_array[])(void)

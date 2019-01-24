@@ -44,6 +44,10 @@ if (SR_BUILD_MODULE_RANDOLIB)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -m32")
     endif()
 
+    if(SR_HOOK_PREINIT)
+        set(preinit_entry_file ${SR_ARCH}/PreinitEntryPoint.S)
+    endif()
+
     # Create the entry libraries
     set(entry_files
         ${SR_ARCH}/EntryPointWrapper.S
@@ -57,7 +61,8 @@ if (SR_BUILD_MODULE_RANDOLIB)
         # We need _TRaP_memset on ARM
         list(APPEND entry_files bionic/arch-arm/memset.S)
     endif()
-    add_library(randoentry_exec STATIC ${entry_files} EntryPointExec.c)
+    add_library(randoentry_exec STATIC ${entry_files} EntryPointExec.c
+        ${preinit_entry_file})
     add_library(randoentry_so   STATIC ${entry_files} EntryPointSO.c)
 
     if("${SR_ARCH}" STREQUAL "arm")
@@ -118,10 +123,6 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     if(SR_NO_MREMAP)
         add_definitions(-DRANDOLIB_NO_MREMAP=1)
-    endif()
-
-    if(SR_HOOK_PREINIT)
-        add_definitions(-DRANDOLIB_HOOK_PREINIT=1)
     endif()
 
     include(bionic/CMakeLists.txt)

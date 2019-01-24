@@ -36,6 +36,7 @@ struct ModuleInfo {
     uintptr_t orig_entry;
 
     // Locations of entry trampolines to relocate
+    uintptr_t selfrando_preinit;
     uintptr_t selfrando_init;
     uintptr_t selfrando_entry;
     uintptr_t selfrando_remove_call;

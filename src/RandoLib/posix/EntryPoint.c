@@ -36,6 +36,11 @@ extern uintptr_t _GLOBAL_OFFSET_TABLE_[];
 uintptr_t _DYNAMIC[] __attribute__((weak)) = {};
 #pragma GCC visibility pop
 
+// Placeholder for selfrando_preinit, in case PreinitEntryPoints.S isn't
+// present
+void selfrando_preinit() __attribute__((weak, section(".selfrando.entry")));
+void selfrando_preinit() {}
+
 void selfrando_run(uintptr_t *args) __attribute__((section(".selfrando.entry")));
 
 void selfrando_run(uintptr_t *args) {
@@ -43,6 +48,7 @@ void selfrando_run(uintptr_t *args) {
     mod.args = args;
     mod.orig_dt_init = (uintptr_t)(&orig_init);
     mod.orig_entry = (uintptr_t)(&orig_entry);
+    mod.selfrando_preinit = (uintptr_t)(&selfrando_preinit);
     mod.selfrando_init = (uintptr_t)(&selfrando_init);
     mod.selfrando_entry = (uintptr_t)(&selfrando_entry);
     mod.selfrando_remove_call = (uintptr_t)(&selfrando_remove_call);
