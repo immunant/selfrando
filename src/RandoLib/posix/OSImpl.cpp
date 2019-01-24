@@ -609,7 +609,7 @@ RANDO_SECTION void Module::for_all_relocations(FunctionList *functions) const {
     Relocation::fixup_entry_point(*this,
                                   m_module_info->selfrando_entry,
                                   new_entry);
-    API::debug_printf<1>("New entry:%p init:%p\n", new_dt_init, new_entry);
+    API::debug_printf<1>("New init:%p entry:%p\n", new_dt_init, new_entry);
 
     // Fixup our preinit function
     Relocation::fixup_entry_point(*this, m_module_info->selfrando_preinit,
