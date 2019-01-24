@@ -9,7 +9,7 @@
 .section .selfrando.entry, "ax", %progbits
 .globl selfrando_preinit
 .hidden selfrando_preinit
-.type selfrando_preinit,@function
+.type selfrando_preinit, %function
 .arm
 // Relocation.cpp rewrites this to the real init function,
 // and expects a PC-relative address (relative to itself)

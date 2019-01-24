@@ -9,7 +9,7 @@
 .section .selfrando.entry, "ax", %progbits
 .globl selfrando_preinit
 .hidden selfrando_preinit
-.type selfrando_preinit,@function
+.type selfrando_preinit, %function
 selfrando_preinit:
     // selfrando will patch this to selfrando_return
     .long 0x14000001
