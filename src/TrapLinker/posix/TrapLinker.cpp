@@ -1071,13 +1071,16 @@ std::pair<std::string, std::string> ArgParser::get_entry_point_names() {
 
 int ArgParser::get_value(int i, const std::string &arg_key, std::string &val) {
     std::string arg = m_argv[i];
-    if (arg.length() == arg_key.length()) {
+    auto key_pos = arg.find(arg_key);
+    auto after_key = key_pos + arg_key.length();
+    assert(key_pos == 0 || key_pos == 1); // FIXME: are there other cases???
+    if (after_key == arg.length()) {
         if (m_argc <= i+1)
             return -1;
         val = m_argv[i+1];
         return 1;
     } else {
-        val = arg.substr(arg_key.length());
+        val = arg.substr(after_key);
         return 0;
     }
 }
