@@ -29,7 +29,7 @@
 -dy             handle_dynamic
 
 -r              handle_relocatable
--relocatable   handle_relocatable
+-relocatable    handle_relocatable
 
 -z              handle_z_keyword
 
@@ -44,7 +44,7 @@
 -push-state     handle_push_state
 -pop-state      handle_pop_state
 
--sysroot       handle_sysroot
+-sysroot        handle_sysroot
 
 // these probably need to be handled
 -exclude-libs   ignore_long_arg_with_value
