@@ -373,6 +373,7 @@ RANDO_SECTION Module::Module(Handle module_info, PHdrInfoPointer phdr_info)
     os::API::debug_printf<5>("  args: %p\n", m_module_info->args);
     os::API::debug_printf<5>("  orig_dt_init: %p\n", m_module_info->orig_dt_init);
     os::API::debug_printf<5>("  orig_entry: %p\n", m_module_info->orig_entry);
+    os::API::debug_printf<5>("  dynamic: %p\n", m_module_info->dynamic);
     os::API::debug_printf<5>("  xptramp: %p (%u)\n", m_module_info->xptramp_start,
                              m_module_info->xptramp_size);
     os::API::debug_printf<5>("  text: %p (%u)\n", m_module_info->sections[0].start,
@@ -450,6 +451,10 @@ RANDO_SECTION void Module::convert_phdr_info(PHdrInfoPointer phdr_info) {
             for (size_t i = 0; i < m_phnum; i++) {
                 if (m_phdr[i].p_type == PT_PHDR) {
                     m_image_base = reinterpret_cast<uintptr_t>(m_phdr) - m_phdr[i].p_vaddr;
+                    break;
+                } else if (m_phdr[i].p_type == PT_DYNAMIC) {
+                    m_image_base = reinterpret_cast<uintptr_t>(m_module_info->dynamic) -
+                        m_phdr[i].p_vaddr;
                     break;
                 }
             }

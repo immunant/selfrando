@@ -33,6 +33,7 @@ extern char
     trap_end_page __attribute__((weak)); // FIXME: this might not be available under -Bsymbolic
 
 extern uintptr_t _GLOBAL_OFFSET_TABLE_[];
+uintptr_t _DYNAMIC[] __attribute__((weak)) = {};
 #pragma GCC visibility pop
 
 void selfrando_run(uintptr_t *args) __attribute__((section(".selfrando.entry")));
@@ -49,6 +50,7 @@ void selfrando_run(uintptr_t *args) {
     mod.xptramp_start = (uintptr_t)(&xptramp_begin);
     mod.xptramp_size = &xptramp_end - &xptramp_begin;
     mod.got_start = _GLOBAL_OFFSET_TABLE_;
+    mod.dynamic = _DYNAMIC;
     if (&trap_end_page > &trap_end) {
         mod.trap_end_page = (uintptr_t)(&trap_end_page);
     }
