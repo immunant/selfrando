@@ -11,7 +11,6 @@
 .hidden selfrando_preinit
 .type selfrando_preinit,@function
 selfrando_preinit:
-1:
         // selfrando will patch this to selfrando_return
         jmp selfrando_run_and_remove
 
