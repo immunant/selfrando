@@ -7,6 +7,23 @@
  */
 
 .section .selfrando.entry, "ax", @progbits
+// selfrando_preinit implementation
+// See comments in x86_64/EntryPointWrapper.S
+.globl selfrando_preinit
+.hidden selfrando_preinit
+.type selfrando_preinit,@function
+selfrando_preinit:
+.cfi_startproc
+        // selfrando will patch this to selfrando_return
+.byte 0xE9, 0x00, 0x00, 0x00, 0x00
+
+        xor %edx, %edx
+        call selfrando_run_and_remove
+        jmp selfrando_preinit
+.cfi_endproc
+.size selfrando_preinit, . - selfrando_preinit
+
+
 // selfrando_init implementation
 .globl selfrando_init
 .hidden selfrando_init

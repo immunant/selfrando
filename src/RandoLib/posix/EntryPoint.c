@@ -20,6 +20,7 @@ extern char
 
 #pragma GCC visibility push(hidden)
 extern char
+    selfrando_preinit,
     selfrando_init,
     selfrando_entry,
     selfrando_return,
@@ -35,11 +36,6 @@ extern char
 extern uintptr_t _GLOBAL_OFFSET_TABLE_[];
 uintptr_t _DYNAMIC[] __attribute__((weak)) = {};
 #pragma GCC visibility pop
-
-// Placeholder for selfrando_preinit, in case PreinitEntryPoints.S isn't
-// present
-void selfrando_preinit() __attribute__((weak, section(".selfrando.entry")));
-void selfrando_preinit() {}
 
 void selfrando_run(uintptr_t *args) __attribute__((section(".selfrando.entry")));
 
