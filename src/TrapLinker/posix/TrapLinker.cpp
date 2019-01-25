@@ -162,6 +162,8 @@ private:
     HANDLE_OPTION_BOOL(emit_textramp,           true);
     HANDLE_OPTION_BOOL(pic_warning,             true);
     HANDLE_OPTION_BOOL(emit_eh_txtrp,           false);
+    HANDLE_OPTION_BOOL(hook_init,               true);
+    HANDLE_OPTION_BOOL(hook_entry,              true);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -978,8 +980,12 @@ LinkerInvocation ArgParser::create_new_invocation(
         if (m_add_selfrando_libs) {
             // Add both -init and --entry, since we don't know
             // which and in what order will be called
-            change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
-            change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
+            if (m_hook_init) {
+                change_option("-init=", std::string("-init=") + kInitEntryPointName, true);
+            }
+            if (m_hook_entry) {
+                change_option("--entry=", std::string("--entry=") + kStartEntryPointName, true);
+            }
             m_args.emplace(header_pos, strdup((std::string("--undefined=") + kInitEntryPointName).c_str()), true);
             m_args.emplace(header_pos, strdup((std::string("--undefined=") + kStartEntryPointName).c_str()), true);
             m_args.emplace(header_pos, strdup((std::string("--undefined=") + kTextrampAnchorName).c_str()), true);
