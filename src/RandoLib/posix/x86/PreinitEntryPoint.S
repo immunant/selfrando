@@ -13,7 +13,11 @@
 selfrando_preinit:
 .cfi_startproc
         // selfrando will patch this to selfrando_return
-        jmp selfrando_run_and_remove
+.byte 0xE9, 0x00, 0x00, 0x00, 0x00
+
+        xor %edx, %edx
+        call selfrando_run_and_remove
+        jmp selfrando_preinit
 .cfi_endproc
 .size selfrando_preinit, . - selfrando_preinit
 

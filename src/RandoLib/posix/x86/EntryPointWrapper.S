@@ -7,39 +7,60 @@
  */
 
 .section .selfrando.entry, "ax", @progbits
+// selfrando_init implementation
 .globl selfrando_init
 .hidden selfrando_init
 .type selfrando_init,@function
 selfrando_init:
-1:
+.cfi_startproc
         // selfrando will patch this to the correct target
-        call selfrando_run_and_remove
-        jmp 1b
+.byte 0xE9, 0x00, 0x00, 0x00, 0x00
 
+        xor %edx, %edx
+        call selfrando_run_and_remove
+        jmp selfrando_init
+.cfi_endproc
+.size selfrando_init, . - selfrando_init
+
+
+// selfrando_entry implementation
 .globl selfrando_entry
 .hidden selfrando_entry
 .type selfrando_entry,@function
 selfrando_entry:
-1:
+.cfi_startproc
         // selfrando will patch this to the correct target
-        call 2f
-        jmp 1b
+.byte 0xE9, 0x00, 0x00, 0x00, 0x00
 
-2:
         push %edx
-        lea 8(%esp), %edx
-        push %edx
-        jmp srr_have_args
+.cfi_adjust_cfa_offset 4
+.cfi_rel_offset %edx, 0
+        lea 4(%esp), %edx
+        call selfrando_run_and_remove
 
+        pop %edx
+.cfi_adjust_cfa_offset -4
+.cfi_restore %edx
+        jmp selfrando_entry
+.cfi_endproc
+.size selfrando_entry, . - selfrando_entry
+
+
+// selfrando_run_and_remove implementation
+// Incoming arguments:
+//   %edx == entry points arguments from kernel
+//           or NULL for preinit/init
 .globl selfrando_run_and_remove
 .hidden selfrando_run_and_remove
 .type selfrando_run_and_remove,@function
 selfrando_run_and_remove:
+.cfi_startproc
         push %edx
-        pushl $0
-
-srr_have_args:
+.cfi_adjust_cfa_offset 4
+.cfi_rel_offset %edx, 0
         call selfrando_run
+        add $4, %esp
+.cfi_adjust_cfa_offset -4
 
 .globl selfrando_remove_call
 .hidden selfrando_remove_call
@@ -47,15 +68,21 @@ selfrando_remove_call:
         // selfrando will patch this to a jump to
         // the munmap code, if we have it
 .byte 0x0F, 0x1F, 0x44, 0x00, 0x00
-        pop %edx
-        pop %edx
         ret
+.cfi_endproc
+.size selfrando_run_and_remove, . - selfrando_run_and_remove
 
+
+// selfrando_return implementation
 .globl selfrando_return
 .hidden selfrando_return
 .type selfrando_return,@function
 selfrando_return:
+.cfi_startproc
         ret
+.cfi_endproc
+.size selfrando_return, . - selfrando_return
+
 
 // On 32-bit x86, some versions of crti.o from glibc
 // include a version of __x86_get_pc_thunk.bx using
