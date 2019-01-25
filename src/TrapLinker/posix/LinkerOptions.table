@@ -109,3 +109,5 @@
 --traplinker-no-textramp        handle_emit_textramp
 --traplinker-no-pic-warning     handle_pic_warning
 --traplinker-emit-eh-txtrp      handle_emit_eh_txtrp
+--traplinker-no-hook-init       handle_hook_init
+--traplinker-no-hook-entry      handle_hook_entry
