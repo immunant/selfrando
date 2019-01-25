@@ -134,7 +134,11 @@ selfrando_run_and_remove:
     // Fall-through
 selfrando_remove_call:
     // TODO: add sequence that calls mprotect()
-    pop {r0,pc}
+    pop {r0,lr}
+.cfi_adjust_cfa_offset -8
+.cfi_restore r0
+.cfi_restore lr
+    bx lr
 .cfi_endproc
 .size selfrando_run_and_remove, . - selfrando_run_and_remove
 
