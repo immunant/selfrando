@@ -54,6 +54,7 @@ init_pcrel:
 
 // The actual init entry point for our code
 selfrando_init:
+.cfi_startproc
     // selfrando will patch this to the correct target
     // FIXME: use full 32-bit stub
     ldr r12, init_pcrel
@@ -64,12 +65,19 @@ init_pcadd:
 
 init_begin:
     push {lr}
+.cfi_adjust_cfa_offset 4
+.cfi_rel_offset lr, 0
     bl selfrando_run_and_remove
     pop {lr}
+.cfi_adjust_cfa_offset -4
+.cfi_restore lr
 
     // The library should have patched the entry point,
     // so go back and try again
     b selfrando_init
+.cfi_endproc
+.size selfrando_init, . - selfrando_init
+
 
 .globl selfrando_entry
 .hidden selfrando_entry
@@ -80,6 +88,7 @@ entry_pcrel:
     .long entry_begin - selfrando_entry
 
 selfrando_entry:
+.cfi_startproc
     ldr r12, entry_pcrel
     add r12, r12, #selfrando_entry - entry_pcadd - 8
 entry_pcadd:
@@ -88,6 +97,10 @@ entry_pcadd:
 
 entry_begin:
     push {r0,r1,lr}
+.cfi_adjust_cfa_offset 12
+.cfi_rel_offset r0, 0
+.cfi_rel_offset r1, 4
+.cfi_rel_offset lr, 8
 
     add r0, sp, #12
     bl selfrando_run
@@ -95,26 +108,42 @@ entry_begin:
 
     // Restore the finalizer pointer
     pop {r0,r1,lr}
+.cfi_adjust_cfa_offset -12
+.cfi_restore r0
+.cfi_restore r1
+.cfi_restore lr
 
     // Go back and try again
     b selfrando_entry
+.cfi_endproc
+.size selfrando_entry, . - selfrando_entry
+
 
 .globl  selfrando_run_and_remove, selfrando_remove_call
 .hidden selfrando_run_and_remove, selfrando_remove_call
 .type   selfrando_run_and_remove,%function
 .arm
 selfrando_run_and_remove:
+.cfi_startproc
     push {r0,lr}
+.cfi_adjust_cfa_offset 8
+.cfi_rel_offset r0, 0
+.cfi_rel_offset lr, 4
     mov r0, #0
     bl selfrando_run
     // Fall-through
 selfrando_remove_call:
     // TODO: add sequence that calls mprotect()
     pop {r0,pc}
+.cfi_endproc
+.size selfrando_run_and_remove, . - selfrando_run_and_remove
+
 
 .globl selfrando_return
 .hidden selfrando_return
 .type selfrando_return,%function
 selfrando_return:
+.cfi_startproc
     bx lr
-
+.cfi_endproc
+.size selfrando_return, . - selfrando_return
