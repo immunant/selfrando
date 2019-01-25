@@ -39,7 +39,7 @@ selfrando_init:
 .size selfrando_init, . - selfrando_init
 
 
-// selfrando_init implementation
+// selfrando_entry implementation
 .globl selfrando_entry
 .hidden selfrando_entry
 .type selfrando_entry,@function
