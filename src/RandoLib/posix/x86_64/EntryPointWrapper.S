@@ -58,7 +58,7 @@ selfrando_entry:
 .cfi_adjust_cfa_offset 8
 .cfi_rel_offset %rdx, 0
 
-        lea 24(%rsp), %rdi
+        lea 16(%rsp), %rdi
         call selfrando_run_and_remove
         pop %rdx
 .cfi_restore %rdx
