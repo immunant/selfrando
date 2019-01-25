@@ -230,7 +230,8 @@ void Module::Relocation::fixup_export_trampoline(BytePointer *export_ptr,
 void Module::Relocation::fixup_entry_point(const Module &module,
                                            uintptr_t entry_point,
                                            uintptr_t target) {
-    RANDO_ASSERT(*reinterpret_cast<uint8_t*>(entry_point) == 0xE9);
+    if (*reinterpret_cast<uint8_t*>(entry_point) != 0xE9)
+        return;
     Module::Relocation reloc(module, entry_point + 1, R_X86_64_PC32, -4);
     reloc.set_target_ptr(reinterpret_cast<BytePointer>(target));
 }
