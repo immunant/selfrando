@@ -93,8 +93,8 @@ selfrando_entry:
 selfrando_run_and_remove:
 .cfi_startproc
         push %rbp
-.cfi_def_cfa_offset 16
-.cfi_offset %rbp, -16
+.cfi_adjust_cfa_offset 8
+.cfi_rel_offset %rbp, 0
         mov %rsp, %rbp
 .cfi_def_cfa_register %rbp
 
@@ -109,8 +109,11 @@ selfrando_remove_call:
         // the munmap code, if we have it
 .byte 0x0F, 0x1F, 0x44, 0x00, 0x00
 
+        mov %rbp, %rsp
+.cfi_def_cfa_register %rsp
         pop %rbp
-.cfi_def_cfa %rsp, 8
+.cfi_adjust_cfa_offset -8
+.cfi_restore %rbp
         ret
 .cfi_endproc
 .size selfrando_run_and_remove, . - selfrando_run_and_remove
