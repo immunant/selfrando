@@ -46,10 +46,13 @@ selfrando_init:
         xor %rdi, %rdi
         call selfrando_run_and_remove
         pop %rdx
+.cfi_adjust_cfa_offset -8
 .cfi_restore %rdx
         pop %rsi
+.cfi_adjust_cfa_offset -8
 .cfi_restore %rsi
         pop %rdi
+.cfi_adjust_cfa_offset -8
 .cfi_restore %rdi
         jmp selfrando_init
 .cfi_endproc
@@ -78,8 +81,10 @@ selfrando_entry:
         lea 16(%rsp), %rdi
         call selfrando_run_and_remove
         pop %rdx
+.cfi_adjust_cfa_offset -8
 .cfi_restore %rdx
         pop %rdi
+.cfi_adjust_cfa_offset -8
 .cfi_restore %rdi
         jmp selfrando_entry
 .cfi_endproc
