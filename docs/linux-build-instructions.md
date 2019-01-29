@@ -93,6 +93,10 @@ $ export SR_LDFLAGS="-B$SR_BIN -Wl,-rpath,$SR_BIN -Wl,--gc-sections  -fuse-ld=bf
 
 **Note 3**: If `libselfrando` was built as a static library (`BUILD_SHARED_LIBS=0`), add `-Wl,--traplinker-static-selfrando` to `$SR_LDFLAGS`.
 
+**Note 4**: If you are building a static binary with `-static`, please add `-Wl,-z,norelro` to your linker flags.
+Selfrando is currently incompatible with glibc's RELRO implementation in statically linked binaries,
+so the latter needs to be disabled.
+
 ## Checking that a binary was built with selfrando
 
 ## ... with trapdump
