@@ -83,8 +83,8 @@ elseif(UNIX)
         endif()
 
         # Update these when upgrading libelf
-        set(LIBELF_VERSION "0.175")
-        set(LIBELF_MD5 "9a02b0382b78cc2d515fb950275d4c02")
+        set(LIBELF_VERSION "0.176")
+        set(LIBELF_MD5 "077e4f49320cad82bf17a997068b1db9")
 
         set(LIBELF_PATH ${CMAKE_BINARY_DIR}/libelf)
         include(ExternalProject)
