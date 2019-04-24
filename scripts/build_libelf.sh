@@ -13,7 +13,7 @@ OUTDIR=$1
 mkdir -p $OUTDIR
 cd $OUTDIR
 
-LIBELF_VER="0.175"
+LIBELF_VER="0.176"
 LIBELF_FILE="elfutils_$LIBELF_VER.orig.tar.bz2"
 LIBELF_URL="http://deb.debian.org/debian/pool/main/e/elfutils/$LIBELF_FILE"
 
