@@ -19,7 +19,7 @@ list(GET ARCH_ABIS ${arch_idx} arch_abi)
 set(CMAKE_ANDROID_ARCH_ABI ${arch_abi})
 
 # When building for Android, only build RandoLib
-set(SR_BUILD_MODULES "RandoLib" CACHE STRING "Selfrando modules to build for Android")
+set(SR_BUILD_MODULES "RandoLib;TrapLibs" CACHE STRING "Selfrando modules to build for Android")
 
 # CMake doesn't set up the system include directories for ASM by default, so we
 # need to do that.
