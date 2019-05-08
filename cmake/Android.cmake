@@ -9,7 +9,7 @@ set(CMAKE_SYSTEM_NAME Android)
 
 set(SR_ARCH "arm" CACHE STRING "Target architecture for Android")
 set(ALL_ARCHES x86 x86_64 arm     arm64)
-set(ARCH_ABIS  x86 x86_64 armeabi arm64-v8a)
+set(ARCH_ABIS  x86 x86_64 armeabi-v7a arm64-v8a)
 list(FIND ALL_ARCHES ${SR_ARCH} arch_idx)
 if(arch_idx LESS 0)
     message(FATAL_ERROR "Unknown architecture '${SR_ARCH}', "
