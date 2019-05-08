@@ -111,3 +111,4 @@
 --traplinker-emit-eh-txtrp      handle_emit_eh_txtrp
 --traplinker-no-hook-init       handle_hook_init
 --traplinker-no-hook-entry      handle_hook_entry
+--traplinker-no-libdl           handle_link_libdl

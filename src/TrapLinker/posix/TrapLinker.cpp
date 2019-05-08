@@ -164,6 +164,7 @@ private:
     HANDLE_OPTION_BOOL(emit_eh_txtrp,           false);
     HANDLE_OPTION_BOOL(hook_init,               true);
     HANDLE_OPTION_BOOL(hook_entry,              true);
+    HANDLE_OPTION_BOOL(link_libdl,              true);
 
     int ignore_arg(int i, const std::string &arg_key);
     int ignore_arg_with_value(int i, const std::string &arg_key);
@@ -1013,7 +1014,7 @@ LinkerInvocation ArgParser::create_new_invocation(
             } else {
                 m_args.emplace_back("-l:libselfrando.so", true);
             }
-            if (!m_static) {
+            if (!m_static && m_link_libdl) {
                 // We can't pull in libdl.a for static builds,
                 // since we haven't emitted TRaP info for it;
                 // this fine for dynamically-linked builds, and not
