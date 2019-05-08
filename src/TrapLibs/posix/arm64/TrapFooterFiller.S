@@ -16,4 +16,4 @@
 .section .init, "ax", %progbits
 1:
     nop
-.reloc 1b, R_AARCH64_NONE, .Lfiller
+.reloc 1b, R_AARCH64_NULL, .Lfiller
