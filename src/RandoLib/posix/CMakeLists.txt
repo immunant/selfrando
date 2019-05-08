@@ -53,7 +53,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         ${SR_ARCH}/EntryPointWrapper.S
         ${SR_ARCH}/Textramp.S
         EntryPoint.c)
-    if(ANDROID_NDK)
+    if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
         list(APPEND entry_files ${SR_ARCH}/AndroidInit.c)
     endif()
     if("${SR_ARCH}" STREQUAL "arm")
@@ -111,7 +111,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
     endif()
 
-    if(ANDROID_NDK AND "${SR_ARCH}" STREQUAL "arm")
+    if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android" AND "${SR_ARCH}" STREQUAL "arm")
         target_sources(selfrando_objects PRIVATE arm/UnwindStubs.c)
     endif()
 

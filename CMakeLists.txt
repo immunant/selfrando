@@ -14,7 +14,6 @@ set(SR_BUILD_MODULES "all" CACHE STRING "Selfrando modules to build \
 
 set(SR_ARCH "x86_64" CACHE STRING "Target architectures")
 set(SR_DEBUG_LEVEL "0" CACHE STRING "Debugging level (0-10); set to 'env' to control via environment variable")
-set(ANDROID_NDK "" CACHE PATH "Android NDK directory (build libs for Android)")
 set(LIBELF_PATH "" CACHE PATH "Path to directory containing libelf.so (if not using system libelf)")
 set(SR_BUILD_LIBELF OFF CACHE BOOL "Build our own libelf as part of the build process")
 
@@ -129,7 +128,7 @@ add_definitions(
     -DRANDOLIB_DEBUG_LEVEL=${SR_DEBUG_LEVEL}
     -DRANDOLIB_DEBUG_LEVEL_IS_ENV=${SR_DEBUG_LEVEL_IS_ENV}
     )
-if(ANDROID_NDK)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
     add_definitions(-DRANDOLIB_IS_ANDROID=1)
 endif()
 
