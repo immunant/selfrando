@@ -134,7 +134,8 @@ bool ElfObject::parse() {
 }
 
 std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp,
-                                                              bool emit_eh_txtrp) {
+                                                              bool emit_eh_txtrp,
+                                                              const std::string &ar_path) {
     if (!parse())
         Error::printf("Could not parse ELF file %s\n", m_filename.c_str());
 
@@ -181,7 +182,7 @@ std::tuple<std::string, uint16_t> ElfObject::create_trap_info(bool emit_textramp
         m_elf = archive_elf;
         m_parsed = false;
         auto archive_filename = Filesystem::get_temp_filename("traparchive");
-        update_archive(object_files, archive_filename);
+        update_archive(ar_path, object_files, archive_filename);
 #ifndef TRAPLINKER_KEEP_FILES
         for (auto filename : object_files)
             Filesystem::remove(filename);
@@ -712,12 +713,15 @@ void ElfObject::replace_data(Elf_Scn *section, DataBuffer buffer) {
     }
 }
 
-bool ElfObject::update_archive(std::vector<std::string> object_files, std::string archive_filename) {
+bool ElfObject::update_archive(const std::string &original_ar_path,
+                               std::vector<std::string> object_files,
+                               std::string archive_filename) {
     std::vector<char*> ar_invocation;
 
-    // FIXME: add --traplinker-original-ar option to override name of ar
     const char *ar_path;
-    if ((ar_path = getenv(kArPathVariable)) == nullptr) {
+    if (!original_ar_path.empty()) {
+        ar_path = original_ar_path.c_str();
+    } else if ((ar_path = getenv(kArPathVariable)) == nullptr) {
         ar_path = "ar";
     }
     ar_invocation.push_back(strdup(ar_path));

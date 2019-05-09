@@ -101,6 +101,7 @@
 
 // Our own options
 --traplinker-original-linker    handle_original_linker
+--traplinker-original-ar        handle_original_ar
 --traplinker-disable            handle_traplinker_disable
 --traplinker-enable             handle_traplinker_enable
 --traplinker-static-selfrando   handle_static_selfrando

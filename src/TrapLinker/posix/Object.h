@@ -519,7 +519,8 @@ public:
     }
 
     std::tuple<std::string, uint16_t> create_trap_info(bool emit_textramp,
-                                                       bool emit_eh_txtrp);
+                                                       bool emit_eh_txtrp,
+                                                       const std::string &ar_path);
 
     void* data();
 
@@ -713,7 +714,8 @@ private:
 
     bool update_file();
     Elf* write_new_file(int fd);
-    bool update_archive(std::vector<std::string> object_files, std::string archive_filename);
+    bool update_archive(const std::string &original_ar_path,
+                        std::vector<std::string> object_files, std::string archive_filename);
 
     void add_shdr_strings(const std::vector<char> &str_table, size_t existing_count);
 

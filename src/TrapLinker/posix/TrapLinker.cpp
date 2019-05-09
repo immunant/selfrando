@@ -104,6 +104,10 @@ public:
         return m_canonical_sysroot;
     }
 
+    const std::string &ar_path() const {
+        return m_original_ar_path;
+    }
+
     void change_option(std::string option, std::string value, bool single_arg);
 
     LinkerInvocation create_new_invocation(std::map<std::string, std::string> input_file_mapping,
@@ -154,6 +158,7 @@ private:
     int handle_sysroot(int i, const std::string &arg_key);
 
     int handle_original_linker(int i, const std::string &arg_key);
+    int handle_original_ar(int i, const std::string &arg_key);
     int handle_traplinker_disable(int i, const std::string &arg_key);
     int handle_traplinker_enable(int i, const std::string &arg_key);
     HANDLE_OPTION_BOOL(static_selfrando,        false);
@@ -216,6 +221,7 @@ private:
     std::set<std::string> m_z_keywords;
 
     std::string m_original_linker_path;
+    std::string m_original_ar_path;
     bool m_enabled;
 
     bool m_relocatable;
@@ -468,7 +474,8 @@ void LinkWrapper::rewrite_file(std::string input_filename,
             std::string rewritten_file;
             uint16_t file_machine;
             std::tie(rewritten_file, file_machine) = obj.create_trap_info(Args.emit_textramp(),
-                                                                          Args.emit_eh_txtrp());
+                                                                          Args.emit_eh_txtrp(),
+                                                                          Args.ar_path());
             m_rewritten_inputs[input_filename] = rewritten_file;
             if (rewritten_file != temp_file.second)
                 m_temp_files.push_back(rewritten_file);
@@ -1262,6 +1269,11 @@ int ArgParser::handle_sysroot(int i, const std::string &arg_key) {
 
 int ArgParser::handle_original_linker(int i, const std::string &arg_key) {
     int args_claimed = get_value(i, arg_key, m_original_linker_path);
+    return args_claimed;
+}
+
+int ArgParser::handle_original_ar(int i, const std::string &arg_key) {
+    int args_claimed = get_value(i, arg_key, m_original_ar_path);
     return args_claimed;
 }
 
