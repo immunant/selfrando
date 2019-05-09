@@ -256,7 +256,8 @@ public:
 
 private:
     void parse();
-    void parse_comment();
+    void parse_slash_star_comment();
+    void parse_pound_comment();
     void parse_input();
     void parse_group();
     void parse_as_needed();
@@ -548,7 +549,9 @@ void LinkerScript::parse() {
         chomp_whitespace();
         // FIXME: this is very inefficient
         if (accept("/*"))
-            parse_comment();
+            parse_slash_star_comment();
+        else if (accept("#"))
+            parse_pound_comment();
         else if (accept("INCLUDE"))
             parse_string();
         else if (accept("INPUT"))
@@ -571,12 +574,12 @@ void LinkerScript::parse() {
               // it's possible that a configure script passed
               // a solaris linker map file instead of a linker
               // script. Simply terminate with an error if so.
-              Error::printf("Malformed linker script.");
+              Error::printf("Malformed linker script. Expected string, got %c\n", getc(m_file));
         chomp_whitespace();
     }
 }
 
-void LinkerScript::parse_comment() {
+void LinkerScript::parse_slash_star_comment() {
     Debug::printf<10>("Parsing a comment\n");
     char cur;
     while ((cur = getc(m_file)) != EOF) {
@@ -584,6 +587,15 @@ void LinkerScript::parse_comment() {
             fseek(m_file, 2, SEEK_CUR);
             break;
         }
+    }
+}
+
+void LinkerScript::parse_pound_comment() {
+    Debug::printf<10>("Parsing a comment\n");
+    char cur;
+    while ((cur = getc(m_file)) != EOF) {
+        if (cur == '\n')
+            break;
     }
 }
 
