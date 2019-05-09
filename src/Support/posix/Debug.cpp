@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 void Debug::PrintfImpl(const char *fmt, ...) {
@@ -33,6 +34,6 @@ void Error::printf(const char *fmt, ...) {
     // FIXME: find better printing output
     ssize_t retcode = write(STDERR_FILENO, tmp, len);
     assert(retcode != -1 && "Write to stderr failed");
-    assert(false);
+    exit(-1);
     (void) retcode;
 }
