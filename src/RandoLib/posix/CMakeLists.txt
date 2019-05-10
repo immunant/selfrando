@@ -58,12 +58,19 @@ if (SR_BUILD_MODULE_RANDOLIB)
     endif()
     if("${SR_ARCH}" STREQUAL "arm")
         list(APPEND entry_files arm/LinkerStubs.S)
-        # We need _TRaP_memset on ARM
+        # We need _TRaP_memset on ARM to avoid a dependency on libgcc
         list(APPEND entry_files bionic/arch-arm/memset.S)
     endif()
     add_library(randoentry_exec STATIC ${entry_files} EntryPointExec.c
         ${preinit_entry_file})
     add_library(randoentry_so   STATIC ${entry_files} EntryPointSO.c)
+
+    # Ensure that we don't emit unwind tables to avoid depending on the libgcc
+    # provided personality functions
+    set_target_properties(randoentry_exec PROPERTIES COMPILE_FLAGS "-fno-unwind-tables")
+    set_target_properties(randoentry_so PROPERTIES COMPILE_FLAGS "-fno-unwind-tables")
+    target_compile_definitions(randoentry_so PRIVATE -DNOUNWIND)
+    target_compile_definitions(randoentry_exec PRIVATE -DNOUNWIND)
 
     if("${SR_ARCH}" STREQUAL "arm")
         # On ARM, memset.S requires bionic/private/bionic_asm.h

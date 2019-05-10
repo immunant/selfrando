@@ -39,6 +39,12 @@
 
 #include <machine/asm.h>
 
+#ifdef NOUNWIND
+#define __unwind .cantunwind
+#else
+#define __unwind
+#endif
+
 #define ENTRY(f) \
     .text; \
     .globl _TRaP_libc_##f; \
@@ -47,7 +53,8 @@
     .type _TRaP_libc_##f, __bionic_asm_function_type; \
     _TRaP_libc_##f: \
     __bionic_asm_custom_entry(_TRaP_libc_##f); \
-    .cfi_startproc \
+    .cfi_startproc;                            \
+    __unwind                                   \
 
 #define ENTRY_SYSCALL(f) \
     .text; \
@@ -57,7 +64,8 @@
     .type _TRaP_syscall_##f, __bionic_asm_function_type; \
     _TRaP_syscall_##f: \
     __bionic_asm_custom_entry(_TRaP_syscall_##f); \
-    .cfi_startproc \
+    .cfi_startproc;                               \
+    __unwind                                      \
 
 #define END(f) \
     .cfi_endproc; \
