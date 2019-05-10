@@ -98,6 +98,7 @@
 
 // Options used in Android build
 -fix-cortex-a53-843419 ignore_arg
+-execute-only   ignore_arg
 
 // Our own options
 --traplinker-original-linker    handle_original_linker
