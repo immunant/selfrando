@@ -7,6 +7,9 @@ set(SR_NO_MREMAP OFF CACHE BOOL
     "Avoid using mremap() to rallocate memory")
 set(SR_HOOK_PREINIT ON CACHE BOOL
     "Hook .preinit_array to perform randomization before all other initializers")
+set(SR_RANDOLIB_BUILD_SHARED ON CACHE BOOL "Build libselfrando as a shared library")
+set(SR_RANDOLIB_BUILD_STATIC ON CACHE BOOL "Build libselfrando as a static library")
+set(SR_RANDOLIB_BUILD_OBJECT ON CACHE BOOL "Build selfrando_txtrp.o as a static object")
 
 set(ALLOWED_RNGS chacha rand_r urandom)
 set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
