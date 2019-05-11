@@ -188,10 +188,9 @@ if (SR_BUILD_MODULE_RANDOLIB)
                 VERBATIM
                 )
             add_dependencies(selfrando_txtrp.o selfrando_static_noprefix)
-            # FIXME: also install into arch-specific subdirectory
             install(FILES
                 ${CMAKE_CURRENT_BINARY_DIR}/selfrando_txtrp.o
-                DESTINATION bin)
+                DESTINATION bin/${SR_ARCH})
         endif()
     endif()
 endif()
