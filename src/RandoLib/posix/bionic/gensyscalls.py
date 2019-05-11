@@ -152,8 +152,7 @@ END_SYSCALL(%(func)s)
 # CMakeLists.txt template
 #
 cmake_lists = "# " + warning + "\n" + """\
-target_sources(selfrando_objects
-    PRIVATE
+list(APPEND selfrando_sources
     %s
     )
 """

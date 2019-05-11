@@ -5,9 +5,6 @@ set(CMAKE_CXX_STANDARD 11)
 # Include CMAKE_INSTALL_*DIR variables
 include(GNUInstallDirs)
 
-option(BUILD_SHARED_LIBS
-    "Build Selfrando as a shared library, i.e., libselfrando.so" ON)
-
 set(SR_ALL_MODULES "TrapLinker;RandoLib;TrapDump;TrapLibs")
 set(SR_BUILD_MODULES "all" CACHE STRING "Selfrando modules to build \
 (Semicolon-separated list of modules, e.g. ${SR_ALL_MODULES}, or 'all'")
