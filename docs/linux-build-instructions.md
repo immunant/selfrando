@@ -35,8 +35,7 @@ Use one of the Ubuntu virtual machines under `Tools/Vagrant`.
 ```bash
 $ cd $PATH_TO_SELFRANDO_SRC
 $ export SR_ARCH=`uname -m | sed s/i686/x86/`
-$ cmake . -DBUILD_SHARED_LIBS=1 \
-  -DSR_DEBUG_LEVEL=env -DCMAKE_BUILD_TYPE=Release -DSR_BUILD_LIBELF=1 \
+$ cmake . -DSR_DEBUG_LEVEL=env -DCMAKE_BUILD_TYPE=Release -DSR_BUILD_LIBELF=1 \
   -DSR_ARCH=$SR_ARCH -DSR_LOG=console \
   -DSR_FORCE_INPLACE=1 -G "Unix Makefiles" \
   -DCMAKE_INSTALL_PREFIX:PATH=$PWD/out/$SR_ARCH
@@ -49,7 +48,6 @@ $ make install
 **Note 2** use `-G Ninja` to generate `ninja` build files instead of Makefiles.
 
 ### Notable cmake variables
-- `BUILD_SHARED_LIBS` builds `libselfrando` as a shared library (`.so`) if set to 1, and as a static library (`.a`) if set to zero.
 - `SR_DEBUG_LEVEL` must be a number from 0-10 or the string `env`. Zero means no debug output, 10 enables full debug output. If `env` is given, selfrando reads the debugging level from the `SELFRANDO_debug_level` environment variable.
 - `SR_ARCH` must be either `x86` (32-bit builds) or `x86_64` (64-bit builds).
 - `SR_LOG` can be any of {`default`, `none`, `console`, `file`}. By default log output is written to `/tmp/selfrando.log`; a custom log filename can be specified using the `SR_LOG_FILENAME` variable.
@@ -91,9 +89,7 @@ $ export SR_LDFLAGS="-B$SR_BIN -Wl,-rpath,$SR_BIN -Wl,--gc-sections  -fuse-ld=bf
 
 **Note 2**: To build with selfrando and link with `gold`, substitute `-fuse-ld=bfd` with `-fuse-ld=gold` everywhere.
 
-**Note 3**: If `libselfrando` was built as a static library (`BUILD_SHARED_LIBS=0`), add `-Wl,--traplinker-static-selfrando` to `$SR_LDFLAGS`.
-
-**Note 4**: If you are building a static binary with `-static`, please add `-Wl,-z,norelro` to your linker flags.
+**Note 3**: If you are building a static binary with `-static`, please add `-Wl,-z,norelro` to your linker flags.
 Selfrando is currently incompatible with glibc's RELRO implementation in statically linked binaries,
 so the latter needs to be disabled.
 

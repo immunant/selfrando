@@ -1,6 +1,5 @@
 
-target_sources(selfrando_objects
-    PRIVATE
+list(APPEND selfrando_sources
     bionic/arch-arm/memcmp.S
     bionic/arch-arm/memcpy.S
     bionic/arch-arm/memset.S

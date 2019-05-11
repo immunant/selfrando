@@ -1,14 +1,12 @@
 
-target_sources(selfrando_objects
-    PRIVATE
+list(APPEND selfrando_sources
     bionic/libc/open.cpp
     bionic/stubs/set_errno_internal.c
     bionic/upstream-netbsd/rand_r.c
     bionic/upstream-openbsd/getenv.c
     bionic/upstream-openbsd/time.c
     )
-target_include_directories(selfrando_objects
-    PRIVATE
+include_directories(
     bionic
     bionic/arch-${SR_ARCH}
     )

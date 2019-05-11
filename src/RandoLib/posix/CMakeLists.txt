@@ -7,6 +7,9 @@ set(SR_NO_MREMAP OFF CACHE BOOL
     "Avoid using mremap() to rallocate memory")
 set(SR_HOOK_PREINIT ON CACHE BOOL
     "Hook .preinit_array to perform randomization before all other initializers")
+set(SR_RANDOLIB_BUILD_SHARED ON CACHE BOOL "Build libselfrando as a shared library")
+set(SR_RANDOLIB_BUILD_STATIC ON CACHE BOOL "Build libselfrando as a static library")
+set(SR_RANDOLIB_BUILD_OBJECT ON CACHE BOOL "Build selfrando_txtrp.o as a static object")
 
 set(ALLOWED_RNGS chacha rand_r urandom)
 set_property(CACHE SR_RNG PROPERTY STRINGS ${ALLOWED_RNGS})
@@ -101,7 +104,7 @@ if (SR_BUILD_MODULE_RANDOLIB)
         DESTINATION bin/${SR_ARCH}
         )
 
-    add_library(selfrando_objects OBJECT
+    set(selfrando_sources
         ../RandoLib.cpp
         OSImpl.cpp
         ../util/hash_32a.c
@@ -113,19 +116,14 @@ if (SR_BUILD_MODULE_RANDOLIB)
         ${SR_ARCH}/Cache.cpp
         )
 
-    # Add dependency on libelf since we import ELF headers
-    if (SR_LIBELF_TARGET)
-        add_dependencies(selfrando_objects ${SR_LIBELF_TARGET})
-    endif()
-
     if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android" AND "${SR_ARCH}" STREQUAL "arm")
-        target_sources(selfrando_objects PRIVATE arm/UnwindStubs.c)
+        list(APPEND selfrando_sources arm/UnwindStubs.c)
     endif()
 
     if("${SR_RNG}" STREQUAL "chacha")
-        target_sources(selfrando_objects PRIVATE ../util/rand_chacha.cpp)
+        list(APPEND selfrando_sources ../util/rand_chacha.cpp)
     elseif("${SR_RNG}" STREQUAL "urandom")
-        target_sources(selfrando_objects PRIVATE util/rand_linux.cpp)
+        list(APPEND selfrando_sources util/rand_linux.cpp)
     endif()
 
     if(SR_NO_MREMAP)
@@ -136,54 +134,66 @@ if (SR_BUILD_MODULE_RANDOLIB)
 
     # TODO: include all the Android options
 
-    # FIXME: scons can build both a shared and static library
-    # from the same source files but with different C defs
-    # but that's not as simple with cmake
-    if(BUILD_SHARED_LIBS)
-        target_compile_definitions(selfrando_objects PRIVATE -DRANDOLIB_IS_SHARED=1)
+    ### Build libselfrando.so
+    if(SR_RANDOLIB_BUILD_SHARED)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++ -nostdlib")
-        add_library(selfrando SHARED $<TARGET_OBJECTS:selfrando_objects>)
+        add_library(selfrando SHARED ${selfrando_sources})
         target_link_libraries(selfrando PRIVATE dl gcc)
+        target_compile_definitions(selfrando PRIVATE -DRANDOLIB_IS_SHARED=1)
+        if (SR_LIBELF_TARGET)
+            # Add dependency on libelf since we import ELF headers
+            add_dependencies(selfrando ${SR_LIBELF_TARGET})
+        endif()
         if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
             # Android doesn't provide libgcc_eh.a
             target_link_libraries(selfrando PRIVATE gcc_eh)
         endif()
         install(TARGETS selfrando DESTINATION bin/${SR_ARCH})
-    else()
-        add_library(selfrando_noprefix STATIC $<TARGET_OBJECTS:selfrando_objects>)
-
-        # Build libselfrando.a with .selfrando prefix prepended to all sections
-        add_custom_target(libselfrando.a ALL
-            COMMAND ${CMAKE_OBJCOPY} --prefix-alloc-sections=.selfrando libselfrando_noprefix.a libselfrando.a
-            COMMAND ${CMAKE_OBJCOPY} --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
-            COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ libselfrando.a
-            COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt libselfrando.a
-            # TODO: add _TRaP_environ to non_trap_syms???
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ libselfrando.a
-            VERBATIM
-            )
-        add_dependencies(libselfrando.a selfrando_noprefix)
-        install(FILES
-            ${CMAKE_CURRENT_BINARY_DIR}/libselfrando.a
-            DESTINATION bin/${SR_ARCH})
-
-        # Build selfrando_txtrp.o with all the code in .txtrp
-        # FIXME: is this list correct?
-        add_custom_target(selfrando_txtrp.o ALL
-            COMMAND env "OBJCOPY=${CMAKE_OBJCOPY}" "OBJDUMP=${CMAKE_OBJDUMP}"
-                ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
-                libselfrando_noprefix.a
-                selfrando_txtrp.o
-            COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ selfrando_txtrp.o
-            COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt selfrando_txtrp.o
-            COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ selfrando_txtrp.o
-            VERBATIM
-            )
-        add_dependencies(selfrando_txtrp.o selfrando_noprefix)
-        # FIXME: also install into arch-specific subdirectory
-        install(FILES
-            ${CMAKE_CURRENT_BINARY_DIR}/selfrando_txtrp.o
-            DESTINATION bin)
     endif()
 
+    ### Build libselfrando.a and selfrando_txtrp.o
+    if(SR_RANDOLIB_BUILD_STATIC OR SR_RANDOLIB_BUILD_OBJECT)
+        add_library(selfrando_static_noprefix STATIC ${selfrando_sources})
+
+        if (SR_LIBELF_TARGET)
+            # Add dependency on libelf since we import ELF headers
+            add_dependencies(selfrando_static_noprefix ${SR_LIBELF_TARGET})
+        endif()
+
+        if(SR_RANDOLIB_BUILD_STATIC)
+            # Build libselfrando.a with .selfrando prefix prepended to all sections
+            add_custom_target(selfrando_static ALL
+                COMMAND ${CMAKE_OBJCOPY} --prefix-alloc-sections=.selfrando libselfrando_static_noprefix.a libselfrando.a
+                COMMAND ${CMAKE_OBJCOPY} --rename-section .selfrando.eh_frame=.eh_frame libselfrando.a
+                COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ libselfrando.a
+                COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt libselfrando.a
+                # TODO: add _TRaP_environ to non_trap_syms???
+                COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ libselfrando.a
+                VERBATIM
+                )
+            add_dependencies(selfrando_static selfrando_static_noprefix)
+            install(FILES
+                ${CMAKE_CURRENT_BINARY_DIR}/libselfrando.a
+                DESTINATION bin/${SR_ARCH})
+        endif()
+
+        if(SR_RANDOLIB_BUILD_OBJECT)
+            # Build selfrando_txtrp.o with all the code in .txtrp
+            # FIXME: is this list correct?
+            add_custom_target(selfrando_txtrp.o ALL
+                COMMAND env "OBJCOPY=${CMAKE_OBJCOPY}" "OBJDUMP=${CMAKE_OBJDUMP}"
+                ${CMAKE_CURRENT_SOURCE_DIR}/rename_sections_txtrp.sh
+                libselfrando_static_noprefix.a
+                selfrando_txtrp.o
+                COMMAND ${CMAKE_OBJCOPY} --prefix-symbols=_TRaP_ selfrando_txtrp.o
+                COMMAND ${CMAKE_OBJCOPY} --redefine-syms=${CMAKE_CURRENT_SOURCE_DIR}/non_trap_syms.txt selfrando_txtrp.o
+                COMMAND ${CMAKE_OBJCOPY} --redefine-sym=_TRaP_environ=environ selfrando_txtrp.o
+                VERBATIM
+                )
+            add_dependencies(selfrando_txtrp.o selfrando_static_noprefix)
+            install(FILES
+                ${CMAKE_CURRENT_BINARY_DIR}/selfrando_txtrp.o
+                DESTINATION bin/${SR_ARCH})
+        endif()
+    endif()
 endif()

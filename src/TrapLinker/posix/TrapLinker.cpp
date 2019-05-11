@@ -970,6 +970,8 @@ LinkerInvocation ArgParser::create_new_invocation(
     if (is_trap_enabled() && elf_machine != EM_NONE) {
         // Determine which linker we're running
         std::string randolib_install_path = find_install_path();
+        std::string randolib_arch_install_path = randolib_install_path + "/"
+            + kELFMachineNames.at(elf_machine);
         std::string linker_id_script = randolib_install_path + kLinkerIdScript;
         char *linker_id_args[] = { const_cast<char*>(linker_id_script.c_str()),
                                    const_cast<char*>(m_args.begin()->arg.c_str()),
@@ -982,8 +984,7 @@ LinkerInvocation ArgParser::create_new_invocation(
         // Prepend some arguments
         std::list<Arg>::iterator header_pos = std::next(m_args.begin());
         m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path).c_str()), true);
-        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_install_path +
-                                           "/" + kELFMachineNames.at(elf_machine)).c_str()), true);
+        m_args.emplace(header_pos, strdup((std::string("-L") + randolib_arch_install_path).c_str()), true);
 
         // Add the files that mark the start of .txtrp
         m_args.emplace(header_pos, "--undefined=_TRaP_trap_begin", true);
@@ -1024,7 +1025,7 @@ LinkerInvocation ArgParser::create_new_invocation(
             m_args.emplace_back("--no-whole-archive", true);
             if (m_static_selfrando && m_selfrando_txtrp_pages) {
                 // WARNING: this must go after TrapFooter.o
-                std::string selfrando_object = randolib_install_path + kSelfrandoObject;
+                std::string selfrando_object = randolib_arch_install_path + kSelfrandoObject;
                 m_args.emplace_back(selfrando_object.c_str(), true);
             } else if (m_static_selfrando) {
                 m_args.emplace_back("--whole-archive", true);
