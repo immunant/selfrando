@@ -1,3 +1,4 @@
+ // Copyright (c) 2015-2019 RunSafe Security Inc.
 #ifndef __HASH_MAP_H
 #define __HASH_MAP_H
 #pragma once

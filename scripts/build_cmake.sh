@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (c) 2015-2019 RunSafe Security Inc.
 # Script that builds selfrando using cmake&ninja
 
 SR_ARCH=${SR_ARCH:-x86_64}

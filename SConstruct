@@ -1,3 +1,4 @@
+# Copyright (c) 2015-2019 RunSafe Security Inc.
 import sys
 import os
 

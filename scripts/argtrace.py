@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+# Copyright (c) 2015-2019 RunSafe Security Inc.
 
 import os
 import sys

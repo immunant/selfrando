@@ -1,4 +1,5 @@
 #!/bin/sh
+#  Copyright (c) 2015-2019 RunSafe Security Inc.
 
 INPUT=$1
 OUTPUT=$2

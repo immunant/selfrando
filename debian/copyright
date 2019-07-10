@@ -3,12 +3,12 @@ Upstream-Name: selfrando
 Source: https://github.com/immunant/selfrando
 
 Files: *
-Copyright: Copyright (c) 2015-2018 Immunant, Inc.
+Copyright: Copyright (c) 2015-2019 RunSafe Security, Inc.
 License: AGPL-1
 
 Files: scripts/parse_textrap.py
 Copyright: Copyright (c) 2014-2015, The Regents of the University of California
-   Copyright (c) 2015-2018 Immunant, Inc.
+   Copyright (c) 2015-2019 RunSafe Security, Inc.
 License: BSD-3-clause
 
 Files: scripts/trap_msvc_libs.py
@@ -17,12 +17,12 @@ License: BSD-3-clause
 
 Files: src/RandoLib/RandoLib.cpp
 Copyright: Copyright (c) 2014-2015, The Regents of the University of California
-   Copyright (c) 2015-2018 Immunant, Inc.
+   Copyright (c) 2015-2019 RunSafe Security, Inc.
 License: BSD-3-clause
 
 Files: src/RandoLib/RandoLib.h
 Copyright: Copyright (c) 2014-2015, The Regents of the University of California
-   Copyright (c) 2015-2018 Immunant, Inc.
+   Copyright (c) 2015-2019 RunSafe Security, Inc.
 License: BSD-3-clause
 
 Files: src/RandoLib/posix/util/rand_linux.cpp
@@ -495,7 +495,7 @@ License: BSD-3-clause
 
 Files: src/TrapInfo/TrapInfo.h
 Copyright: Copyright (c) 2014-2015, The Regents of the University of California
-   Copyright (c) 2015-2018 Immunant, Inc.
+   Copyright (c) 2015-2019 RunSafe Security, Inc.
 License: BSD-3-clause
 
 License: AGPL-1

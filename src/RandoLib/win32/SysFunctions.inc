@@ -1,3 +1,4 @@
+// Copyright (c) 2015-2019 RunSafe Security Inc.
 // SYS_FUNCTION(library, name, API, result_type, arguments...)
 #ifdef SYS_FUNCTION
 // ntdll functions
