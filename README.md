@@ -1,6 +1,6 @@
 [![Travis build status](https://travis-ci.org/immunant/selfrando.svg?branch=fix_papercuts)](https://travis-ci.org/immunant/selfrando) [![Appveyor build status](https://ci.appveyor.com/api/projects/status/wox374j8qrmg7dte/branch/master?svg=true)](https://ci.appveyor.com/project/thedataking/selfrando/branch/master)
 
-# Immunant `selfrando`
+# RunSafe Security `selfrando`
 
 Software written in C and C++ is exposed to exploitation of memory corruption. Compilers and operating systems include various exploit mitigation mechanisms that prevent certain offensive techniques. Unfortunately, standard mitigations lag behind the offensive techniques used in exploits against browsers, servers, and other frequently targeted software and do not stop a well-resourced adversary.
 
@@ -22,10 +22,7 @@ Software written in C and C++ is exposed to exploitation of memory corruption. C
 ## License
 The Linux-compatible version of `selfrando` is offered under the [Affero General Public License version 1](http://www.affero.org/oagpl.html).
 
-Visit http://immunant.com if you are interested in a commercial support to protect your software with `selfrando` on Windows, Android, and Linux.
-
-### Contributing
-We welcome help in any way. Please sign our [contributor license agreement](http://immunant.com/page/contribute) before submitting any patches or pull requests.
+Visit http://runsafesecurity.com if you are interested in a commercial support to protect your software with `selfrando` on Windows, Android, and Linux.
 
 ## Acknowledgements
 Researchers from University of California, Irvine, Technische Universität Darmstadt (Germany), and the [Tor Project](https://blog.torproject.org/blog/selfrando-q-and-georg-koppen) contributed to the development of selfrando.
