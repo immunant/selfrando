@@ -76,13 +76,13 @@ public:
     };
 
     InsertResult insert(T &&x) {
+        grow();
         // Store a function-local copy of the inserted element,
         // but move `x` into it
         T lx = x;
         auto kh = T::key_hash(lx.key());
         auto pos = kh & cap_mask;
         size_t dist = 0;
-        grow();
         for (;; dist++) {
             auto &e = elems[pos];
             auto &ek = e.key();
